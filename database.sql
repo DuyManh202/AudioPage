@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS combo_gifts (
 
 -- 7. BẢNG KHÁCH HÀNG ĐĂNG KÝ TƯ VẤN & THỬ DÀN (LEADS / CRM)
 CREATE TABLE IF NOT EXISTS leads (
-    id VARCHAR(30) PRIMARY KEY,
+    id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NOT NULL,
     address TEXT NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS leads (
 -- 8. BẢNG YÊU CẦU THU CŨ ĐỔI MỚI (TRADE_INS)
 CREATE TABLE IF NOT EXISTS trade_ins (
     id SERIAL PRIMARY KEY,
-    lead_id VARCHAR(30) REFERENCES leads(id) ON DELETE SET NULL,
+    lead_id VARCHAR(50) REFERENCES leads(id) ON DELETE SET NULL,
     customer_name VARCHAR(100),
     customer_phone VARCHAR(20),
     customer_address TEXT,
@@ -145,7 +145,7 @@ ALTER TABLE trade_ins ADD COLUMN IF NOT EXISTS condition_note TEXT;
 
 -- 9. BẢNG ĐƠN ĐẶT MUA LẺ THIẾT BỊ (ORDERS)
 CREATE TABLE IF NOT EXISTS orders (
-    id VARCHAR(30) PRIMARY KEY,
+    id VARCHAR(50) PRIMARY KEY,
     customer_name VARCHAR(100) NOT NULL,
     customer_phone VARCHAR(20) NOT NULL,
     shipping_address TEXT NOT NULL,
@@ -156,6 +156,15 @@ CREATE TABLE IF NOT EXISTS orders (
     note TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Mã lead/order chứa UUID (LD-/ORD- + 36 ký tự), cần đủ chỗ trên DB cũ.
+-- Giữ trade-ins nếu lead bị xóa, đúng với chính sách của schema.
+ALTER TABLE trade_ins DROP CONSTRAINT IF EXISTS trade_ins_lead_id_fkey;
+ALTER TABLE leads ALTER COLUMN id TYPE VARCHAR(50);
+ALTER TABLE trade_ins ALTER COLUMN lead_id TYPE VARCHAR(50);
+ALTER TABLE orders ALTER COLUMN id TYPE VARCHAR(50);
+ALTER TABLE trade_ins ADD CONSTRAINT trade_ins_lead_id_fkey
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
 
 -- CHỈ MỤC INDEX
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
