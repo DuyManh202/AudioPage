@@ -224,4 +224,44 @@ const handleOrder29 = () => {
     font-size: 2rem;
   }
 }
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 32px 0;
+  }
+
+  .hero-title {
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+  }
+
+  .hero-ctas {
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .hero-ctas > * {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding-top: 18px;
+  }
+
+  .stat-num {
+    font-size: 1.2rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    line-height: 1.35;
+  }
+
+  .featured-offer-box {
+    padding: 24px 18px 18px;
+  }
+}
 </style>

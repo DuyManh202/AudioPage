@@ -222,4 +222,61 @@ const resetFilter = () => {
   font-size: 1.05rem;
   margin-bottom: 18px;
 }
+
+@media (max-width: 768px) {
+  .product-list-view {
+    padding: 28px 0 48px;
+  }
+
+  .list-header {
+    margin-bottom: 22px;
+  }
+
+  .page-title {
+    font-size: clamp(1.55rem, 6vw, 2rem);
+    line-height: 1.2;
+  }
+
+  .filter-bar {
+    padding: 14px;
+    margin-bottom: 22px;
+  }
+
+  .category-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+  }
+
+  .extra-filters {
+    align-items: stretch;
+  }
+
+  .filter-select {
+    flex: 1 1 140px;
+    min-width: 0;
+    min-height: 42px;
+  }
+
+  .result-counter {
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -39,27 +39,38 @@
             <span v-if="cartStore.totalItems > 0" class="cart-badge">{{ cartStore.totalItems }}</span>
           </button>
           <button class="consult-btn" @click="openConsult">
-            📞 Tư Vấn Tại Nhà
+            📞 <span>Tư Vấn</span>
+          </button>
+          <button
+            class="mobile-menu-toggle"
+            type="button"
+            :aria-expanded="mobileMenuOpen"
+            aria-controls="mobile-site-nav"
+            :aria-label="mobileMenuOpen ? 'Đóng menu' : 'Mở menu'"
+            @click="mobileMenuOpen = !mobileMenuOpen"
+          >
+            <span aria-hidden="true">{{ mobileMenuOpen ? '✕' : '☰' }}</span>
           </button>
         </div>
       </div>
     </div>
 
-    <nav class="sub-nav">
+    <nav id="mobile-site-nav" :class="['sub-nav', { 'mobile-open': mobileMenuOpen }]">
       <div class="container nav-links">
-        <router-link to="/">Trang Chủ</router-link>
-        <router-link to="/dan-karaoke">Dàn Karaoke Trọn Bộ</router-link>
-        <router-link to="/san-pham">Tất Cả Loa & Thiết Bị</router-link>
+        <router-link to="/" @click="closeMobileMenu">Trang Chủ</router-link>
+        <router-link to="/dan-karaoke" @click="closeMobileMenu">Dàn Karaoke Trọn Bộ</router-link>
+        <router-link to="/san-pham" @click="closeMobileMenu">Tất Cả Loa & Thiết Bị</router-link>
         <a href="#calculator" @click.prevent="scrollToCalc">Gợi Ý Loa Theo Phòng</a>
-        <router-link to="/thu-cu-doi-moi">Thu Cũ Đổi Mới</router-link>
+        <router-link to="/thu-cu-doi-moi" @click="closeMobileMenu">Thu Cũ Đổi Mới</router-link>
         <a href="#nhan-ebook" @click.prevent="scrollToEbook">🎁 Nhận Ebook Free</a>
+        <button class="mobile-consult-link" type="button" @click="openConsult">📞 Tư Vấn Tại Nhà</button>
       </div>
     </nav>
   </header>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import { useCartStore } from '../../stores/cartStore'
@@ -68,6 +79,13 @@ const router = useRouter()
 const productStore = useProductStore()
 const cartStore = useCartStore()
 const searchQuery = ref('')
+const mobileMenuOpen = ref(false)
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
+
+watch(() => router.currentRoute.value.fullPath, closeMobileMenu)
 
 const handleSearch = () => {
   productStore.setSearchQuery(searchQuery.value)
@@ -77,10 +95,12 @@ const handleSearch = () => {
 }
 
 const openConsult = () => {
+  closeMobileMenu()
   cartStore.openQuickOrder({ name: 'Đăng Ký Tư Vấn Dàn Karaoke Tại Nhà' })
 }
 
 const scrollToCalc = () => {
+  closeMobileMenu()
   if (router.currentRoute.value.path !== '/') {
     router.push('/').then(() => {
       document.getElementById('room-calculator')?.scrollIntoView({ behavior: 'smooth' })
@@ -91,6 +111,7 @@ const scrollToCalc = () => {
 }
 
 const scrollToEbook = () => {
+  closeMobileMenu()
   if (router.currentRoute.value.path !== '/') {
     router.push('/').then(() => {
       document.getElementById('nhan-ebook')?.scrollIntoView({ behavior: 'smooth' })
@@ -142,6 +163,11 @@ const scrollToEbook = () => {
 .admin-entry-link:hover {
   background: var(--color-primary);
   color: #000;
+}
+
+.mobile-menu-toggle,
+.mobile-consult-link {
+  display: none;
 }
 
 .main-nav {
@@ -298,6 +324,138 @@ const scrollToEbook = () => {
     order: 3;
     max-width: 100%;
     width: 100%;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-announcement {
+    padding: 5px 0;
+  }
+
+  .top-announcement > .container > span {
+    display: none;
+  }
+
+  .top-contact {
+    width: 100%;
+    justify-content: space-between;
+    font-size: 0.7rem;
+  }
+
+  .main-nav {
+    padding: 10px 0;
+  }
+
+  .header-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .brand-logo {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .logo-symbol {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+
+  .logo-title {
+    font-size: 1rem;
+  }
+
+  .logo-slogan {
+    font-size: 0.62rem;
+  }
+
+  .search-box {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    order: initial;
+    width: 100%;
+  }
+
+  .search-box input {
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  .search-btn {
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .combo-link {
+    display: none;
+  }
+
+  .cart-header-btn,
+  .consult-btn,
+  .mobile-menu-toggle {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 7px 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .mobile-menu-toggle {
+    background: var(--bg-dark-900);
+    color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+  }
+
+  .sub-nav {
+    display: none;
+  }
+
+  .sub-nav.mobile-open {
+    display: block;
+  }
+
+  .nav-links {
+    flex-direction: column;
+    gap: 0;
+    padding-top: 6px;
+    padding-bottom: 8px;
+  }
+
+  .nav-links a,
+  .mobile-consult-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 9px 4px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+  }
+
+  .mobile-consult-link {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: var(--color-primary);
+    text-align: left;
+    font-weight: 700;
   }
 }
 </style>

@@ -264,4 +264,36 @@ const handleSubmit = async () => {
   line-height: 1.5;
   margin-bottom: 24px;
 }
+
+@media (max-width: 640px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .modal-window {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    padding: 24px 18px 20px;
+    border-radius: 18px 18px 12px 12px;
+  }
+
+  .modal-title {
+    padding-right: 12px;
+    font-size: 1.2rem;
+    line-height: 1.35;
+  }
+
+  .modal-form {
+    gap: 13px;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
 </style>

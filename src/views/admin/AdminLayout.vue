@@ -456,4 +456,134 @@ const handleLogout = () => {
     padding: 12px;
   }
 }
+
+@media (max-width: 700px) {
+  .admin-wrapper {
+    flex-direction: column;
+    min-height: 100svh;
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    width: 100%;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .sidebar-brand,
+  .sidebar-footer {
+    display: none;
+  }
+
+  .sidebar-menu {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .menu-label {
+    display: none;
+  }
+
+  .menu-item {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 9px 10px;
+    white-space: nowrap;
+    font-size: 0.74rem;
+  }
+
+  .menu-item span:not(.icon) {
+    display: inline;
+  }
+
+  .menu-item .icon {
+    font-size: 0.95rem;
+  }
+
+  .menu-item.router-link-active {
+    border-left: 0;
+    border-bottom: 2px solid var(--color-primary);
+  }
+
+  .badge-count,
+  .item-count {
+    margin-left: 0;
+  }
+
+  .admin-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-topbar {
+    position: relative;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .topbar-left {
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+
+  .breadcrumb-active {
+    overflow-wrap: anywhere;
+  }
+
+  .topbar-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .db-status-badge,
+  .location-badge {
+    font-size: 0.68rem;
+    padding: 5px 7px;
+  }
+
+  .topbar-logout-btn {
+    margin-left: auto;
+  }
+
+  .quick-lead-btn {
+    order: 4;
+    width: 100%;
+    text-align: center;
+  }
+
+  .admin-content-area {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .admin-content-area .panel-box {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .admin-content-area .table-responsive,
+  .admin-content-area .table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-content-area .admin-table,
+  .admin-content-area .table-wrap table {
+    min-width: 760px;
+  }
+}
 </style>

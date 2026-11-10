@@ -264,4 +264,68 @@ const handleAddToCart = () => {
 .btn-order:hover {
   background: var(--color-secondary-hover);
 }
+
+@media (max-width: 768px) {
+  .card-thumb {
+    height: auto;
+    aspect-ratio: 1.25;
+  }
+
+  .card-body {
+    padding: 12px;
+  }
+
+  .card-title {
+    height: auto;
+    min-height: 2.7em;
+    font-size: 0.9rem;
+  }
+
+  .specs-mini {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .spec-pill {
+    font-size: 0.66rem;
+    padding: 2px 5px;
+  }
+
+  .card-desc {
+    display: none;
+  }
+
+  .price-wrap {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+
+  .current-price {
+    font-size: 1rem;
+  }
+
+  .card-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .btn-detail,
+  .btn-add-cart,
+  .btn-order {
+    min-width: 0;
+    padding: 8px 2px;
+    font-size: 0.68rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .card-thumb {
+    aspect-ratio: 1.5;
+  }
+
+  .card-desc {
+    display: -webkit-box;
+  }
+}
 </style>

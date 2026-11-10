@@ -628,4 +628,62 @@ const handleAddToCart = () => {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .product-detail-view {
+    padding: 20px 0 48px;
+  }
+
+  .breadcrumb {
+    margin-bottom: 16px;
+  }
+
+  .main-image-wrap,
+  .main-video-wrap {
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .product-name {
+    font-size: clamp(1.45rem, 6vw, 1.8rem);
+  }
+
+  .price-row {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .sale-price {
+    font-size: 1.55rem;
+  }
+
+  .actions-row {
+    gap: 10px;
+  }
+
+  .actions-row > * {
+    min-width: 100%;
+  }
+
+  .guarantees-grid {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .video-showcase-section,
+  .specs-section {
+    padding: 18px 14px;
+    margin-bottom: 24px;
+  }
+
+  .video-section-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .specs-table td {
+    padding: 10px 8px;
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+  }
+}
 </style>

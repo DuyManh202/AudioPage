@@ -318,4 +318,43 @@ const resetAndClose = () => {
 .full-width {
   width: 100%;
 }
+
+@media (max-width: 640px) {
+  .cart-drawer {
+    max-width: none;
+    padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+  }
+
+  .empty-cart,
+  .order-success-box {
+    padding: 36px 12px;
+  }
+
+  .cart-item {
+    align-items: flex-start;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .item-img {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+  }
+
+  .item-name {
+    overflow-wrap: anywhere;
+  }
+
+  .total-val {
+    font-size: 1.15rem;
+  }
+
+  .checkout-form input,
+  .checkout-form select,
+  .checkout-form textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
 </style>

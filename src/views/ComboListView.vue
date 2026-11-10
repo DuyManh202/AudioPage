@@ -40,4 +40,19 @@ import ComboOffers from '../components/home/ComboOffers.vue'
   color: #94a3b8;
   line-height: 1.6;
 }
+
+@media (max-width: 640px) {
+  .combo-list-view {
+    padding-bottom: 48px;
+  }
+
+  .combo-header-banner {
+    padding: 28px 12px 8px;
+  }
+
+  .combo-header-banner h1 {
+    font-size: clamp(1.6rem, 7vw, 2rem);
+    line-height: 1.25;
+  }
+}
 </style>

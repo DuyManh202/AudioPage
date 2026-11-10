@@ -392,4 +392,26 @@ const resetForm = () => {
     flex-direction: column;
   }
 }
+
+@media (max-width: 768px) {
+  .tradein-page {
+    padding: 30px 0 48px;
+  }
+
+  .page-header {
+    margin-bottom: 28px;
+  }
+
+  .page-header h1 {
+    font-size: clamp(1.6rem, 7vw, 2rem);
+  }
+
+  .form-panel {
+    padding: 18px 14px;
+  }
+
+  .step-card {
+    padding: 16px;
+  }
+}
 </style>
