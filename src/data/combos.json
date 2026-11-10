@@ -1,0 +1,57 @@
+[
+  {
+    "id": "dan-karaoke-29tr",
+    "name": "Dàn Karaoke 29 Triệu — Chuẩn Âm Hay Hơn Quán Hát",
+    "tagline": "Gói cao cấp bán chạy nhất cho phòng khách từ 25 - 45m²",
+    "price": 29900000,
+    "fastActionPrice": 28900000,
+    "totalRealValue": 40000000,
+    "listPrice": 34800000,
+    "savedAmount": 10100000,
+    "roomSize": "25 - 45m²",
+    "isFeatured": true,
+    "badge": "Lựa Chọn Số 1 Của 80% Khách Hàng",
+    "components": [
+      { "item": "1 Đôi Loa Full 30 PF 12 Pro", "role": "Tiếng sáng, hát nhẹ, không hú rít" },
+      { "item": "Cục Đẩy 4 Kênh x800W Acoustic", "role": "Mạch Class H khỏe, đánh căng không nóng máy" },
+      { "item": "Vang Số Cao Cấp PF K9", "role": "Chip DSP 32-bit chống hú rít tuyệt đối, effect mượt mà" },
+      { "item": "Bộ Micro Không Dây CM 05", "role": "Bắt sóng xa, cảm biến tự ngắt, tiếng mic dày ấm" },
+      { "item": "Loa Sub Trầm Hơi 40 PF S15", "role": "Bass 40 đánh rung sàn, uy lực chuẩn phòng bay" }
+    ],
+    "gifts": [
+      "Bộ Quản lý nguồn điện cao cấp bảo vệ toàn bộ dàn",
+      "Dây quang AudioQuest xịn truyền tải nhạc sạch",
+      "10m Dây loa bọc giáp đồng nguyên chất + Bộ jack Neutrik",
+      "Bộ pin sạc dung lượng cao cho Micro (dùng 2-3 năm không cần mua pin tiểu)",
+      "Setup căn chỉnh trực tiếp 1 lần tại nhà & hỗ trợ từ xa suốt đời",
+      "Miễn phí vận chuyển tận nhà trong bán kính 300km"
+    ]
+  },
+  {
+    "id": "dan-karaoke-19tr",
+    "name": "Dàn Karaoke 19 Triệu — Hay Như Quán Hát Tiết Kiệm",
+    "tagline": "Cấu hình tiêu chuẩn tối ưu chi phí cho phòng khách từ 15 - 30m²",
+    "price": 19800000,
+    "fastActionPrice": 18800000,
+    "totalRealValue": 30400000,
+    "listPrice": 26700000,
+    "savedAmount": 10600000,
+    "roomSize": "15 - 30m²",
+    "isFeatured": false,
+    "badge": "Tiết Kiệm Nhất",
+    "components": [
+      { "item": "1 Đôi Loa Full 30 PF 12 Pro", "role": "Bass 30cm nội lực, dải trung rõ nét" },
+      { "item": "Cục Đẩy 2 Kênh x600W Acoustic", "role": "Kéo căng đôi loa full 30, âm sắc sạch" },
+      { "item": "Vang Số Cơ Lai CM x16+", "role": "Dễ chỉnh tay hoặc máy tính, chống hú tốt" },
+      { "item": "Bộ Micro Không Dây CM 05", "role": "Hát nhẹ hơi, nâng giọng cho người giọng yếu" },
+      { "item": "Loa Sub Điện 30 PF S12", "role": "Gọn gàng, tăng cường dải bass ấm cúng cho gia đình" }
+    ],
+    "gifts": [
+      "Dây quang AudioQuest chính hãng truyền nhạc sạch từ Smart TV",
+      "Dây loa + Toàn bộ jack canon phụ kiện đi kèm",
+      "Bộ pin sạc micro chuyên dụng",
+      "Setup căn chỉnh trực tiếp 1 lần tại nhà & hỗ trợ từ xa",
+      "Miễn phí vận chuyển tận nhà trong bán kính 300km"
+    ]
+  }
+]
