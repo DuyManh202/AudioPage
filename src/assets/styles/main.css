@@ -116,6 +116,18 @@ body {
   overflow-x: hidden;
 }
 
+#app,
+.audio-shop-app {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.main-content {
+  width: 100%;
+  min-width: 0;
+}
+
 img,
 video,
 iframe {
@@ -133,6 +145,16 @@ iframe {
 }
 
 @media (max-width: 768px) {
+  html,
+  body,
+  #app,
+  .audio-shop-app,
+  .main-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .container {
     width: 100%;
     padding-left: 16px;
