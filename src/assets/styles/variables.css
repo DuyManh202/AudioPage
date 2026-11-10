@@ -1,0 +1,31 @@
+:root {
+  /* Brand Identity Colors */
+  --color-primary: #FCB728;       /* Vàng Gold / Cam nghệ thuật Tú Audio */
+  --color-primary-hover: #e5a420;
+  --color-secondary: #2837FC;     /* Xanh Electric Blue */
+  --color-secondary-hover: #1e2bcc;
+  --color-accent: #52557D;        /* Tím than / Slate */
+
+  /* Neutral Dark Tone (Sang trọng cho thiết bị âm thanh) */
+  --bg-dark-900: #0d0f18;
+  --bg-dark-800: #141724;
+  --bg-dark-700: #1d2133;
+  --bg-card: #181c2d;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(252, 183, 40, 0.4);
+
+  /* Text Colors */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-highlight: #FCB728;
+
+  /* Typography */
+  --font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+
+  /* Radius & Shadows */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(252, 183, 40, 0.25);
+}

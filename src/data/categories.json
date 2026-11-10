@@ -1,0 +1,44 @@
+[
+  {
+    "id": "loa-full",
+    "name": "Loa Full Karaoke",
+    "slug": "loa-full-karaoke",
+    "description": "Loa bass 25, 30, 40cm dải trung sáng, hát nhẹ, không hú rít",
+    "icon": "speaker"
+  },
+  {
+    "id": "loa-sub",
+    "name": "Loa Subwoofer Trầm",
+    "slug": "loa-subwoofer",
+    "description": "Sub điện 30cm, Sub hơi 40-50cm bass đánh lực, sâu lắng",
+    "icon": "disc"
+  },
+  {
+    "id": "dan-karaoke",
+    "name": "Dàn Karaoke Trọn Bộ",
+    "slug": "dan-karaoke-tron-bo",
+    "description": "Các bộ dàn phối ghép tối ưu chuẩn quán hát, tiết kiệm chi phí",
+    "icon": "music"
+  },
+  {
+    "id": "loa-di-dong",
+    "name": "Loa Di Động / Loa Kéo",
+    "slug": "loa-di-dong-xach-tay",
+    "description": "Loa xách tay biểu diễn dã ngoại, du lịch tiện lợi",
+    "icon": "radio"
+  },
+  {
+    "id": "cuc-day",
+    "name": "Cục Đẩy Công Suất",
+    "slug": "cuc-day-cong-suat",
+    "description": "Đẩy 2 kênh, 4 kênh khuếch đại sạch tiếng, lực đánh căng",
+    "icon": "cpu"
+  },
+  {
+    "id": "vang-so-micro",
+    "name": "Vang Số & Micro",
+    "slug": "vang-so-micro",
+    "description": "Vang số chống hú rít tuyệt đối, micro không dây bắt sóng khỏe",
+    "icon": "mic"
+  }
+]
