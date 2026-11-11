@@ -2,37 +2,117 @@
   <section class="users-view">
     <header class="panel-box">
       <h2>Quản lý tài khoản nhân viên</h2>
-      <p>Tạo tài khoản kinh doanh hoặc quản lý kho. Mật khẩu cần ít nhất 12 ký tự.</p>
+      <p>Tạo tài khoản kinh doanh hoặc quản lý kho, phân quyền, khóa/mở khóa hoặc cấp lại mật khẩu (tối thiểu 12 ký tự).</p>
     </header>
 
     <form class="panel-box user-form" @submit.prevent="createUser">
-      <h3>Tạo tài khoản</h3>
+      <h3>Tạo tài khoản mới</h3>
       <div class="form-grid">
-        <label>Tên đăng nhập<input v-model="form.username" required minlength="3" maxlength="50" autocomplete="off"></label>
-        <label>Họ tên<input v-model="form.fullName" required maxlength="100"></label>
-        <label>Số điện thoại<input v-model="form.phone" required type="tel"></label>
-        <label>Mật khẩu tạm<input v-model="form.password" required type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>
-        <label>Vai trò<select v-model="form.role"><option value="SALES">Nhân viên kinh doanh</option><option value="INVENTORY">Quản lý kho</option><option value="SUPER_ADMIN">Quản trị viên cấp cao</option></select></label>
+        <label>Tên đăng nhập<input v-model="form.username" required minlength="3" maxlength="50" autocomplete="off" placeholder="vd: sales_hanoi"></label>
+        <label>Họ tên<input v-model="form.fullName" required maxlength="100" placeholder="vd: Nguyễn Văn Nam"></label>
+        <label>Số điện thoại<input v-model="form.phone" required type="tel" placeholder="0984..."></label>
+        <label>Mật khẩu tạm (từ 12 ký tự)<input v-model="form.password" required type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>
+        <label>Vai trò
+          <select v-model="form.role">
+            <option value="SALES">Nhân viên kinh doanh</option>
+            <option value="INVENTORY">Quản lý kho</option>
+            <option value="SUPER_ADMIN">Quản trị viên cấp cao</option>
+          </select>
+        </label>
       </div>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <p v-if="message" class="message" role="status">{{ message }}</p>
-      <button class="btn-primary" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Tạo tài khoản' }}</button>
+      <button class="btn-primary" type="submit" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Tạo tài khoản' }}</button>
     </form>
 
     <div class="panel-box table-wrap">
-      <h3>Tài khoản hiện có</h3>
+      <h3>Tài khoản hiện có ({{ users.length }})</h3>
       <table>
-        <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Điện thoại</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <th>Tài khoản</th>
+            <th>Họ tên</th>
+            <th>Điện thoại</th>
+            <th>Vai trò</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
         <tbody>
           <tr v-for="user in users" :key="user.id">
-            <td>{{ user.username }}</td><td>{{ user.full_name }}</td><td>{{ user.phone }}</td>
-            <td><select :value="user.role" :disabled="busy || !user.is_active" @change="changeRole(user, $event.target.value)"><option value="SUPER_ADMIN">Quản trị cấp cao</option><option value="SALES">Kinh doanh</option><option value="INVENTORY">Quản lý kho</option></select></td>
-            <td>{{ user.is_active ? 'Đang hoạt động' : 'Đã khóa' }}</td>
-            <td><button v-if="user.is_active && user.id !== currentUserId" class="btn-disable" :disabled="busy" @click="disableUser(user)">Khóa</button></td>
+            <td><strong>{{ user.username }}</strong></td>
+            <td>{{ user.full_name }}</td>
+            <td>{{ user.phone }}</td>
+            <td>
+              <select :value="user.role" :disabled="busy || !user.is_active" @change="changeRole(user, $event.target.value)">
+                <option value="SUPER_ADMIN">Quản trị cấp cao</option>
+                <option value="SALES">Kinh doanh</option>
+                <option value="INVENTORY">Quản lý kho</option>
+              </select>
+            </td>
+            <td>
+              <span :class="['state-pill', user.is_active ? 'active-pill' : 'locked-pill']">
+                {{ user.is_active ? 'Đang hoạt động' : 'Đã khóa' }}
+              </span>
+            </td>
+            <td>
+              <div class="user-actions">
+                <button
+                  type="button"
+                  class="btn-reset-pwd"
+                  :disabled="busy"
+                  @click="openPasswordReset(user)"
+                >
+                  🔑 Đổi MK
+                </button>
+                <button
+                  v-if="user.is_active && user.id !== currentUserId"
+                  type="button"
+                  class="btn-disable"
+                  :disabled="busy"
+                  @click="toggleUserActive(user, false)"
+                >
+                  Khóa
+                </button>
+                <button
+                  v-else-if="!user.is_active"
+                  type="button"
+                  class="btn-enable"
+                  :disabled="busy"
+                  @click="toggleUserActive(user, true)"
+                >
+                  Mở khóa
+                </button>
+              </div>
+            </td>
           </tr>
-          <tr v-if="!users.length"><td colspan="6">Chưa có dữ liệu tài khoản.</td></tr>
+          <tr v-if="!users.length">
+            <td colspan="6">Chưa có dữ liệu tài khoản.</td>
+          </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="pwdModalUser" class="modal-backdrop" @click.self="pwdModalUser = null">
+      <div class="modal-window">
+        <h3>Đặt lại mật khẩu: {{ pwdModalUser.username }}</h3>
+        <p class="sub-note">Mật khẩu mới yêu cầu tối thiểu 12 ký tự.</p>
+        <form @submit.prevent="submitPasswordReset" class="pwd-form">
+          <input
+            type="password"
+            v-model="newPassword"
+            minlength="12"
+            maxlength="128"
+            required
+            placeholder="Nhập mật khẩu mới (>= 12 ký tự)..."
+            autocomplete="new-password"
+          />
+          <div class="pwd-actions">
+            <button type="button" class="btn-outline" @click="pwdModalUser = null">Hủy</button>
+            <button type="submit" class="btn-primary" :disabled="busy">Cập nhật mật khẩu</button>
+          </div>
+        </form>
+      </div>
     </div>
   </section>
 </template>
@@ -50,6 +130,9 @@ const error = ref('')
 const message = ref('')
 const form = reactive({ username: '', fullName: '', phone: '', password: '', role: 'SALES' })
 
+const pwdModalUser = ref(null)
+const newPassword = ref('')
+
 const loadUsers = async () => {
   try {
     const response = await apiRequest('/admin/users')
@@ -65,8 +148,12 @@ const createUser = async () => {
   message.value = ''
   try {
     await apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(form) })
-    form.username = ''; form.fullName = ''; form.phone = ''; form.password = ''; form.role = 'SALES'
-    message.value = 'Đã tạo tài khoản.'
+    form.username = ''
+    form.fullName = ''
+    form.phone = ''
+    form.password = ''
+    form.role = 'SALES'
+    message.value = 'Đã tạo tài khoản nhân viên thành công.'
     await loadUsers()
   } catch (err) {
     error.value = err.message || 'Không tạo được tài khoản.'
@@ -78,9 +165,11 @@ const createUser = async () => {
 const changeRole = async (user, role) => {
   busy.value = true
   error.value = ''
+  message.value = ''
   try {
     const response = await apiRequest(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ role }) })
     Object.assign(user, response.data)
+    message.value = `Đã cập nhật vai trò cho ${user.username}.`
   } catch (err) {
     error.value = err.message || 'Không cập nhật được vai trò.'
     await loadUsers()
@@ -89,15 +178,48 @@ const changeRole = async (user, role) => {
   }
 }
 
-const disableUser = async (user) => {
-  if (!confirm(`Khóa tài khoản ${user.username}?`)) return
+const toggleUserActive = async (user, nextActive) => {
+  const actionLabel = nextActive ? 'Mở khóa' : 'Khóa'
+  if (!confirm(`${actionLabel} tài khoản ${user.username}?`)) return
   busy.value = true
   error.value = ''
+  message.value = ''
   try {
-    const response = await apiRequest(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: false }) })
+    const response = await apiRequest(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: nextActive }) })
     Object.assign(user, response.data)
+    message.value = `Đã ${actionLabel.toLowerCase()} tài khoản ${user.username}.`
   } catch (err) {
-    error.value = err.message || 'Không khóa được tài khoản.'
+    error.value = err.message || `Không thể ${actionLabel.toLowerCase()} tài khoản.`
+  } finally {
+    busy.value = false
+  }
+}
+
+const openPasswordReset = (user) => {
+  pwdModalUser.value = user
+  newPassword.value = ''
+  error.value = ''
+  message.value = ''
+}
+
+const submitPasswordReset = async () => {
+  if (!pwdModalUser.value || newPassword.value.length < 12) {
+    error.value = 'Mật khẩu phải từ 12 ký tự trở lên.'
+    return
+  }
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    await apiRequest(`/admin/users/${pwdModalUser.value.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ password: newPassword.value })
+    })
+    message.value = `Đã đổi mật khẩu cho tài khoản ${pwdModalUser.value.username}.`
+    pwdModalUser.value = null
+    newPassword.value = ''
+  } catch (err) {
+    error.value = err.message || 'Không đổi được mật khẩu.'
   } finally {
     busy.value = false
   }
@@ -108,17 +230,74 @@ onMounted(loadUsers)
 
 <style scoped>
 .users-view { display: flex; flex-direction: column; gap: 20px; }
-.panel-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 22px; }
+.panel-box {
+  background: linear-gradient(180deg, rgba(22, 27, 45, 0.92), rgba(14, 18, 30, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card), var(--inner-highlight);
+}
 h2, h3 { color: #fff; margin-bottom: 8px; }
-p { color: #94a3b8; }
+p { color: var(--text-muted); }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 18px 0; }
-label { display: flex; flex-direction: column; gap: 6px; color: #cbd5e1; font-size: .85rem; font-weight: 700; }
-input, select { padding: 9px 10px; background: var(--bg-dark-900); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; }
-table { width: 100%; border-collapse: collapse; color: #cbd5e1; }
-th, td { text-align: left; padding: 11px; border-bottom: 1px solid var(--border-color); }
+label { display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary); font-size: .85rem; font-weight: 700; }
+input, select {
+  padding: 10px 12px;
+  background: var(--bg-dark-900);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+}
+table { width: 100%; border-collapse: collapse; color: var(--text-secondary); }
+th { text-align: left; font-size: 0.74rem; font-weight: 800; color: var(--text-subtle); text-transform: uppercase; padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+td { text-align: left; padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .table-wrap { overflow-x: auto; }
-.btn-disable { color: #fca5a5; background: transparent; border: 1px solid #7f1d1d; padding: 6px 10px; border-radius: 4px; }
+.state-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.active-pill { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+.locked-pill { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+.user-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-reset-pwd { color: #93c5fd; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.35); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.btn-disable { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.btn-enable { color: #86efac; background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.38); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
 .error { color: #fca5a5; margin: 12px 0; }
 .message { color: #86efac; margin: 12px 0; }
-@media(max-width: 700px) { .table-wrap table { min-width: 750px; } }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-window {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+}
+.sub-note { font-size: 0.82rem; margin-bottom: 14px; }
+.pwd-form { display: flex; flex-direction: column; gap: 14px; }
+.pwd-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media(max-width: 700px) {
+  .table-wrap table { min-width: 750px; }
+  input, select { min-height: 44px; font-size: 16px; }
+}
 </style>

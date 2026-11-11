@@ -106,7 +106,7 @@ export const useCartStore = defineStore('cart', {
         }
         throw new Error(res.message || 'Máy chủ chưa xác nhận đơn hàng.')
       } catch (err) {
-        if (!(err instanceof TypeError)) throw err
+        if (!err?.isNetworkError) throw err
         let localOrders = []
         try {
           const stored = JSON.parse(localStorage.getItem('audioshop_orders'))

@@ -216,7 +216,15 @@
                 <div class="video-preview-wrapper">
                   <label class="preview-label">Xem Trước Video Mô Tả:</label>
                   <div v-if="embedUrl" class="video-frame">
+                    <video
+                      v-if="isDirectVideo(formData.videoUrl)"
+                      :src="embedUrl"
+                      controls
+                      preload="metadata"
+                      playsinline
+                    ></video>
                     <iframe 
+                      v-else
                       :src="embedUrl" 
                       title="Video mô tả sản phẩm" 
                       frameborder="0" 
@@ -227,7 +235,7 @@
                   <div v-else class="video-placeholder">
                     <span class="icon">🎬</span>
                     <p>Chưa có video mô tả</p>
-                    <span class="sub-hint">Nhập link YouTube ở trên để xem trước tại đây</span>
+                    <span class="sub-hint">Nhập link YouTube kênh @tuaudio92 hoặc MP4 ở trên để xem trước</span>
                   </div>
                 </div>
               </div>
@@ -260,7 +268,7 @@ import { ref, computed } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import { useProductStore } from '../../stores/productStore'
 import { formatCurrency } from '../../utils/formatters'
-import { getEmbedVideoUrl } from '../../utils/videoHelper'
+import { getEmbedVideoUrl, isDirectVideo } from '../../utils/videoHelper'
 
 const adminStore = useAdminStore()
 const productStore = useProductStore()
@@ -337,7 +345,7 @@ const openAddModal = () => {
     powerRMS: 350,
     roomSize: '20 - 35m²',
     image: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80',
-    videoUrl: 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
+    videoUrl: '',
     videoTitle: 'Video Test Âm Thanh Thực Tế — Hát Nhẹ Không Hú',
     matchingAmplifier: 'Cục đẩy công suất từ 600W - 800W / kênh',
     shortDesc: ''
@@ -391,20 +399,24 @@ const saveProduct = async () => {
     specs
   }
 
-  if (editingId.value) {
-    await adminStore.updateProduct(editingId.value, payload)
-  } else {
-    await adminStore.addProduct({
-      ...payload,
-      id: 'sp-' + Date.now(),
-      slug: formData.value.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      rating: 5.0,
-      reviewsCount: 1,
-      inStock: true
-    })
+  try {
+    if (editingId.value) {
+      await adminStore.updateProduct(editingId.value, payload)
+    } else {
+      await adminStore.addProduct({
+        ...payload,
+        id: 'sp-' + Date.now(),
+        slug: formData.value.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        rating: 5.0,
+        reviewsCount: 1,
+        inStock: true
+      })
+    }
+    await productStore.refreshProducts()
+    closeModal()
+  } catch {
+    // Keep modal open so admin can fix fields; toast banner displays exact error
   }
-  await productStore.refreshProducts()
-  closeModal()
 }
 </script>
 
@@ -727,12 +739,14 @@ const saveProduct = async () => {
   background: #000;
 }
 
-.video-frame iframe {
+.video-frame iframe,
+.video-frame video {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .video-placeholder {
@@ -858,6 +872,56 @@ const saveProduct = async () => {
 @media (max-width: 900px) {
   .modal-two-columns {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .search-wrap {
+    max-width: 100%;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal-window.modal-wide {
+    max-height: 94svh;
+    padding: 20px 14px;
+    border-radius: 16px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea,
+  .spec-row-item input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .spec-row-item {
+    flex-wrap: wrap;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer > * {
+    width: 100%;
+    min-height: 46px;
   }
 }
 </style>

@@ -76,6 +76,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
+import { adminHomeForRole } from '../../utils/permissions'
 
 const router = useRouter()
 const route = useRoute()
@@ -95,8 +96,7 @@ const handleLogin = async () => {
   isLoading.value = false
 
   if (success) {
-    // Chuyển hướng đến trang dự định hoặc dashboard
-    const redirectPath = route.query.redirect || '/admin/dashboard'
+    const redirectPath = route.query.redirect || adminHomeForRole(authStore.currentUser?.role)
     router.push(redirectPath)
   }
 }
@@ -105,56 +105,76 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-page {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 30%, #1a1e30, #0a0c14);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(40, 55, 252, 0.22), transparent 45%),
+    radial-gradient(circle at 80% 78%, rgba(252, 183, 40, 0.14), transparent 42%),
+    #080a12;
   padding: 20px;
 }
 
 .login-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  background: linear-gradient(175deg, rgba(24, 29, 48, 0.94) 0%, rgba(14, 18, 30, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl);
   max-width: 440px;
   width: 100%;
-  padding: 36px 32px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+  padding: 38px 34px 30px;
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px);
   position: relative;
+  animation: cardEnter 0.45s var(--ease-spring);
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
 }
 
 .brand-badge {
-  width: 52px;
-  height: 52px;
-  background: linear-gradient(135deg, var(--color-primary), #ff9800);
-  color: #000;
+  width: 56px;
+  height: 56px;
+  background: var(--gradient-gold);
+  color: #080a10;
+  font-family: var(--font-display);
   font-weight: 900;
-  font-size: 1.5rem;
-  border-radius: 12px;
+  font-size: 1.55rem;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
-  box-shadow: var(--shadow-glow);
+  margin: 0 auto 14px;
+  box-shadow: 0 0 28px rgba(252, 183, 40, 0.36);
 }
 
 .login-title {
+  font-family: var(--font-display);
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--color-primary);
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
 }
 
 .login-sub {
-  font-size: 0.85rem;
-  color: #94a3b8;
+  font-size: 0.86rem;
+  color: var(--text-muted);
 }
 
 .alert-error {
@@ -182,32 +202,34 @@ const handleLogin = async () => {
 .form-group label {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 
 .input-wrap {
   display: flex;
   align-items: center;
   background: var(--bg-dark-900);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 0 12px;
-  transition: border-color 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-wrap:focus-within {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.15);
 }
 
 .input-icon {
   font-size: 1rem;
-  color: #64748b;
-  margin-right: 8px;
+  color: var(--text-subtle);
+  margin-right: 10px;
 }
 
 .input-wrap input {
   flex: 1;
-  padding: 11px 0;
+  min-width: 0;
+  padding: 12px 0;
   background: transparent;
   border: none;
   color: #fff;
@@ -218,7 +240,7 @@ const handleLogin = async () => {
 .toggle-pwd-btn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
 }
@@ -234,13 +256,13 @@ const handleLogin = async () => {
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
 .full-width {
   width: 100%;
-  padding: 12px;
+  padding: 13px;
   font-size: 0.95rem;
 }
 
@@ -286,18 +308,30 @@ const handleLogin = async () => {
 
 .login-footer {
   text-align: center;
-  margin-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   padding-top: 16px;
 }
 
 .back-link {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.85rem;
+  font-weight: 600;
   transition: color 0.2s;
 }
 
 .back-link:hover {
   color: var(--color-primary);
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 20px 24px;
+  }
+
+  .input-wrap input {
+    min-height: 44px;
+    font-size: 16px;
+  }
 }
 </style>

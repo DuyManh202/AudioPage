@@ -192,31 +192,32 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 3. Toàn bộ 6 sản phẩm kèm Specs & Quà tặng đầy đủ
 INSERT INTO products (id, name, slug, category_id, bass_size, power_rms, power_peak, price, original_price, room_size, badge, in_stock, rating, reviews_count, image_url, video_url, video_title, matching_amplifier, short_desc, specs, gifts) VALUES
-('loa-pf-12', 'Loa Full 30 PF 12 Pro (Bass 30cm Coil 75)', 'loa-full-30-pf-12-pro', 'loa-full', '30 cm', 350, 1400, 9800000, 11500000, '20 - 35m²', 'Bán Chạy Nhất', TRUE, 4.9, 42, 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=ScMzIvxBSi4', 'Video Test Tiếng Hát Mộc Loa Full 30 PF 12 Pro — Sáng Tiếng, Chống Hú', 'Cục đẩy công suất từ 600W - 800W / kênh ở 8 Ohms', 'Loa full bass 30cm chuẩn phòng khách gia đình. Họng kèn titanium sáng tiếng, hát nhẹ không tốn sức, chống hú vượt trội.',
+('loa-pf-12', 'Loa Full 30 PF 12 Pro (Bass 30cm Coil 75)', 'loa-full-30-pf-12-pro', 'loa-full', '30 cm', 350, 1400, 9800000, 11500000, '20 - 35m²', 'Bán Chạy Nhất', TRUE, 4.9, 42, 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=hK7F0a_2x-Q', 'Lắp Dàn Karaoke 5 Năm Rồi Mà Càng Ngày Càng Hay — Tú Audio Thực Tế', 'Cục đẩy công suất từ 600W - 800W / kênh ở 8 Ohms', 'Loa full bass 30cm chuẩn phòng khách gia đình. Họng kèn titanium sáng tiếng, hát nhẹ không tốn sức, chống hú vượt trội.',
 '{"Loại loa":"Loa Full 2 đường tiếng (2-Way Passive)","Đường kính Bass":"30 cm (12 inch), từ 190, coil 75mm","Đường kính Treble":"Kèn Titanium coil 44mm","Công suất RMS":"350 W / chiếc","Trở kháng":"8 Ohms","Dải tần đáp ứng":"45Hz - 20kHz","Độ nhạy":"98 dB","Kích thước":"600 x 360 x 390 mm","Trọng lượng":"21.5 kg / chiếc"}'::json,
 '["Tặng 10m dây loa bọc giáp chống nhiễu","Tặng 2 jack bắp chuối / neutrik mạ vàng","Hỗ trợ căn chỉnh âm học tận nơi"]'::json),
 
-('loa-sub-pf-s15', 'Loa Sub Trầm Hơi 40 PF S15', 'loa-sub-tram-hoi-40-pf-s15', 'loa-sub', '40 cm', 600, 2000, 7500000, 8900000, '25 - 50m²', 'Bass Uy Lực', TRUE, 5.0, 29, 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', 'Video Test Dải Trầm 30Hz Sub Hơi 40 PF S15 Đánh Rung Phòng', 'Kênh đẩy công suất ≥ 800W để đánh căng dải trầm', 'Sub hơi bass 40 uy lực, dải trầm xuống sâu 30Hz, tiếng bass chắc nịch không bị ù rền làm tức ngực.',
+('loa-sub-pf-s15', 'Loa Sub Trầm Hơi 40 PF S15', 'loa-sub-tram-hoi-40-pf-s15', 'loa-sub', '40 cm', 600, 2000, 7500000, 8900000, '25 - 50m²', 'Bass Uy Lực', TRUE, 5.0, 29, 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=vHKHBGQSV8o', 'Dàn Karaoke Gia Đình 54 Triệu Vẫn Không Hay, Cân Chỉnh Đồng Bộ Hay Gấp Đôi', 'Kênh đẩy công suất ≥ 800W để đánh căng dải trầm', 'Sub hơi bass 40 uy lực, dải trầm xuống sâu 30Hz, tiếng bass chắc nịch không bị ù rền làm tức ngực.',
 '{"Loại loa":"Subwoofer Hơi (Passive Sub)","Đường kính Bass":"40 cm (15 inch), coil 100mm","Công suất RMS":"600 W","Trở kháng":"8 Ohms","Dải tần đáp ứng":"30Hz - 250Hz","Kích thước":"520 x 480 x 580 mm","Trọng lượng":"34 kg"}'::json,
 '["Tặng dây kết nối sub chuyên dụng dài 5m"]'::json),
 
-('loa-sub-pf-s12', 'Loa Sub Điện 30 PF S12', 'loa-sub-dien-30-pf-s12', 'loa-sub', '30 cm', 300, 600, 4900000, 5800000, '15 - 30m²', 'Tiện Dụng', TRUE, 4.8, 35, 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', 'Video Hướng Dẫn Cắt Tần Số Sub Điện 30 PF S12 Êm Ái Gia Đình', 'Đã tích hợp sẵn mạch công suất', 'Tích hợp sẵn amply công suất bên trong, chỉ cần cắm nguồn và đường tín hiệu từ vang số là chơi ngay, không cần thêm cục đẩy.',
+('loa-sub-pf-s12', 'Loa Sub Điện 30 PF S12', 'loa-sub-dien-30-pf-s12', 'loa-sub', '30 cm', 300, 600, 4900000, 5800000, '15 - 30m²', 'Tiện Dụng', TRUE, 4.8, 35, 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=rS76jH9Xcl0', 'Đổi Dàn Nghe Nhạc Cũ Sang Dàn Karaoke Vang Số Đồng Bộ Hay & Đẹp', 'Đã tích hợp sẵn mạch công suất', 'Tích hợp sẵn amply công suất bên trong, chỉ cần cắm nguồn và đường tín hiệu từ vang số là chơi ngay, không cần thêm cục đẩy.',
 '{"Loại loa":"Subwoofer Điện (Active Sub)","Đường kính Bass":"30 cm (12 inch)","Công suất tích hợp":"300 W Class D","Cắt tần số":"50Hz - 150Hz có núm vặn","Trọng lượng":"22 kg"}'::json,
 '["Tặng dây AV xịn chống nhiễu 3m"]'::json),
 
-('loa-full-25-cm-pro', 'Loa Full 25 CM Pro Nhỏ Gọn', 'loa-full-25-cm-pro', 'loa-full', '25 cm', 250, 900, 6800000, 7900000, '12 - 22m²', 'Phòng Nhỏ / Chung Cư', TRUE, 4.7, 18, 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=ScMzIvxBSi4', 'Video Test Loa Full 25cm Trong Căn Hộ Chung Cư', 'Cục đẩy công suất 450W - 600W / kênh', 'Thiết kế nhỏ gọn, phù hợp căn hộ chung cư hoặc phòng khách nhỏ dưới 22m². Hát trong trẻo, không lo ảnh hưởng hàng xóm.',
+('loa-full-25-cm-pro', 'Loa Full 25 CM Pro Nhỏ Gọn', 'loa-full-25-cm-pro', 'loa-full', '25 cm', 250, 900, 6800000, 7900000, '12 - 22m²', 'Phòng Nhỏ / Chung Cư', TRUE, 4.7, 18, 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=mb9PpteD70c', 'Khắc Phục Dàn Loa Hát Nặng, Bí Tiếng Tại Phòng Khách Gia Đình — Tú Audio', 'Cục đẩy công suất 450W - 600W / kênh', 'Thiết kế nhỏ gọn, phù hợp căn hộ chung cư hoặc phòng khách nhỏ dưới 22m². Hát trong trẻo, không lo ảnh hưởng hàng xóm.',
 '{"Loại loa":"Loa Full 2 đường tiếng","Đường kính Bass":"25 cm (10 inch)","Công suất RMS":"250 W","Trở kháng":"8 Ohms","Độ nhạy":"96 dB"}'::json,
 '["Tặng kèm bộ giá treo loa áp tường chịu lực"]'::json),
 
-('cuc-day-4-kenh-x800', 'Cục Đẩy Công Suất 4 Kênh x800W Acoustic', 'cuc-day-4-kenh-x800w-acoustic', 'cuc-day', '-', 3200, 4800, 8900000, 10500000, 'Đa năng', 'Trái Tim Bộ Dàn', TRUE, 5.0, 51, 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=ScMzIvxBSi4', 'Video Soi Nội Thất Mạch Class H & Biến Áp Xuyến Đồng Cục Đẩy x800W', '-', 'Mạch Class H bền bỉ, 4 kênh riêng biệt: 2 kênh kéo 1 đôi loa full 30, 2 kênh chập bridge kéo sub hơi 40 đánh rung phòng.',
+('cuc-day-4-kenh-x800', 'Cục Đẩy Công Suất 4 Kênh x800W Acoustic', 'cuc-day-4-kenh-x800w-acoustic', 'cuc-day', '-', 3200, 4800, 8900000, 10500000, 'Đa năng', 'Trái Tim Bộ Dàn', TRUE, 5.0, 51, 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=wDECLtzYcQI', 'Phối Ghép Đủ Công Suất & Cân Chỉnh Đồng Bộ — Dàn Hát Nhẹ Hơi Rõ Rệt', '-', 'Mạch Class H bền bỉ, 4 kênh riêng biệt: 2 kênh kéo 1 đôi loa full 30, 2 kênh chập bridge kéo sub hơi 40 đánh rung phòng.',
 '{"Số kênh":"4 kênh độc lập","Công suất":"800W x 4 kênh ở 8 Ohms, 1200W x 4 ở 4 Ohms","Mạch công suất":"Class H cao cấp với 48 sò than lớn","Nguồn điện":"Biến áp xuyến đồng 100%"}'::json,
 '["Tặng 4 dây jack canon xịn"]'::json),
 
-('vang-so-pf-k9', 'Vang Số PF K9 Chống Hú Chuyên Nghiệp', 'vang-so-pf-k9-chong-hu', 'vang-so-micro', '-', 0, 0, 4200000, 5200000, 'Mọi diện tích', 'Trị Hú Rít 100%', TRUE, 4.9, 63, 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=ScMzIvxBSi4', 'Video Hướng Dẫn Chỉnh Vang Số K9 Đứng Sát Loa Không Hú Rít', '-', 'Chip DSP 32-bit xử lý vang nhại mượt mà, dập tắt tiếng rít micro ngay lập tức mà vẫn giữ được độ dày dặn và ngọt ngào của giọng hát.',
+('vang-so-pf-k9', 'Vang Số PF K9 Chống Hú Chuyên Nghiệp', 'vang-so-pf-k9-chong-hu', 'vang-so-micro', '-', 0, 0, 4200000, 5200000, 'Mọi diện tích', 'Trị Hú Rít 100%', TRUE, 4.9, 63, 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80', 'https://www.youtube.com/watch?v=uydEo1UVWQI', 'Biến Dàn Karaoke Gia Đình Nghe Chán Thành Hay Hơn Quán Hát Nhờ Vang Số Chuẩn', '-', 'Chip DSP 32-bit xử lý vang nhại mượt mà, triệt tiêu tiếng hú rít micro ngay lập tức mà vẫn giữ được độ dày dặn và ngọt ngào của giọng hát.',
 '{"Xử lý tín hiệu":"DSP 32-bit tốc độ cao","Cổng kết nối":"Optical quang học, Bluetooth 5.0, 6 cổng ra Canon","Chống hú":"4 cấp độ Feedback tự động thông minh"}'::json,
 '["Cài sẵn 4 chế độ hát: Hát Ngọt, Hát Chuyên Nghiệp, Nghe Nhạc, Hát Ngoài Trời"]'::json)
 ON CONFLICT (id) DO UPDATE SET 
     price = EXCLUDED.price,
+    short_desc = EXCLUDED.short_desc,
     video_url = EXCLUDED.video_url,
     video_title = EXCLUDED.video_title,
     specs = EXCLUDED.specs,
@@ -224,10 +225,12 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- 4. 2 Gói Dàn Karaoke Trọn Bộ
 INSERT INTO combos (id, name, tagline, price, fast_action_price, total_real_value, list_price, saved_amount, room_size, is_featured, badge, video_url, video_title) VALUES
-('dan-karaoke-29tr', 'Dàn Karaoke 29 Triệu — Chuẩn Âm Hay Hơn Quán Hát', 'Gói cao cấp bán chạy nhất cho phòng khách từ 25 - 45m²', 29900000, 28900000, 40000000, 34800000, 10100000, '25 - 45m²', TRUE, 'Lựa Chọn Số 1 Của 80% Khách Hàng', 'https://www.youtube.com/watch?v=ScMzIvxBSi4', 'Video Hát Thử Dàn 29 Triệu Thực Tế Tại Phòng Khách Khách Hàng'),
-('dan-karaoke-19tr', 'Dàn Karaoke 19 Triệu — Hay Như Quán Hát Tiết Kiệm', 'Cấu hình tiêu chuẩn tối ưu chi phí cho phòng khách từ 15 - 30m²', 19800000, 18800000, 30400000, 26700000, 10600000, '15 - 30m²', FALSE, 'Tiết Kiệm Nhất', 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', 'Video Test Thực Tế Dàn 19 Triệu Tiết Kiệm — Tiếng Hát Nhẹ Không Hú')
+('dan-karaoke-29tr', 'Dàn Karaoke 29 Triệu — Chuẩn Âm Hay Hơn Quán Hát', 'Gói cao cấp bán chạy nhất cho phòng khách từ 25 - 45m²', 29900000, 28900000, 40000000, 34800000, 10100000, '25 - 45m²', TRUE, 'Lựa Chọn Số 1 Của 80% Khách Hàng', 'https://www.youtube.com/watch?v=AwEJrll5EPk', 'So Sánh Dàn Karaoke Gia Đình Với Quán Hát — Lắp Thực Tế Nhà Anh Ngọc (Vĩnh Phúc)'),
+('dan-karaoke-19tr', 'Dàn Karaoke 19 Triệu — Hay Như Quán Hát Tiết Kiệm', 'Cấu hình tiêu chuẩn tối ưu chi phí cho phòng khách từ 15 - 30m²', 19800000, 18800000, 30400000, 26700000, 10600000, '15 - 30m²', FALSE, 'Tiết Kiệm Nhất', 'https://www.youtube.com/watch?v=9sh3YSPm57I', 'Dàn Karaoke Gia Đình 19,5 Triệu Hay Như Quán Hát — Lắp Nhà Cô Hồng (Phú Thọ)')
 ON CONFLICT (id) DO UPDATE SET 
     price = EXCLUDED.price,
+    total_real_value = EXCLUDED.total_real_value,
+    saved_amount = EXCLUDED.saved_amount,
     video_url = EXCLUDED.video_url,
     video_title = EXCLUDED.video_title;
 

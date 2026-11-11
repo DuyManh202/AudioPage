@@ -1,12 +1,15 @@
 <template>
   <div class="orders-admin-view">
-    <div class="header-box">
+    <div class="header-box header-flex">
       <div>
         <h2>Quản Lý Đơn Đặt Mua Lẻ Thiết Bị (Giỏ Hàng)</h2>
         <p class="header-sub">
           Theo dõi các đơn hàng thiết bị lẻ khách đặt trực tiếp qua giỏ hàng để đóng gói, cài sẵn vang số và giao vận chuyển.
         </p>
       </div>
+      <button type="button" class="btn-export" @click="exportOrdersCsv">
+        📥 Xuất Excel (CSV)
+      </button>
     </div>
 
     <div class="panel-box">
@@ -31,9 +34,19 @@
               </td>
               <td>
                 <strong class="customer-name">{{ ord.customerName }}</strong>
-                <a :href="`tel:${cleanPhone(ord.customerPhone)}`" class="phone-link">
-                  📞 {{ ord.customerPhone }}
-                </a>
+                <div class="order-contact-links">
+                  <a :href="`tel:${cleanPhone(ord.customerPhone)}`" class="phone-link">
+                    📞 {{ ord.customerPhone }}
+                  </a>
+                  <a
+                    :href="`https://zalo.me/${cleanPhone(ord.customerPhone)}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="zalo-link"
+                  >
+                    💬 Zalo
+                  </a>
+                </div>
                 <span class="addr-sub">📍 {{ ord.shippingAddress }}</span>
                 <span v-if="ord.note" class="note-sub">📝 {{ ord.note }}</span>
               </td>
@@ -81,11 +94,31 @@
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
+import { exportRowsToCsv } from '../../utils/csvExport'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 
 const cleanPhone = (phone) => phone ? phone.replace(/[^0-9]/g, '') : ''
+
+const exportOrdersCsv = () => {
+  exportRowsToCsv(
+    `danh-sach-don-hang-${new Date().toISOString().slice(0, 10)}.csv`,
+    [
+      { label: 'Mã Đơn', value: r => r.id },
+      { label: 'Ngày đặt', value: r => r.createdAt },
+      { label: 'Khách hàng', value: r => r.customerName },
+      { label: 'Điện thoại', value: r => r.customerPhone },
+      { label: 'Địa chỉ nhận', value: r => r.shippingAddress },
+      { label: 'Thiết bị đặt mua', value: r => (r.items || []).map(i => `${i.quantity}x ${i.name}`).join(' | ') },
+      { label: 'Tổng tiền', value: r => r.totalAmount || 0 },
+      { label: 'Thanh toán', value: r => r.paymentMethod },
+      { label: 'Trạng thái', value: r => r.status },
+      { label: 'Ghi chú', value: r => r.note || '' }
+    ],
+    adminStore.orders
+  )
+}
 
 const updateStatus = (id, status) => {
   adminStore.updateOrderStatus(id, status)
@@ -121,6 +154,43 @@ const getStatusClass = (status) => {
   border: 1px solid var(--border-color);
   padding: 20px 24px;
   border-radius: var(--radius-md);
+}
+
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-export {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.38);
+  color: #86efac;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.btn-export:hover {
+  background: rgba(34, 197, 94, 0.25);
+  color: #fff;
+}
+
+.order-contact-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.zalo-link {
+  color: #38bdf8;
+  font-size: 0.76rem;
+  text-decoration: underline;
 }
 
 .header-box h2 {

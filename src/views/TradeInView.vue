@@ -9,14 +9,13 @@
     </div>
 
     <div class="tradein-grid">
-      <!-- Bên Trái: Quy trình 3 bước -->
       <div class="steps-panel">
         <h3>Quy Trình Đổi Các 3 Bước Đơn Giản</h3>
 
         <div class="step-card">
           <div class="step-num">1</div>
           <div>
-            <h4>Chụp Ảnh & Gửi Thông Tin Dàn Cũ</h4>
+            <h4>Chụp Ảnh &amp; Gửi Thông Tin Dàn Cũ</h4>
             <p>Bác chụp mặt trước/sau của loa hoặc amply cũ rồi tải lên ở biểu mẫu bên cạnh.</p>
           </div>
         </div>
@@ -38,27 +37,37 @@
         </div>
 
         <div class="trade-note">
-          💡 <strong>Lưu ý:</strong> Áp dụng thu hồi đổi mới trong bán kính 300km quanh Phú Thọ - Hà Nội & Các tỉnh Miền Bắc.
+          💡 <strong>Lưu ý:</strong> Áp dụng thu hồi đổi mới trong bán kính 300km quanh Phú Thọ - Hà Nội &amp; Các tỉnh Miền Bắc.
         </div>
       </div>
 
-      <!-- Bên Phải: Biểu mẫu gửi ảnh định giá -->
       <div class="form-panel">
         <div v-if="isSuccess" class="success-box">
-          <div class="success-icon">✓</div>
-          <h3>Đã Gửi Yêu Cầu Định Giá Thành Công!</h3>
-          <p>
+          <div :class="['success-icon', { 'warn-icon': savedLocally }]">{{ savedLocally ? '!' : '✓' }}</div>
+          <h3>{{ savedLocally ? 'Đã Lưu Tạm Yêu Cầu Trên Thiết Bị Này' : 'Đã Gửi Yêu Cầu Định Giá Thành Công!' }}</h3>
+          <p v-if="savedLocally">
+            Máy chủ hiện đang bận nên yêu cầu đổi thiết bị <strong>{{ submittedDevice }}</strong> mới lưu tạm trên trình duyệt của Bác, chưa chuyển tới cửa hàng. Bác vui lòng bấm nút bên dưới để gửi ảnh trực tiếp qua Zalo <strong>{{ CONTACT_INFO.phone }}</strong> cho anh Tú nhé!
+          </p>
+          <p v-else>
             Hệ thống đã tiếp nhận thông tin thiết bị <strong>{{ submittedDevice }}</strong>. Kỹ sư Phùng Văn Tú sẽ thẩm định và nhắn báo giá trợ giá đổi các qua Zalo của Bác trong ít phút.
           </p>
-          <button class="btn-primary full-width" @click="resetForm">Gửi Thêm Thiết Bị Khác</button>
+          <div class="success-actions">
+            <a v-if="savedLocally" :href="CONTACT_INFO.zaloUrl" target="_blank" rel="noopener noreferrer" class="btn-primary full-width">
+              💬 Gửi Ảnh Qua Zalo {{ CONTACT_INFO.phone }} Ngay
+            </a>
+            <button :class="[savedLocally ? 'btn-outline' : 'btn-primary', 'full-width']" type="button" @click="resetForm">
+              {{ savedLocally ? 'Quay Lại Gửi Lại Lên Hệ Thống' : 'Gửi Thêm Thiết Bị Khác' }}
+            </button>
+          </div>
         </div>
 
         <form v-else @submit.prevent="handleSubmit" class="trade-form">
           <h3>Gửi Thông Tin Thiết Bị Cần Đổi</h3>
+          <p v-if="submitError" class="submit-error" role="alert">{{ submitError }}</p>
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label>Họ & Tên Của Bác:</label>
+              <label>Họ &amp; Tên Của Bác:</label>
               <input type="text" v-model="form.customerName" placeholder="Ví dụ: Anh Minh..." required />
             </div>
             <div class="form-group flex-1">
@@ -69,7 +78,11 @@
 
           <div class="form-group">
             <label>Địa Chỉ Nhà (Tỉnh / Huyện):</label>
-            <input type="text" v-model="form.customerAddress" placeholder="Ví dụ: Từ Sơn, Bắc Ninh / Vĩnh Yên, Phú Thọ..." required />
+            <MapLocationPicker
+              v-model="form.customerAddress"
+              placeholder="Ví dụ: Từ Sơn, Bắc Ninh / Vĩnh Yên, Phú Thọ..."
+              :required="true"
+            />
           </div>
 
           <div class="form-group">
@@ -94,7 +107,10 @@
 
           <div class="form-group">
             <label>📸 Tải Ảnh Thiết Bị Cũ (Tùy chọn):</label>
-            <input type="file" accept="image/*" @change="handleImageUpload" class="file-input" />
+            <label class="upload-dropzone">
+              <input type="file" accept="image/*" @change="handleImageUpload" class="file-input" />
+              <span class="upload-hint">Chọn ảnh từ máy tính hoặc chụp trực tiếp bằng điện thoại</span>
+            </label>
             <div v-if="form.oldDeviceImages" class="image-preview">
               <img :src="form.oldDeviceImages" alt="Ảnh thiết bị cũ" />
               <button type="button" class="remove-img-btn" @click="form.oldDeviceImages = ''">&times; Xóa ảnh</button>
@@ -113,6 +129,8 @@
 <script setup>
 import { ref } from 'vue'
 import { apiRequest } from '../utils/api'
+import { CONTACT_INFO } from '../config/contact'
+import MapLocationPicker from '../components/common/MapLocationPicker.vue'
 
 const form = ref({
   customerName: '',
@@ -126,13 +144,14 @@ const form = ref({
 
 const isSending = ref(false)
 const isSuccess = ref(false)
+const savedLocally = ref(false)
+const submitError = ref('')
 const submittedDevice = ref('')
 
 const handleImageUpload = (e) => {
   const file = e.target.files[0]
   if (!file) return
 
-  // Nén nhẹ ảnh trước khi chuyển sang Base64 để gửi nhanh
   const reader = new FileReader()
   reader.onload = (ev) => {
     const img = new Image()
@@ -152,15 +171,40 @@ const handleImageUpload = (e) => {
 }
 
 const handleSubmit = async () => {
+  if (isSending.value) return
+  const cleanPhone = form.value.customerPhone.trim()
+  if (!/^\+?[0-9][0-9\s().-]{7,19}$/.test(cleanPhone)) {
+    submitError.value = 'Số điện thoại chưa đúng định dạng. Bác vui lòng nhập số điện thoại 9 - 11 chữ số.'
+    return
+  }
+
   isSending.value = true
+  submitError.value = ''
+  savedLocally.value = false
+
   try {
     await apiRequest('/trade-ins', {
       method: 'POST',
-      body: JSON.stringify(form.value)
+      body: JSON.stringify({
+        ...form.value,
+        customerName: form.value.customerName.trim(),
+        customerPhone: cleanPhone,
+        customerAddress: form.value.customerAddress.trim(),
+        oldDeviceName: form.value.oldDeviceName.trim()
+      })
     })
+    submittedDevice.value = form.value.oldDeviceName
+    isSuccess.value = true
   } catch (err) {
-    // Fallback local
-    const localTradeIns = JSON.parse(localStorage.getItem('audioshop_tradeins')) || []
+    if (!err?.isNetworkError) {
+      submitError.value = err.message || 'Không gửi được yêu cầu định giá. Bác vui lòng kiểm tra lại thông tin.'
+      return
+    }
+    let localTradeIns = []
+    try {
+      const parsed = JSON.parse(localStorage.getItem('audioshop_tradeins'))
+      if (Array.isArray(parsed)) localTradeIns = parsed
+    } catch { /* ignore */ }
     localTradeIns.unshift({
       id: Date.now(),
       ...form.value,
@@ -169,15 +213,18 @@ const handleSubmit = async () => {
       createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
     })
     localStorage.setItem('audioshop_tradeins', JSON.stringify(localTradeIns))
-  } finally {
     submittedDevice.value = form.value.oldDeviceName
-    isSending.value = false
+    savedLocally.value = true
     isSuccess.value = true
+  } finally {
+    isSending.value = false
   }
 }
 
 const resetForm = () => {
   isSuccess.value = false
+  savedLocally.value = false
+  submitError.value = ''
   form.value = {
     customerName: '',
     customerPhone: '',
@@ -192,7 +239,7 @@ const resetForm = () => {
 
 <style scoped>
 .tradein-page {
-  padding: 50px 20px 80px;
+  padding: 42px 24px 80px;
 }
 
 .text-center {
@@ -201,57 +248,71 @@ const resetForm = () => {
 
 .page-header {
   max-width: 780px;
-  margin: 0 auto 48px;
+  margin: 0 auto 42px;
 }
 
 .page-header h1 {
-  font-size: 2.2rem;
+  font-size: clamp(1.7rem, 3.1vw, 2.3rem);
   font-weight: 900;
   color: #fff;
-  margin: 12px 0;
+  margin: 12px 0 10px;
 }
 
 .page-header p {
-  font-size: 0.98rem;
-  color: #94a3b8;
-  line-height: 1.6;
+  font-size: 0.96rem;
+  color: var(--text-muted);
+  line-height: 1.65;
 }
 
 .tradein-grid {
   display: grid;
-  grid-template-columns: 1fr 1.25fr;
-  gap: 36px;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
+  gap: 32px;
+  align-items: start;
 }
 
 .steps-panel {
+  min-width: 0;
+  background: linear-gradient(180deg, rgba(24, 29, 48, 0.9), rgba(15, 18, 32, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-xl);
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  box-shadow: var(--shadow-card), var(--inner-highlight);
 }
 
 .steps-panel h3 {
-  font-size: 1.3rem;
-  color: var(--color-primary);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
   margin-bottom: 4px;
 }
 
 .step-card {
   display: flex;
-  gap: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  padding: 20px;
+  gap: 14px;
+  align-items: flex-start;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.step-card > div:last-child {
+  min-width: 0;
 }
 
 .step-num {
-  width: 36px;
-  height: 36px;
-  background: var(--color-primary);
-  color: #000;
-  font-weight: 900;
-  font-size: 1.1rem;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--gradient-gold);
+  color: #080a10;
+  font-family: var(--font-display);
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -259,41 +320,45 @@ const resetForm = () => {
 }
 
 .step-card h4 {
+  font-size: 0.96rem;
   color: #fff;
-  font-size: 1rem;
   margin-bottom: 4px;
 }
 
 .step-card p {
-  color: #94a3b8;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
 .trade-note {
-  background: rgba(40, 55, 252, 0.1);
-  border-left: 3px solid var(--color-secondary);
-  padding: 14px 16px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  color: #cbd5e1;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  color: #dbeafe;
+  padding: 13px 15px;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .form-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 32px;
+  min-width: 0;
+  background: linear-gradient(180deg, rgba(24, 29, 48, 0.92), rgba(15, 18, 32, 0.98));
+  border: 1px solid rgba(252, 183, 40, 0.28);
+  border-radius: var(--radius-xl);
+  padding: 30px;
+  box-shadow: var(--shadow-elevated), var(--inner-highlight);
 }
 
 .trade-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 15px;
 }
 
 .trade-form h3 {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
+  font-weight: 800;
   color: #fff;
   margin-bottom: 4px;
 }
@@ -307,55 +372,90 @@ const resetForm = () => {
   flex: 1;
 }
 
-.form-group label {
-  display: block;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #cbd5e1;
-  margin-bottom: 6px;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.form-group input, .form-group select, .form-group textarea {
+.form-group label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.form-group input[type="text"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
   width: 100%;
-  padding: 10px 14px;
   background: var(--bg-dark-900);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-sm);
+  padding: 10px 13px;
   color: #fff;
   font-size: 0.9rem;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
 }
 
-.file-input {
-  padding: 8px !important;
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1.5px dashed rgba(252, 183, 40, 0.38);
+  border-radius: var(--radius-md);
+  padding: 14px;
   cursor: pointer;
 }
 
+.file-input {
+  width: 100%;
+  max-width: 100%;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.upload-hint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
 .image-preview {
-  margin-top: 10px;
-  position: relative;
-  width: 180px;
-  border-radius: 8px;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  background: var(--bg-dark-900);
+  padding: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
 }
 
 .image-preview img {
-  width: 100%;
-  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .remove-img-btn {
-  width: 100%;
-  background: rgba(239, 68, 68, 0.9);
-  color: #fff;
-  font-size: 0.75rem;
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 4px;
 }
 
 .full-width {
@@ -364,54 +464,79 @@ const resetForm = () => {
 
 .success-box {
   text-align: center;
-  padding: 40px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  align-items: center;
+  padding: 28px 12px;
 }
 
 .success-icon {
-  width: 60px;
-  height: 60px;
-  background: #22c55e;
-  color: #000;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #06130b;
+  font-size: 1.8rem;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  font-weight: 900;
+  margin: 0 auto 16px;
 }
 
-@media (max-width: 900px) {
+.success-icon.warn-icon {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  color: #080a10;
+}
+
+.success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.submit-error {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.36);
+  color: #fca5a5;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+}
+
+.success-box h3 {
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.success-box p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 920px) {
   .tradein-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
+}
+
+@media (max-width: 640px) {
+  .tradein-page {
+    padding: 24px 16px 48px;
+  }
+
+  .steps-panel,
+  .form-panel {
+    padding: 20px 16px;
+  }
+
   .form-row {
     flex-direction: column;
   }
-}
 
-@media (max-width: 768px) {
-  .tradein-page {
-    padding: 30px 0 48px;
-  }
-
-  .page-header {
-    margin-bottom: 28px;
-  }
-
-  .page-header h1 {
-    font-size: clamp(1.6rem, 7vw, 2rem);
-  }
-
-  .form-panel {
-    padding: 18px 14px;
-  }
-
-  .step-card {
-    padding: 16px;
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    min-height: 44px;
+    font-size: 16px;
   }
 }
 </style>

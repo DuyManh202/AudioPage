@@ -2,12 +2,17 @@
   <div class="leads-view">
     <!-- Thanh điều khiển & Lọc -->
     <div class="leads-toolbar">
-      <div class="search-input-wrap">
-        <input 
-          type="text" 
-          v-model="adminStore.leadSearchKeyword" 
-          placeholder="Tìm theo tên khách, số điện thoại, địa chỉ, dàn quan tâm..."
-        />
+      <div class="toolbar-top-row">
+        <div class="search-input-wrap">
+          <input 
+            type="text" 
+            v-model="adminStore.leadSearchKeyword" 
+            placeholder="Tìm theo tên khách, số điện thoại, địa chỉ, dàn quan tâm..."
+          />
+        </div>
+        <button type="button" class="btn-export" @click="exportLeadsCsv">
+          📥 Xuất Excel (CSV)
+        </button>
       </div>
 
       <div class="status-filters">
@@ -92,10 +97,16 @@
               </td>
               <td>
                 <div class="row-actions">
-                  <button class="btn-icon" @click="openEditModal(lead)" title="Sửa chi tiết">
+                  <button class="btn-icon" type="button" @click="openEditModal(lead)" title="Sửa chi tiết">
                     ✏️
                   </button>
-                  <button class="btn-icon text-red" @click="handleDelete(lead.id)" title="Xóa">
+                  <button
+                    v-if="isSuperAdmin"
+                    class="btn-icon text-red"
+                    type="button"
+                    @click="handleDelete(lead.id)"
+                    title="Xóa"
+                  >
                     🗑️
                   </button>
                 </div>
@@ -171,9 +182,33 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
+import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
+import { exportRowsToCsv } from '../../utils/csvExport'
 
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
+
+const exportLeadsCsv = () => {
+  exportRowsToCsv(
+    `danh-sach-khach-hang-${new Date().toISOString().slice(0, 10)}.csv`,
+    [
+      { label: 'Mã Lead', value: r => r.id },
+      { label: 'Ngày tạo', value: r => r.createdAt },
+      { label: 'Họ tên', value: r => r.name },
+      { label: 'Số điện thoại', value: r => r.phone },
+      { label: 'Địa chỉ', value: r => r.address },
+      { label: 'Sản phẩm quan tâm', value: r => r.interest },
+      { label: 'Giá trị dự kiến', value: r => r.dealValue || 0 },
+      { label: 'Lịch hẹn thử dàn', value: r => r.appointmentDate || '' },
+      { label: 'Trạng thái', value: r => r.status },
+      { label: 'Thông tin phòng', value: r => r.roomInfo || '' },
+      { label: 'Ghi chú', value: r => r.note || '' }
+    ],
+    adminStore.filteredLeads
+  )
+}
 
 const filterOptions = computed(() => [
   { key: 'ALL', label: 'Tất Cả', count: adminStore.leads.length },
@@ -261,6 +296,32 @@ const saveLeadDetails = () => {
   padding: 18px 20px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
+}
+
+.toolbar-top-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-input-wrap {
+  flex: 1;
+}
+
+.btn-export {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.38);
+  color: #86efac;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.btn-export:hover {
+  background: rgba(34, 197, 94, 0.25);
+  color: #fff;
 }
 
 .search-input-wrap input {
@@ -529,5 +590,27 @@ const saveLeadDetails = () => {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .leads-toolbar {
+    padding: 14px;
+  }
+
+  .modal-window {
+    padding: 20px 14px;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer > * {
+    width: 100%;
+  }
 }
 </style>

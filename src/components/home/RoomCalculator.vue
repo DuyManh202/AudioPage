@@ -1,10 +1,10 @@
 <template>
   <section class="calculator-section" id="room-calculator">
     <div class="container">
-      <div class="calc-box">
+      <div class="calc-box" v-reveal>
         <div class="calc-header text-center">
           <span class="badge-blue">CÔNG CỤ ĐO ÂM HỌC NHANH</span>
-          <h2>Dự Đoán Công Suất & Chọn Loa Theo Không Gian Phòng</h2>
+          <h2>Dự Đoán Công Suất &amp; Chọn Loa Theo Không Gian Phòng</h2>
           <p>
             Chọn đúng loa theo diện tích phòng giúp tiếng bass không bị ù rền, tiếng hát thoát và không bao giờ bị đuối công suất.
           </p>
@@ -14,9 +14,10 @@
           <div class="control-group">
             <label>1. Diện Tích Phòng Khách Của Bác:</label>
             <div class="option-chips">
-              <button 
-                v-for="size in roomSizes" 
+              <button
+                v-for="size in roomSizes"
                 :key="size.value"
+                type="button"
                 :class="['chip-btn', { active: selectedSize === size.value }]"
                 @click="selectedSize = size.value"
               >
@@ -28,9 +29,10 @@
           <div class="control-group">
             <label>2. Đặc Điểm Không Gian Phòng:</label>
             <div class="option-chips">
-              <button 
-                v-for="roomType in roomTypes" 
+              <button
+                v-for="roomType in roomTypes"
                 :key="roomType.value"
+                type="button"
                 :class="['chip-btn', { active: selectedType === roomType.value }]"
                 @click="selectedType = roomType.value"
               >
@@ -40,36 +42,51 @@
           </div>
         </div>
 
-        <!-- Kết Quả Tính Toán -->
-        <div class="calc-result">
-          <div class="result-badge">Khuyến Nghị Chuyên Gia Tú Audio</div>
-          <div class="result-grid">
-            <div class="result-item">
-              <span class="res-label">Đường Kính Bass Loa:</span>
-              <span class="res-val highlight">{{ recommendation.bass }}</span>
-              <span class="res-sub">{{ recommendation.bassNote }}</span>
+        <Transition name="fade-slide" mode="out-in">
+          <div class="calc-result" :key="`${selectedSize}-${selectedType}`">
+            <div class="result-top-bar">
+              <div class="result-badge">
+                <span class="eq-bars" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                </span>
+                Khuyến Nghị Chuyên Gia Tú Audio
+              </div>
+              <div class="headroom-meter">
+                <span class="meter-label">Ngưỡng công suất đề xuất: {{ headroomLevel }}%</span>
+                <div class="meter-track">
+                  <div class="meter-fill" :style="{ width: `${headroomLevel}%` }"></div>
+                </div>
+              </div>
             </div>
-            <div class="result-item">
-              <span class="res-label">Công Suất Cục Đẩy:</span>
-              <span class="res-val">{{ recommendation.amplifier }}</span>
-              <span class="res-sub">{{ recommendation.ampNote }}</span>
-            </div>
-            <div class="result-item">
-              <span class="res-label">Loa Subwoofer Trầm:</span>
-              <span class="res-val">{{ recommendation.sub }}</span>
-              <span class="res-sub">{{ recommendation.subNote }}</span>
-            </div>
-          </div>
 
-          <div class="recommend-action">
-            <div class="best-match-text">
-              Gợi ý phù hợp: <strong>{{ recommendation.bestPackage }}</strong>
+            <div class="result-grid">
+              <div class="result-item">
+                <span class="res-label">Đường Kính Bass Loa:</span>
+                <span class="res-val highlight">{{ recommendation.bass }}</span>
+                <span class="res-sub">{{ recommendation.bassNote }}</span>
+              </div>
+              <div class="result-item">
+                <span class="res-label">Công Suất Cục Đẩy:</span>
+                <span class="res-val">{{ recommendation.amplifier }}</span>
+                <span class="res-sub">{{ recommendation.ampNote }}</span>
+              </div>
+              <div class="result-item">
+                <span class="res-label">Loa Subwoofer Trầm:</span>
+                <span class="res-val">{{ recommendation.sub }}</span>
+                <span class="res-sub">{{ recommendation.subNote }}</span>
+              </div>
             </div>
-            <button class="btn-primary" @click="handleConsult">
-              Tư Vấn Đúng Cấu Hình Này Cho Tôi
-            </button>
+
+            <div class="recommend-action">
+              <div class="best-match-text">
+                Gợi ý phù hợp: <strong>{{ recommendation.bestPackage }}</strong>
+              </div>
+              <button class="btn-primary" type="button" @click="handleConsult">
+                Tư Vấn Đúng Cấu Hình Này Cho Tôi
+              </button>
+            </div>
           </div>
-        </div>
+        </Transition>
       </div>
     </div>
   </section>
@@ -94,6 +111,12 @@ const roomTypes = [
 
 const selectedSize = ref('medium')
 const selectedType = ref('open')
+
+const headroomLevel = computed(() => {
+  if (selectedSize.value === 'small') return selectedType.value === 'open' ? 62 : 52
+  if (selectedSize.value === 'medium') return selectedType.value === 'open' ? 80 : 72
+  return selectedType.value === 'open' ? 98 : 90
+})
 
 const recommendation = computed(() => {
   if (selectedSize.value === 'small') {
@@ -150,122 +173,182 @@ const handleConsult = () => {
 
 <style scoped>
 .calculator-section {
-  padding: 60px 0;
-  background: var(--bg-dark-800);
+  padding: 68px 0;
+  background: linear-gradient(180deg, #0c101c 0%, #101525 50%, #0c101c 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .calc-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 40px;
-  max-width: 960px;
-  margin: 0 auto;
+  background: linear-gradient(165deg, rgba(22, 27, 45, 0.92), rgba(14, 18, 30, 0.96));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius-xl);
+  padding: 38px;
+  box-shadow: var(--shadow-elevated), var(--inner-highlight);
+}
+
+.text-center {
+  text-align: center;
 }
 
 .calc-header {
-  margin-bottom: 32px;
+  max-width: 680px;
+  margin: 0 auto 30px;
 }
 
 .calc-header h2 {
-  font-size: 1.8rem;
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  font-weight: 900;
   color: #fff;
-  margin: 10px 0;
+  margin: 12px 0 8px;
 }
 
 .calc-header p {
-  font-size: 0.92rem;
-  color: #94a3b8;
-  max-width: 650px;
-  margin: 0 auto;
+  color: var(--text-muted);
+  font-size: 0.94rem;
 }
 
 .calc-controls {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
+}
+
+.control-group {
+  background: rgba(0, 0, 0, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  padding: 18px;
 }
 
 .control-group label {
   display: block;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff;
   margin-bottom: 12px;
 }
 
 .option-chips {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .chip-btn {
-  background: var(--bg-dark-900);
-  border: 1px solid var(--border-color);
-  color: #94a3b8;
-  padding: 10px 18px;
-  border-radius: var(--radius-sm);
-  font-size: 0.88rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
   font-weight: 600;
-  transition: all 0.2s;
+  padding: 9px 15px;
+  border-radius: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.24s var(--ease-spring);
 }
 
 .chip-btn:hover {
-  border-color: var(--color-primary);
+  border-color: rgba(252, 183, 40, 0.52);
   color: #fff;
+  transform: translateY(-2px);
+}
+
+.chip-btn:active {
+  transform: scale(0.97);
 }
 
 .chip-btn.active {
-  background: rgba(252, 183, 40, 0.15);
+  background: linear-gradient(135deg, rgba(252, 183, 40, 0.24), rgba(245, 158, 11, 0.12));
   border-color: var(--color-primary);
   color: var(--color-primary);
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 6px 20px -4px rgba(252, 183, 40, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .calc-result {
-  background: rgba(13, 15, 24, 0.9);
-  border: 1px dashed rgba(252, 183, 40, 0.4);
-  border-radius: var(--radius-md);
-  padding: 28px;
-  position: relative;
+  background: rgba(8, 11, 20, 0.85);
+  border: 1px solid rgba(252, 183, 40, 0.34);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.result-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .result-badge {
-  position: absolute;
-  top: -12px;
-  left: 20px;
-  background: var(--color-primary);
-  color: #000;
-  font-size: 0.72rem;
-  font-weight: 900;
-  padding: 3px 10px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(252, 183, 40, 0.14);
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+.headroom-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+}
+
+.meter-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.meter-track {
+  flex: 1;
+  min-width: 90px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6 0%, #FCB728 70%, #f59e0b 100%);
+  transition: width 0.45s var(--ease-spring);
 }
 
 .result-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
 }
 
 .result-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .res-label {
-  font-size: 0.8rem;
-  color: #64748b;
-  text-transform: uppercase;
+  font-size: 0.76rem;
   font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
 .res-val {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
   color: #fff;
 }
@@ -275,33 +358,67 @@ const handleConsult = () => {
 }
 
 .res-sub {
-  font-size: 0.78rem;
-  color: #94a3b8;
-  line-height: 1.4;
+  font-size: 0.79rem;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .recommend-action {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .best-match-text {
-  font-size: 1rem;
-  color: #e2e8f0;
+  font-size: 0.94rem;
+  color: var(--text-secondary);
 }
 
 .best-match-text strong {
   color: var(--color-primary);
 }
 
-@media (max-width: 800px) {
+@media (max-width: 860px) {
+  .calc-controls,
   .result-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .calculator-section {
+    padding: 44px 0;
+  }
+
+  .calc-box {
+    padding: 22px 16px;
+  }
+
+  .calc-result {
+    padding: 18px 14px;
+  }
+
+  .headroom-meter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .chip-btn {
+    flex: 1 1 auto;
+    min-height: 40px;
+  }
+
+  .recommend-action {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .recommend-action .btn-primary {
+    width: 100%;
   }
 }
 </style>

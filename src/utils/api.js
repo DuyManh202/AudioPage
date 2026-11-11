@@ -27,7 +27,9 @@ export async function apiRequest(endpoint, options = {}) {
       headers
     })
   } catch {
-    throw new Error('Không kết nối được máy chủ API. Hãy kiểm tra dịch vụ backend Render và VITE_API_URL.')
+    const netError = new Error('Không kết nối được máy chủ API. Hãy kiểm tra kết nối mạng hoặc thử lại sau giây lát.')
+    netError.isNetworkError = true
+    throw netError
   }
 
   const responseText = await response.text()

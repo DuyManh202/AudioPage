@@ -7,7 +7,7 @@
         <div class="metric-data">
           <span class="metric-label">Doanh Số Đã Chốt Đơn</span>
           <span class="metric-value">{{ formatCurrency(adminStore.totalRevenueExpected) }}</span>
-          <span class="metric-sub">{{ adminStore.closedDealsCount }} bộ dàn đã giao thành công</span>
+          <span class="metric-sub">{{ adminStore.closedDealsCount }} bộ dàn &amp; {{ adminStore.completedOrdersCount }} đơn lẻ hoàn thành</span>
         </div>
       </div>
 
@@ -173,29 +173,33 @@ const getStatusText = (status) => {
 .dashboard-view {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 26px;
 }
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .metric-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(175deg, rgba(25, 31, 51, 0.94), rgba(15, 19, 32, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-card), var(--inner-highlight);
+  transition: transform 0.28s var(--ease-spring), border-color 0.25s, box-shadow 0.28s;
 }
 
 .metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-elevated);
 }
 
 .metric-card.gold-border {
@@ -203,7 +207,7 @@ const getStatusText = (status) => {
 }
 
 .metric-card.blue-border {
-  border-top: 3px solid var(--color-secondary);
+  border-top: 3px solid #3b82f6;
 }
 
 .metric-card.red-border {
@@ -211,38 +215,43 @@ const getStatusText = (status) => {
 }
 
 .metric-icon {
-  font-size: 2rem;
-  width: 52px;
-  height: 52px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 12px;
+  font-size: 1.9rem;
+  width: 54px;
+  height: 54px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .metric-data {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .metric-label {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  font-weight: 600;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .metric-value {
-  font-size: 1.45rem;
-  font-weight: 900;
+  font-family: var(--font-display);
+  font-size: 1.48rem;
+  font-weight: 700;
   color: #fff;
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
 .metric-sub {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 0.76rem;
+  color: var(--text-subtle);
 }
 
 .dashboard-columns {
@@ -250,8 +259,8 @@ const getStatusText = (status) => {
   gap: 24px;
 }
 
-.flex-2 { flex: 2; }
-.flex-1 { flex: 1.2; }
+.flex-2 { flex: 2; min-width: 0; }
+.flex-1 { flex: 1.2; min-width: 0; }
 
 .panel-box {
   background: var(--bg-card);
@@ -275,23 +284,23 @@ const getStatusText = (status) => {
 
 .panel-sub {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .btn-outline-sm {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-primary);
-  border: 1px solid rgba(252, 183, 40, 0.4);
-  padding: 5px 12px;
-  border-radius: 4px;
+  border: 1px solid rgba(252, 183, 40, 0.42);
+  padding: 6px 13px;
+  border-radius: 999px;
   transition: all 0.2s;
 }
 
 .btn-outline-sm:hover {
   background: var(--color-primary);
-  color: #000;
+  color: #080a10;
 }
 
 .admin-table {
@@ -301,24 +310,24 @@ const getStatusText = (status) => {
 
 .admin-table th {
   text-align: left;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 800;
-  color: #64748b;
+  color: var(--text-subtle);
   text-transform: uppercase;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .admin-table td {
-  padding: 12px;
-  font-size: 0.88rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 13px 12px;
+  font-size: 0.87rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .time-sub {
   display: block;
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--text-subtle);
 }
 
 .phone-link {
@@ -327,18 +336,19 @@ const getStatusText = (status) => {
 }
 
 .interest-pill {
-  font-size: 0.8rem;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 3px 8px;
-  border-radius: 4px;
-  color: #cbd5e1;
+  font-size: 0.79rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 9px;
+  border-radius: 6px;
+  color: var(--text-secondary);
 }
 
 .status-badge {
   font-size: 0.72rem;
   font-weight: 800;
-  padding: 3px 8px;
-  border-radius: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
   display: inline-block;
 }
 
@@ -350,44 +360,48 @@ const getStatusText = (status) => {
 
 .action-btn {
   font-size: 0.78rem;
-  color: #94a3b8;
-  border: 1px solid var(--border-color);
-  padding: 4px 8px;
-  border-radius: 4px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
 .action-btn:hover {
-  color: #fff;
-  border-color: #fff;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .funnel-steps {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
 .funnel-step-item {
   display: flex;
   gap: 12px;
-  background: rgba(13, 15, 24, 0.6);
-  border: 1px solid var(--border-color);
-  padding: 14px;
-  border-radius: var(--radius-sm);
+  background: rgba(8, 11, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 15px;
+  border-radius: var(--radius-md);
 }
 
 .funnel-step-item.active-step {
-  border-color: rgba(252, 183, 40, 0.4);
+  border-color: rgba(252, 183, 40, 0.45);
+  background: rgba(252, 183, 40, 0.06);
 }
 
 .step-num {
-  width: 28px;
-  height: 28px;
-  background: var(--color-primary);
-  color: #000;
-  font-weight: 900;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  background: var(--gradient-gold);
+  color: #080a10;
+  font-family: var(--font-display);
+  font-weight: 800;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -399,30 +413,50 @@ const getStatusText = (status) => {
   font-size: 0.88rem;
   color: #fff;
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .step-desc p {
   font-size: 0.8rem;
-  color: #94a3b8;
-  line-height: 1.4;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .quick-notice {
-  background: rgba(40, 55, 252, 0.08);
-  border-left: 3px solid var(--color-secondary);
-  padding: 10px 14px;
-  border-radius: 4px;
+  background: rgba(40, 55, 252, 0.1);
+  border-left: 3px solid #3b82f6;
+  padding: 12px 14px;
+  border-radius: 8px;
   font-size: 0.8rem;
-  color: #93c5fd;
+  color: #bfdbfe;
 }
 
 @media (max-width: 1200px) {
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .dashboard-columns {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .metric-card {
+    padding: 16px;
+  }
+
+  .metric-value {
+    font-size: 1.25rem;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 </style>

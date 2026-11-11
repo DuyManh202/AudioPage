@@ -87,23 +87,47 @@
         </div>
 
         <div class="topbar-right">
+          <button
+            type="button"
+            class="sync-btn"
+            :disabled="adminStore.isLoading"
+            @click="adminStore.fetchAllAdminData(false)"
+            title="Đồng bộ dữ liệu mới nhất từ máy chủ"
+          >
+            {{ adminStore.isLoading ? '⏳ Đang tải...' : '🔄 Đồng Bộ' }}
+          </button>
           <div :class="['db-status-badge', adminStore.dbConnected ? 'db-online' : 'db-local']">
             {{ adminStore.dbConnected ? '🟢 Aiven PostgreSQL Live' : '🟡 Chế Độ Cache Nội Bộ' }}
           </div>
           <div class="location-badge">
-            📍 Showroom: Phú Thọ & Phủ sóng 300km
+            📍 Showroom: Phú Thọ &amp; Phủ sóng 300km
           </div>
-          <router-link to="/admin/leads" class="quick-lead-btn" v-if="adminStore.newLeadsCount > 0">
+          <router-link to="/admin/leads" class="quick-lead-btn" v-if="can('leads') && adminStore.newLeadsCount > 0">
             🔔 {{ adminStore.newLeadsCount }} Yêu Cầu Mới Cần Gọi
           </router-link>
-          <button class="topbar-logout-btn" @click="handleLogout" title="Đăng Xuất">
+          <button class="topbar-logout-btn" type="button" @click="handleLogout" title="Đăng Xuất">
             Đăng Xuất
           </button>
         </div>
       </header>
 
+      <Transition name="fade-slide">
+        <div
+          v-if="adminStore.adminNotice"
+          :class="['admin-toast-banner', `toast-${adminStore.adminNotice.type}`]"
+          role="status"
+        >
+          <span>{{ adminStore.adminNotice.message }}</span>
+          <button type="button" class="toast-close" @click="adminStore.clearNotice" aria-label="Đóng thông báo">&times;</button>
+        </div>
+      </Transition>
+
       <main class="admin-content-area">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <Transition name="fade-slide" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </router-view>
       </main>
     </div>
   </div>
@@ -159,59 +183,65 @@ const handleLogout = () => {
 .admin-wrapper {
   display: flex;
   min-height: 100vh;
-  background-color: var(--bg-dark-900);
+  background:
+    radial-gradient(ellipse 75% 45% at 75% 0%, rgba(40, 55, 252, 0.1), transparent),
+    var(--bg-dark-900);
   color: var(--text-main);
 }
 
 .admin-sidebar {
-  width: 280px;
-  background: var(--bg-dark-800);
-  border-right: 1px solid var(--border-color);
+  width: 276px;
+  background: linear-gradient(180deg, #0f1320 0%, #0b0e18 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   height: 100vh;
+  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.35);
 }
 
 .sidebar-brand {
-  padding: 24px 20px;
+  padding: 22px 20px;
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .brand-badge {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--color-primary), #ff9800);
-  color: #000;
+  width: 42px;
+  height: 42px;
+  background: var(--gradient-gold);
+  color: #080a10;
+  font-family: var(--font-display);
   font-weight: 900;
   font-size: 1.2rem;
-  border-radius: 8px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 0 18px rgba(252, 183, 40, 0.28);
 }
 
 .brand-info .title {
   display: block;
+  font-family: var(--font-display);
   font-size: 1.15rem;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--color-primary);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
 .brand-info .sub {
   display: block;
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .sidebar-menu {
   flex: 1;
-  padding: 20px 14px;
+  padding: 18px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -221,80 +251,84 @@ const handleLogout = () => {
 .menu-label {
   font-size: 0.68rem;
   font-weight: 800;
-  color: #64748b;
-  letter-spacing: 0.5px;
-  margin: 16px 8px 6px;
+  color: var(--text-subtle);
+  letter-spacing: 0.06em;
+  margin: 16px 10px 6px;
   text-transform: uppercase;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
-  border-radius: var(--radius-sm);
-  color: #cbd5e1;
-  font-size: 0.9rem;
+  gap: 11px;
+  padding: 10px 13px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
   font-weight: 600;
-  transition: all 0.2s;
+  border: 1px solid transparent;
+  transition: all 0.22s var(--ease-spring);
 }
 
 .menu-item .icon {
-  font-size: 1.1rem;
+  font-size: 1.08rem;
 }
 
 .menu-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   color: #fff;
 }
 
 .menu-item.router-link-active {
-  background: rgba(252, 183, 40, 0.12);
+  background: linear-gradient(135deg, rgba(252, 183, 40, 0.16), rgba(252, 183, 40, 0.05));
   color: var(--color-primary);
-  border-left: 3px solid var(--color-primary);
+  border-color: rgba(252, 183, 40, 0.35);
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(252, 183, 40, 0.1);
 }
 
 .badge-count {
   margin-left: auto;
   background: #ef4444;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
   padding: 2px 7px;
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 .item-count {
   margin-left: auto;
-  font-size: 0.75rem;
-  color: #64748b;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 7px;
+  border-radius: 6px;
 }
 
 .external-link {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .admin-user-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.25);
+  gap: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .user-avatar {
   width: 36px;
   height: 36px;
-  background: var(--color-secondary);
+  background: var(--gradient-blue);
   color: #fff;
   font-weight: 800;
   font-size: 0.85rem;
@@ -302,11 +336,12 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .user-name {
   display: block;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 700;
   color: #fff;
 }
@@ -314,7 +349,7 @@ const handleLogout = () => {
 .user-role {
   display: block;
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .logout-btn {
@@ -322,22 +357,22 @@ const handleLogout = () => {
   border: none;
   font-size: 1.1rem;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px;
+  border-radius: 8px;
   transition: transform 0.2s, background 0.2s;
   margin-left: auto;
 }
 
 .logout-btn:hover {
   background: rgba(239, 68, 68, 0.2);
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .topbar-logout-btn {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.14);
   color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 6px 14px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
   font-weight: 700;
@@ -351,23 +386,82 @@ const handleLogout = () => {
   border-color: #ef4444;
 }
 
-.db-status-badge {
-  font-size: 0.78rem;
+.sync-btn {
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
   font-weight: 700;
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
+  transition: background 0.2s, color 0.2s;
+}
+
+.sync-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.28);
+  color: #fff;
+}
+
+.sync-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.admin-toast-banner {
+  margin: 14px 28px 0;
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.toast-success {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.38);
+  color: #86efac;
+}
+
+.toast-warning {
+  background: rgba(234, 179, 8, 0.14);
+  border: 1px solid rgba(234, 179, 8, 0.38);
+  color: #fde047;
+}
+
+.toast-error {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.42);
+  color: #fca5a5;
+}
+
+.toast-close {
+  background: transparent;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.db-status-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 6px 11px;
+  border-radius: 999px;
 }
 
 .db-online {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(34, 197, 94, 0.14);
   color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.32);
 }
 
 .db-local {
-  background: rgba(234, 179, 8, 0.15);
+  background: rgba(234, 179, 8, 0.14);
   color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.3);
+  border: 1px solid rgba(234, 179, 8, 0.32);
 }
 
 .admin-main {
@@ -378,12 +472,15 @@ const handleLogout = () => {
 }
 
 .admin-topbar {
-  background: var(--bg-dark-800);
-  border-bottom: 1px solid var(--border-color);
-  padding: 16px 28px;
+  background: rgba(12, 16, 28, 0.84);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 15px 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 14px;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -393,11 +490,11 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
 }
 
 .breadcrumb-item {
-  color: #64748b;
+  color: var(--text-subtle);
 }
 
 .breadcrumb-sep {
@@ -406,42 +503,114 @@ const handleLogout = () => {
 
 .breadcrumb-active {
   color: #fff;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .location-badge {
-  font-size: 0.8rem;
-  color: #cbd5e1;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 6px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
 }
 
 .quick-lead-btn {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.42);
   padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 700;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.75; }
+  50% { opacity: 0.72; }
 }
 
 .admin-content-area {
   padding: 28px;
   flex: 1;
+}
+
+/* Shared Polished Surfaces & Tables Across Admin Views */
+.admin-content-area :deep(.panel-box),
+.admin-content-area :deep(.header-box),
+.admin-content-area :deep(.leads-toolbar),
+.admin-content-area :deep(.admin-toolbar),
+.admin-content-area :deep(.combo-edit-card) {
+  background: linear-gradient(180deg, rgba(22, 27, 45, 0.9), rgba(14, 18, 30, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), var(--inner-highlight);
+}
+
+.admin-content-area :deep(.admin-table th) {
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.admin-content-area :deep(.admin-table tbody tr) {
+  transition: background 0.18s ease;
+}
+
+.admin-content-area :deep(.admin-table tbody tr:hover) {
+  background: rgba(252, 183, 40, 0.04);
+}
+
+.admin-content-area :deep(.modal-window) {
+  background: linear-gradient(180deg, #161b2d 0%, #101422 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.admin-content-area :deep(.filter-chip) {
+  border-radius: 999px;
+  transition: transform 0.22s var(--ease-spring), border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.22s;
+}
+
+.admin-content-area :deep(.filter-chip:hover) {
+  transform: translateY(-1px);
+}
+
+.admin-content-area :deep(.filter-chip.active) {
+  box-shadow: 0 4px 14px rgba(252, 183, 40, 0.22);
+}
+
+.admin-content-area :deep(.status-select) {
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+.admin-content-area :deep(.btn-icon),
+.admin-content-area :deep(.btn-del),
+.admin-content-area :deep(.btn-outline-sm),
+.admin-content-area :deep(.action-btn) {
+  border-radius: 8px;
+  transition: background 0.22s, transform 0.22s var(--ease-spring), border-color 0.2s, box-shadow 0.22s;
+}
+
+.admin-content-area :deep(.btn-icon:hover),
+.admin-content-area :deep(.btn-del:hover),
+.admin-content-area :deep(.btn-outline-sm:hover),
+.admin-content-area :deep(.action-btn:hover) {
+  transform: translateY(-1px);
+}
+
+.admin-content-area :deep(.btn-icon:active),
+.admin-content-area :deep(.btn-del:active) {
+  transform: scale(0.95);
 }
 
 @media (max-width: 992px) {
@@ -470,7 +639,7 @@ const handleLogout = () => {
     width: 100%;
     height: auto;
     border-right: 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .sidebar-brand,
@@ -486,7 +655,12 @@ const handleLogout = () => {
     overflow-y: hidden;
     padding: 8px 10px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sidebar-menu::-webkit-scrollbar {
+    display: none;
   }
 
   .menu-label {
@@ -497,9 +671,10 @@ const handleLogout = () => {
     flex: 0 0 auto;
     justify-content: flex-start;
     gap: 6px;
-    padding: 9px 10px;
+    padding: 8px 11px;
     white-space: nowrap;
-    font-size: 0.74rem;
+    font-size: 0.76rem;
+    border-radius: 999px;
   }
 
   .menu-item span:not(.icon) {
@@ -511,8 +686,7 @@ const handleLogout = () => {
   }
 
   .menu-item.router-link-active {
-    border-left: 0;
-    border-bottom: 2px solid var(--color-primary);
+    border-color: rgba(252, 183, 40, 0.45);
   }
 
   .badge-count,
@@ -535,7 +709,7 @@ const handleLogout = () => {
 
   .topbar-left {
     flex-wrap: wrap;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
   }
 
   .breadcrumb-active {
@@ -551,7 +725,7 @@ const handleLogout = () => {
   .db-status-badge,
   .location-badge {
     font-size: 0.68rem;
-    padding: 5px 7px;
+    padding: 5px 9px;
   }
 
   .topbar-logout-btn {

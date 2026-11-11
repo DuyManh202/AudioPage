@@ -2,9 +2,15 @@
   <div class="audio-shop-app">
     <AppHeader v-if="!isAdminRoute" />
     <main :class="['main-content', { 'admin-mode': isAdminRoute }]">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <Transition name="fade-slide" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </router-view>
     </main>
     <AppFooter v-if="!isAdminRoute" />
+    <FloatingContact v-if="!isAdminRoute" />
+    <MobileActionBar v-if="!isAdminRoute" />
     <QuickOrderModal />
     <CartDrawer />
   </div>
@@ -16,6 +22,8 @@ import { useRoute } from 'vue-router'
 import { useProductStore } from './stores/productStore'
 import AppHeader from './components/common/AppHeader.vue'
 import AppFooter from './components/common/AppFooter.vue'
+import MobileActionBar from './components/common/MobileActionBar.vue'
+import FloatingContact from './components/common/FloatingContact.vue'
 import QuickOrderModal from './components/cart/QuickOrderModal.vue'
 import CartDrawer from './components/cart/CartDrawer.vue'
 

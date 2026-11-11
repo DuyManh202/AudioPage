@@ -79,7 +79,7 @@ const authenticateAdmin = async (req, res, next) => {
   try {
     decoded = jwt.verify(token, JWT_SECRET)
   } catch {
-    return res.status(403).json({ success: false, message: 'Phiên làm việc hết hạn hoặc không hợp lệ' })
+    return res.status(401).json({ success: false, message: 'Phiên làm việc hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.' })
   }
   try {
     const result = await query('SELECT id, username, full_name, role, is_active, auth_version FROM admins WHERE id = $1', [decoded.id])
@@ -339,15 +339,33 @@ app.post('/api/v1/orders', async (req, res) => {
     }
 
     const orderId = 'ORD-' + randomUUID()
+    const cleanPayMethod = ['COD', 'BANK'].includes(paymentMethod) ? paymentMethod : 'COD'
     const sql = `
       INSERT INTO orders (id, customer_name, customer_phone, shipping_address, items, total_amount, payment_method, status, note)
       VALUES ($1, $2, $3, $4, $5::json, $6, $7, 'MOI', $8)
       RETURNING *
     `
     const result = await query(sql, [
-      orderId, customerName, customerPhone, shippingAddress,
-      JSON.stringify(trustedItems), trustedTotal, ['COD', 'BANK'].includes(paymentMethod) ? paymentMethod : 'COD', note || ''
+      orderId, customerName.trim(), customerPhone.trim(), shippingAddress.trim(),
+      JSON.stringify(trustedItems), trustedTotal, cleanPayMethod, note || ''
     ])
+
+    // Tự động ghi nhận vào phễu CRM (leads) để đội ngũ tư vấn xác nhận cài sẵn thông số & chăm sóc nâng cấp
+    const itemSummary = trustedItems.map(i => `${i.quantity}x ${i.name}`).join(', ')
+    const payLabel = cleanPayMethod === 'BANK' ? 'Chuyển khoản' : 'COD'
+    await query(
+      `INSERT INTO leads (id, name, phone, address, interest, status, deal_value, notes)
+       VALUES ($1, $2, $3, $4, $5, 'MOI', $6, $7)`,
+      [
+        'LD-' + randomUUID(),
+        customerName.trim(),
+        customerPhone.trim(),
+        shippingAddress.trim(),
+        `Đặt mua giỏ hàng: ${itemSummary}`.slice(0, 250),
+        0,
+        `[Mã đơn ${orderId} - ${payLabel} - ${trustedTotal.toLocaleString('vi-VN')}đ] ${note || 'Khách đặt thiết bị lẻ từ giỏ hàng.'}`.slice(0, 2000)
+      ]
+    )
 
     res.status(201).json({
       success: true,
@@ -443,7 +461,6 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     if (role !== undefined && !validRoles.has(role)) return res.status(400).json({ success: false, message: 'Vai trò không hợp lệ.' })
     if (fullName !== undefined && (typeof fullName !== 'string' || !fullName.trim() || fullName.length > 100)) return res.status(400).json({ success: false, message: 'Họ tên không hợp lệ.' })
     if (phone !== undefined && !validPhone(phone)) return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ.' })
-    if (!validOptionalText(address, 500) || !validOptionalText(roomInfo, 500) || !validOptionalText(note, 2000)) return res.status(400).json({ success: false, message: 'Một trường văn bản vượt giới hạn cho phép.' })
     if (password !== undefined && (typeof password !== 'string' || password.length < 12 || password.length > 128)) return res.status(400).json({ success: false, message: 'Mật khẩu cần dài từ 12 đến 128 ký tự.' })
     if (isActive === false || role && role !== 'SUPER_ADMIN') {
       const superCount = await query("SELECT COUNT(*)::int AS count FROM admins WHERE role = 'SUPER_ADMIN' AND is_active = TRUE AND id <> $1", [id])
@@ -471,19 +488,22 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
 app.get('/api/v1/admin/dashboard/stats', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const totalRev = await query("SELECT COALESCE(SUM(deal_value), 0) as total FROM leads WHERE status = 'DA_CHOT'")
+    const orderRev = await query("SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status = 'HOAN_THANH'")
     const trials = await query("SELECT COUNT(*) as count FROM leads WHERE status = 'HEN_THU_TAI_NHA'")
     const newLeads = await query("SELECT COUNT(*) as count FROM leads WHERE status = 'MOI'")
     const prodCount = await query("SELECT COUNT(*) as count FROM products")
     const closedCount = await query("SELECT COUNT(*) as count FROM leads WHERE status = 'DA_CHOT'")
+    const completedOrders = await query("SELECT COUNT(*) as count FROM orders WHERE status = 'HOAN_THANH'")
 
     res.json({
       success: true,
       data: {
-        totalRevenueClosed: Number(totalRev.rows[0].total),
+        totalRevenueClosed: Number(totalRev.rows[0].total) + Number(orderRev.rows[0].total),
         activeTrialAppointments: Number(trials.rows[0].count),
         newPendingLeads: Number(newLeads.rows[0].count),
         totalProductsInStock: Number(prodCount.rows[0].count),
-        closedDealsCount: Number(closedCount.rows[0].count)
+        closedDealsCount: Number(closedCount.rows[0].count),
+        completedOrdersCount: Number(completedOrders.rows[0].count)
       }
     })
   } catch (err) {
@@ -562,8 +582,8 @@ app.patch('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_AD
   }
 })
 
-// Xóa khách hàng
-app.delete('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+// Xóa khách hàng (Chỉ SUPER_ADMIN được xóa vĩnh viễn dữ liệu CRM)
+app.delete('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params
     await query('DELETE FROM leads WHERE id = $1', [id])
@@ -671,13 +691,18 @@ app.delete('/api/v1/admin/products/:id', authenticateAdmin, authorizeRoles('SUPE
   }
 })
 
-// Cập nhật gói dàn karaoke (Combos) & tự tính lại số tiền tiết kiệm
+// Cập nhật gói dàn karaoke (Combos) & tự tính lại số tiền tiết kiệm thật (total_real_value - price)
 app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'INVENTORY'), async (req, res) => {
   try {
     const { id } = req.params
     const c = req.body
-    for (const field of ['price', 'fastActionPrice', 'listPrice']) {
-      if (c[field] !== undefined && !validMoney(c[field])) return res.status(400).json({ success: false, message: `Giá trị ${field} không hợp lệ.` })
+    for (const field of ['price', 'fastActionPrice', 'listPrice', 'totalRealValue']) {
+      if (c[field] !== undefined && !validMoney(c[field])) {
+        return res.status(400).json({ success: false, message: `Giá trị ${field} không hợp lệ.` })
+      }
+    }
+    if (!validOptionalText(c.name, 200) || !validOptionalText(c.tagline, 255) || !validOptionalText(c.roomSize, 100) || !validOptionalText(c.badge, 100) || !validOptionalText(c.videoUrl, 2048) || !validOptionalText(c.videoTitle, 255)) {
+      return res.status(400).json({ success: false, message: 'Thông tin văn bản của gói dàn vượt giới hạn cho phép.' })
     }
 
     const sql = `
@@ -686,26 +711,93 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
         price = COALESCE($1, price),
         fast_action_price = COALESCE($2, fast_action_price),
         list_price = COALESCE($3, list_price),
-        saved_amount = GREATEST(0, COALESCE($3, list_price) - COALESCE($1, price)),
-        video_url = COALESCE($4, video_url),
-        video_title = COALESCE($5, video_title),
+        total_real_value = COALESCE($4, total_real_value),
+        saved_amount = GREATEST(0, COALESCE($4, total_real_value, list_price) - COALESCE($1, price)),
+        video_url = COALESCE($5, video_url),
+        video_title = COALESCE($6, video_title),
+        name = COALESCE($7, name),
+        tagline = COALESCE($8, tagline),
+        room_size = COALESCE($9, room_size),
+        badge = COALESCE($10, badge),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
+      WHERE id = $11
       RETURNING *
     `
     const result = await query(sql, [
       c.price ?? null,
       c.fastActionPrice ?? null,
       c.listPrice ?? null,
+      c.totalRealValue ?? null,
       c.videoUrl ?? null,
       c.videoTitle ?? null,
+      c.name?.trim() || null,
+      c.tagline?.trim() ?? null,
+      c.roomSize?.trim() || null,
+      c.badge?.trim() ?? null,
       id
     ])
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy gói dàn' })
     }
-    res.json({ success: true, data: result.rows[0] })
+
+    if (Array.isArray(c.components)) {
+      const cleanComps = c.components
+        .filter(item => item && typeof item.item === 'string' && item.item.trim())
+        .slice(0, 30)
+      await query('DELETE FROM combo_components WHERE combo_id = $1', [id])
+      for (let idx = 0; idx < cleanComps.length; idx += 1) {
+        await query(
+          'INSERT INTO combo_components (combo_id, item_name, role_description, sort_order) VALUES ($1, $2, $3, $4)',
+          [id, cleanComps[idx].item.trim().slice(0, 255), String(cleanComps[idx].role || '').trim().slice(0, 255), idx + 1]
+        )
+      }
+    }
+
+    if (Array.isArray(c.gifts)) {
+      const cleanGifts = c.gifts
+        .map(g => String(g || '').trim())
+        .filter(Boolean)
+        .slice(0, 30)
+      await query('DELETE FROM combo_gifts WHERE combo_id = $1', [id])
+      for (let idx = 0; idx < cleanGifts.length; idx += 1) {
+        await query(
+          'INSERT INTO combo_gifts (combo_id, gift_description, sort_order) VALUES ($1, $2, $3)',
+          [id, cleanGifts[idx].slice(0, 500), idx + 1]
+        )
+      }
+    }
+
+    const row = result.rows[0]
+    const compResult = await query(
+      'SELECT item_name as item, role_description as role FROM combo_components WHERE combo_id = $1 ORDER BY sort_order',
+      [id]
+    )
+    const giftResult = await query(
+      'SELECT gift_description as gift FROM combo_gifts WHERE combo_id = $1 ORDER BY sort_order',
+      [id]
+    )
+
+    res.json({
+      success: true,
+      data: {
+        id: row.id,
+        name: row.name,
+        tagline: row.tagline,
+        price: Number(row.price),
+        fastActionPrice: Number(row.fast_action_price),
+        totalRealValue: Number(row.total_real_value),
+        listPrice: Number(row.list_price),
+        savedAmount: Number(row.saved_amount),
+        roomSize: row.room_size,
+        isFeatured: row.is_featured,
+        badge: row.badge,
+        videoUrl: row.video_url,
+        videoTitle: row.video_title,
+        components: compResult.rows,
+        gifts: giftResult.rows.map(g => g.gift)
+      }
+    })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -761,7 +853,7 @@ app.patch('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPE
   }
 })
 
-app.delete('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+app.delete('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
     await query('DELETE FROM trade_ins WHERE id = $1', [req.params.id])
     res.json({ success: true, message: 'Đã xóa yêu cầu' })

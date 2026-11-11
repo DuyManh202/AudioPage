@@ -82,7 +82,13 @@
                 </select>
               </td>
               <td>
-                <button class="btn-del" @click="handleDelete(item.id)" title="Xóa">🗑️</button>
+                <button
+                  v-if="isSuperAdmin"
+                  class="btn-del"
+                  type="button"
+                  @click="handleDelete(item.id)"
+                  title="Xóa"
+                >🗑️</button>
               </td>
             </tr>
             <tr v-if="adminStore.tradeIns.length === 0">
@@ -104,10 +110,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
+import { useAuthStore } from '../../stores/authStore'
 
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
 const previewImage = ref(null)
 
 const cleanPhone = (phone) => phone ? phone.replace(/[^0-9]/g, '') : ''

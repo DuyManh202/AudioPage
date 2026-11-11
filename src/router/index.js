@@ -117,8 +117,8 @@ router.beforeEach((to, from, next) => {
       query: { redirect: to.fullPath } 
     })
   } else if (to.path === '/admin/login' && authStore.isAuthenticated) {
-    // Đã đăng nhập rồi mà cố vào lại Login -> Chuyển thẳng vào Dashboard
-    next('/admin/dashboard')
+    // Đã đăng nhập rồi mà cố vào lại Login -> Chuyển thẳng vào trang chủ theo đúng vai trò
+    next(adminHomeForRole(authStore.currentUser.role))
   } else if (to.matched.some(record => record.meta.roles && !record.meta.roles.includes(authStore.currentUser.role))) {
     next(adminHomeForRole(authStore.currentUser.role))
   } else {

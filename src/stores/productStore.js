@@ -4,11 +4,23 @@ import combosData from '../data/combos.json'
 import categoriesData from '../data/categories.json'
 import { apiRequest } from '../utils/api'
 
+const LEGACY_VIDEO_RE = /ScMzIvxBSi4|kJQP7kiw5Fk/
+
 const getStoredProducts = () => {
   try {
     const local = JSON.parse(localStorage.getItem('audioshop_products'))
     if (!local || !Array.isArray(local)) return productsData
-    return local
+    const defaultsById = new Map(productsData.map(p => [p.id, p]))
+    return local.map(item => {
+      const def = defaultsById.get(item.id)
+      if (!def) return item
+      const cleanVideo = LEGACY_VIDEO_RE.test(item.videoUrl || '') ? def.videoUrl : item.videoUrl
+      const cleanTitle = LEGACY_VIDEO_RE.test(item.videoUrl || '') ? def.videoTitle : item.videoTitle
+      const cleanDesc = typeof item.shortDesc === 'string'
+        ? item.shortDesc.replace('dập tắt tiếng rít', 'triệt tiêu tiếng hú rít')
+        : item.shortDesc
+      return { ...item, videoUrl: cleanVideo, videoTitle: cleanTitle, shortDesc: cleanDesc }
+    })
   } catch (e) {
     return productsData
   }
@@ -18,7 +30,20 @@ const getStoredCombos = () => {
   try {
     const local = JSON.parse(localStorage.getItem('audioshop_combos'))
     if (!local || !Array.isArray(local)) return combosData
-    return local
+    const defaultsById = new Map(combosData.map(c => [c.id, c]))
+    return local.map(item => {
+      const def = defaultsById.get(item.id)
+      if (!def) return item
+      const isLegacy = LEGACY_VIDEO_RE.test(item.videoUrl || '')
+      return {
+        ...def,
+        ...item,
+        totalRealValue: item.totalRealValue || def.totalRealValue,
+        savedAmount: item.savedAmount || Math.max(0, (item.totalRealValue || def.totalRealValue || item.listPrice) - item.price),
+        videoUrl: isLegacy ? def.videoUrl : item.videoUrl,
+        videoTitle: isLegacy ? def.videoTitle : item.videoTitle
+      }
+    })
   } catch (e) {
     return combosData
   }
