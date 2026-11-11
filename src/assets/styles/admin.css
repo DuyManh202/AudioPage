@@ -1,0 +1,712 @@
+/* ==========================================================================
+   TÚ AUDIO — ENTERPRISE ADMIN DESIGN SYSTEM
+   ========================================================================== */
+
+.adm-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Page Header Banner */
+.adm-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.adm-page-title {
+  font-family: var(--font-display);
+  font-size: 1.42rem;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.adm-page-sub {
+  font-size: 0.84rem;
+  color: #94a3b8;
+  margin-top: 4px;
+  max-width: 720px;
+}
+
+.adm-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* KPI Summary Grid */
+.adm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.adm-kpi-grid.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.adm-kpi-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(20, 26, 44, 0.95) 0%, rgba(13, 17, 30, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.adm-kpi-card.clickable {
+  cursor: pointer;
+}
+
+.adm-kpi-card.clickable:hover {
+  transform: translateY(-2px);
+  border-color: rgba(252, 183, 40, 0.35);
+}
+
+.adm-kpi-card.active-kpi {
+  border-color: rgba(252, 183, 40, 0.6);
+  background: linear-gradient(180deg, rgba(252, 183, 40, 0.1) 0%, rgba(15, 20, 34, 0.98) 100%);
+}
+
+.adm-kpi-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adm-kpi-label {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.adm-kpi-value {
+  font-family: var(--font-display);
+  font-size: 1.48rem;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+
+.adm-kpi-meta {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.adm-kpi-meta strong {
+  color: #cbd5e1;
+}
+
+.adm-kpi-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tone-gold {
+  background: rgba(252, 183, 40, 0.14);
+  color: #fcb728;
+  border: 1px solid rgba(252, 183, 40, 0.28);
+}
+
+.tone-blue {
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+}
+
+.tone-green {
+  background: rgba(34, 197, 94, 0.14);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.tone-red {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.tone-orange {
+  background: rgba(249, 115, 22, 0.16);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.32);
+}
+
+.tone-purple {
+  background: rgba(168, 85, 247, 0.14);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.28);
+}
+
+/* Surface Card / Panel */
+.adm-card {
+  background: linear-gradient(180deg, rgba(19, 24, 40, 0.95) 0%, rgba(12, 16, 28, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 14px 36px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.adm-card-p {
+  padding: 20px 22px;
+}
+
+.adm-card-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-card-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.adm-card-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* Unified Filter & Search Toolbar */
+.adm-toolbar {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(15, 19, 33, 0.65);
+}
+
+.adm-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+  max-width: 440px;
+}
+
+.adm-search-box .search-ico {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.adm-search-box input {
+  width: 100%;
+  height: 38px;
+  padding: 0 14px 0 38px;
+  background: #090c15;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+  color: #f8fafc;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.adm-search-box input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+}
+
+.adm-select-filter {
+  height: 38px;
+  padding: 0 12px;
+  background: #090c15;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+  color: #e2e8f0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.adm-select-filter:focus {
+  border-color: var(--color-primary);
+}
+
+/* Segmented Tabs / Filter Pills */
+.adm-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.adm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 33px;
+  padding: 0 13px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.79rem;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+.adm-tab:hover {
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.adm-tab.active {
+  background: rgba(252, 183, 40, 0.15);
+  border-color: rgba(252, 183, 40, 0.5);
+  color: #fcb728;
+}
+
+.adm-tab.sale-tab.active {
+  background: linear-gradient(135deg, #ea580c, #dc2626);
+  border-color: #fb923c;
+  color: #fff;
+}
+
+.adm-tab-count {
+  font-size: 0.71rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: inherit;
+}
+
+/* Buttons */
+.adm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.adm-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.adm-btn-sm {
+  height: 31px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+  border-radius: 7px;
+  gap: 5px;
+}
+
+.adm-btn-gold {
+  background: var(--gradient-gold);
+  color: #090b10;
+  font-weight: 800;
+  border: 1px solid rgba(255, 232, 163, 0.5);
+  box-shadow: 0 6px 18px -6px rgba(252, 183, 40, 0.45);
+}
+
+.adm-btn-gold:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.adm-btn-sale {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+  color: #fff;
+  font-weight: 800;
+  border: 1px solid rgba(253, 186, 116, 0.35);
+  box-shadow: 0 6px 18px -6px rgba(234, 88, 12, 0.5);
+}
+
+.adm-btn-sale:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.adm-btn-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: #cbd5e1;
+}
+
+.adm-btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.adm-btn-export {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.32);
+  color: #6ee7b7;
+}
+
+.adm-btn-export:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.22);
+  color: #fff;
+}
+
+.adm-btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.adm-btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.adm-btn-amber {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  color: #fcd34d;
+}
+
+.adm-btn-amber:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.24);
+  color: #fff;
+}
+
+/* Enterprise Data Table */
+.adm-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.adm-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.71rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  background: rgba(9, 12, 21, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.adm-table td {
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+
+.adm-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.adm-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.adm-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.adm-empty {
+  text-align: center;
+  padding: 42px 20px !important;
+  color: #64748b !important;
+  font-size: 0.88rem;
+}
+
+/* Badges & Status Selects */
+.adm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adm-badge-red { background: rgba(239, 68, 68, 0.16); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+.adm-badge-gold { background: rgba(252, 183, 40, 0.14); color: #fcd34d; border: 1px solid rgba(252, 183, 40, 0.3); }
+.adm-badge-blue { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+.adm-badge-green { background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3); }
+.adm-badge-slate { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.22); }
+.adm-badge-sale {
+  background: linear-gradient(135deg, #ea580c, #dc2626);
+  color: #fff;
+  font-weight: 800;
+  border: 1px solid rgba(253, 186, 116, 0.35);
+}
+
+.adm-status-select {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.adm-status-select option {
+  background: #0f1422;
+  color: #f8fafc;
+}
+
+.adm-status-red { background: rgba(239, 68, 68, 0.16); color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); }
+.adm-status-yellow { background: rgba(234, 179, 8, 0.16); color: #fde047; border-color: rgba(234, 179, 8, 0.35); }
+.adm-status-blue { background: rgba(59, 130, 246, 0.16); color: #93c5fd; border-color: rgba(59, 130, 246, 0.35); }
+.adm-status-green { background: rgba(34, 197, 94, 0.16); color: #86efac; border-color: rgba(34, 197, 94, 0.35); }
+.adm-status-gray { background: rgba(148, 163, 184, 0.14); color: #94a3b8; border-color: rgba(148, 163, 184, 0.28); }
+
+/* Contact Quick Links inside Table */
+.adm-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.adm-contact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.24);
+  transition: background 0.15s;
+}
+
+.adm-contact-chip:hover {
+  background: rgba(59, 130, 246, 0.25);
+  color: #fff;
+}
+
+.adm-contact-chip.zalo {
+  background: rgba(14, 165, 233, 0.12);
+  color: #7dd3fc;
+  border-color: rgba(14, 165, 233, 0.26);
+}
+
+/* Modal System */
+.adm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(4, 7, 15, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.adm-modal {
+  width: 100%;
+  max-width: 620px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #151b2e 0%, #0e1322 100%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 18px;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-modal.wide {
+  max-width: 1060px;
+}
+
+.adm-modal-head {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  background: rgba(20, 26, 44, 0.96);
+  backdrop-filter: blur(12px);
+  z-index: 5;
+}
+
+.adm-modal-head h3 {
+  font-family: var(--font-display);
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.adm-modal-head p {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.adm-modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.adm-modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.adm-modal-body {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.adm-modal-foot {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  background: rgba(12, 16, 28, 0.9);
+}
+
+/* Form Controls */
+.adm-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.adm-form-grid.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.adm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adm-field label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.adm-field input,
+.adm-field select,
+.adm-field textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: #090c15;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #f8fafc;
+  font-size: 0.86rem;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.adm-field input:focus,
+.adm-field select:focus,
+.adm-field textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+}
+
+.adm-hint {
+  font-size: 0.73rem;
+  color: #64748b;
+}
+
+@media (max-width: 1180px) {
+  .adm-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .adm-kpi-grid,
+  .adm-kpi-grid.cols-3,
+  .adm-form-grid,
+  .adm-form-grid.cols-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .adm-search-box {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .adm-modal-body,
+  .adm-modal-head,
+  .adm-modal-foot {
+    padding: 16px;
+  }
+}

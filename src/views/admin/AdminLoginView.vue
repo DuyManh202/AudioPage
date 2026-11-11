@@ -1,72 +1,110 @@
 <template>
-  <div class="login-page">
-    <div class="login-card">
-      <div class="login-header">
-        <div class="brand-badge">TA</div>
-        <h1 class="login-title">TÚ AUDIO ADMIN</h1>
-        <p class="login-sub">Đăng nhập hệ thống quản lý bán hàng & kho thiết bị</p>
-      </div>
-
-      <div v-if="authStore.loginError" class="alert-error">
-        <span>⚠️ {{ authStore.loginError }}</span>
-      </div>
-
-      <form @submit.prevent="handleLogin" class="login-form">
-        <div class="form-group">
-          <label for="username">Tên Đăng Nhập:</label>
-          <div class="input-wrap">
-            <span class="input-icon">👤</span>
-            <input 
-              id="username"
-              type="text" 
-              v-model="username" 
-              placeholder="Nhập tên đăng nhập quản trị..." 
-              required
-              autocomplete="username"
-            />
+  <div class="login-shell">
+    <div class="login-container">
+      <!-- Cột Trái: Thương hiệu & Tiêu chuẩn bảo mật -->
+      <div class="login-showcase">
+        <div class="showcase-top">
+          <div class="brand-row">
+            <div class="brand-mark">TA</div>
+            <div>
+              <span class="brand-name">TÚ AUDIO</span>
+              <span class="brand-tag">ENTERPRISE MANAGEMENT</span>
+            </div>
           </div>
+
+          <h1 class="showcase-heading">
+            Hệ Thống Điều Hành Bán Hàng &amp; Kho Thiết Bị Âm Thanh
+          </h1>
+          <p class="showcase-desc">
+            Quản lý tập trung chiến dịch chạy Sale, cấu hình gói dàn karaoke, lịch hẹn thử loa tận nhà và đơn hàng vận chuyển toàn miền Bắc trên nền tảng PostgreSQL thời gian thực.
+          </p>
         </div>
 
-        <div class="form-group">
-          <label for="password">Mật Khẩu:</label>
-          <div class="input-wrap">
-            <span class="input-icon">🔒</span>
-            <input 
-              id="password"
-              :type="showPassword ? 'text' : 'password'" 
-              v-model="password" 
-              placeholder="Nhập mật khẩu..." 
-              required
-              autocomplete="current-password"
-            />
-            <button 
-              type="button" 
-              class="toggle-pwd-btn" 
-              @click="showPassword = !showPassword"
-              title="Ẩn/hiện mật khẩu"
-            >
-              {{ showPassword ? '👁️' : '👁️‍🗨️' }}
-            </button>
+        <div class="showcase-features">
+          <div class="feat-item">
+            <div class="feat-ico"><AdminIcon name="database" :size="18" /></div>
+            <div>
+              <strong>Đồng Bộ Trực Tiếp Aiven PostgreSQL</strong>
+              <span>Cập nhật giá Sale, tồn kho và video test âm tức thì ngoài trang khách.</span>
+            </div>
+          </div>
+          <div class="feat-item">
+            <div class="feat-ico"><AdminIcon name="shield" :size="18" /></div>
+            <div>
+              <strong>Phân Quyền Bảo Mật 3 Cấp Độ</strong>
+              <span>Tách biệt quyền Quản trị cấp cao, Kinh doanh CRM và Quản lý kho.</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="form-actions">
-          <label class="remember-label">
+      <!-- Cột Phải: Biểu mẫu Đăng nhập -->
+      <div class="login-panel">
+        <div class="panel-head">
+          <h2>Đăng Nhập Quản Trị</h2>
+          <p>Nhập tài khoản nhân sự được cấp quyền để tiếp tục</p>
+        </div>
+
+        <div v-if="authStore.loginError" class="login-alert" role="alert">
+          <AdminIcon name="alert" :size="17" />
+          <span>{{ authStore.loginError }}</span>
+        </div>
+
+        <form @submit.prevent="handleLogin" class="login-form">
+          <div class="field-block">
+            <label for="username">Tên đăng nhập</label>
+            <div class="field-input-box">
+              <AdminIcon name="users" :size="17" class="field-ico" />
+              <input
+                id="username"
+                type="text"
+                v-model="username"
+                placeholder="Nhập tên đăng nhập..."
+                required
+                autocomplete="username"
+              />
+            </div>
+          </div>
+
+          <div class="field-block">
+            <label for="password">Mật khẩu bảo mật</label>
+            <div class="field-input-box">
+              <AdminIcon name="lock" :size="17" class="field-ico" />
+              <input
+                id="password"
+                :type="showPassword ? 'text' : 'password'"
+                v-model="password"
+                placeholder="Nhập mật khẩu..."
+                required
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="pwd-toggle"
+                @click="showPassword = !showPassword"
+                :title="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+              >
+                <AdminIcon :name="showPassword ? 'eye-off' : 'eye'" :size="17" />
+              </button>
+            </div>
+          </div>
+
+          <label class="remember-row">
             <input type="checkbox" v-model="rememberMe" />
-            <span>Ghi nhớ phiên đăng nhập</span>
+            <span>Duy trì phiên đăng nhập trên thiết bị này</span>
           </label>
+
+          <button type="submit" class="btn-primary submit-btn" :disabled="isLoading">
+            <span>{{ isLoading ? 'Đang xác thực hệ thống...' : 'Truy Cập Bảng Điều Khiển' }}</span>
+          </button>
+        </form>
+
+        <div class="panel-foot">
+          <router-link to="/" class="store-back-link">
+            <AdminIcon name="globe" :size="15" />
+            <span>Quay về trang chủ khách hàng</span>
+          </router-link>
         </div>
-
-        <button type="submit" class="btn-primary full-width" :disabled="isLoading">
-          <span v-if="isLoading">⏳ Đang Xác Thực...</span>
-          <span v-else>Đăng Nhập Quản Trị</span>
-        </button>
-      </form>
-
-      <div class="login-footer">
-        <router-link to="/" class="back-link">
-          &larr; Quay lại trang bán hàng khách hàng
-        </router-link>
       </div>
     </div>
   </div>
@@ -77,6 +115,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { adminHomeForRole } from '../../utils/permissions'
+import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -100,238 +139,288 @@ const handleLogin = async () => {
     router.push(redirectPath)
   }
 }
-
 </script>
 
 <style scoped>
-.login-page {
-  position: relative;
-  overflow: hidden;
+.login-shell {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(40, 55, 252, 0.22), transparent 45%),
-    radial-gradient(circle at 80% 78%, rgba(252, 183, 40, 0.14), transparent 42%),
-    #080a12;
-  padding: 20px;
+    radial-gradient(circle at 18% 20%, rgba(40, 55, 252, 0.2), transparent 45%),
+    radial-gradient(circle at 82% 80%, rgba(252, 183, 40, 0.12), transparent 42%),
+    #070911;
 }
 
-.login-card {
-  background: linear-gradient(175deg, rgba(24, 29, 48, 0.94) 0%, rgba(14, 18, 30, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-xl);
-  max-width: 440px;
+.login-container {
   width: 100%;
-  padding: 38px 34px 30px;
-  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(18px);
-  position: relative;
-  animation: cardEnter 0.45s var(--ease-spring);
+  max-width: 920px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  background: linear-gradient(180deg, #13182a 0%, #0d111e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8);
 }
 
-@keyframes cardEnter {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.login-showcase {
+  padding: 42px 38px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(252, 183, 40, 0.14), transparent 55%),
+    linear-gradient(160deg, rgba(22, 29, 52, 0.95) 0%, rgba(12, 16, 30, 0.98) 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
 }
 
-.login-header {
-  text-align: center;
-  margin-bottom: 26px;
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
-.brand-badge {
-  width: 56px;
-  height: 56px;
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--gradient-gold);
-  color: #080a10;
+  color: #090b10;
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 1.55rem;
-  border-radius: 14px;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 14px;
-  box-shadow: 0 0 28px rgba(252, 183, 40, 0.36);
 }
 
-.login-title {
+.brand-name {
+  display: block;
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  color: var(--color-primary);
-  letter-spacing: 0.06em;
+  color: #fcb728;
+  letter-spacing: 0.04em;
+}
+
+.brand-tag {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.08em;
+}
+
+.showcase-heading {
+  font-family: var(--font-display);
+  font-size: 1.52rem;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+
+.showcase-desc {
+  font-size: 0.86rem;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.showcase-features {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.feat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feat-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(252, 183, 40, 0.14);
+  color: #fcb728;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.feat-item strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #f1f5f9;
+  margin-bottom: 2px;
+}
+
+.feat-item span {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.login-panel {
+  padding: 42px 38px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.panel-head {
+  margin-bottom: 24px;
+}
+
+.panel-head h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #f8fafc;
   margin-bottom: 4px;
 }
 
-.login-sub {
-  font-size: 0.86rem;
-  color: var(--text-muted);
+.panel-head p {
+  font-size: 0.83rem;
+  color: #94a3b8;
 }
 
-.alert-error {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+.login-alert {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
   color: #fca5a5;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 0.83rem;
+  font-weight: 600;
   margin-bottom: 18px;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
-.form-group {
+.field-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.form-group label {
-  font-size: 0.82rem;
+.field-block label {
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #cbd5e1;
 }
 
-.input-wrap {
+.field-input-box {
   display: flex;
   align-items: center;
-  background: var(--bg-dark-900);
+  background: #080b14;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
-  padding: 0 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-radius: 10px;
+  padding: 0 12px;
+  transition: border-color 0.18s, box-shadow 0.18s;
 }
 
-.input-wrap:focus-within {
+.field-input-box:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.15);
+  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
 }
 
-.input-icon {
-  font-size: 1rem;
-  color: var(--text-subtle);
+.field-ico {
+  color: #64748b;
   margin-right: 10px;
 }
 
-.input-wrap input {
+.field-input-box input {
   flex: 1;
   min-width: 0;
-  padding: 12px 0;
+  height: 44px;
   background: transparent;
   border: none;
-  color: #fff;
-  font-size: 0.92rem;
+  color: #f8fafc;
+  font-size: 0.9rem;
   outline: none;
 }
 
-.toggle-pwd-btn {
+.pwd-toggle {
   background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-}
-
-.form-actions {
+  color: #94a3b8;
+  padding: 6px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-.remember-label {
+.pwd-toggle:hover {
+  color: #f8fafc;
+}
+
+.remember-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
+  font-size: 0.81rem;
+  color: #94a3b8;
   cursor: pointer;
 }
 
-.full-width {
+.submit-btn {
   width: 100%;
-  padding: 13px;
-  font-size: 0.95rem;
+  height: 46px;
+  font-size: 0.92rem;
+  margin-top: 4px;
 }
 
-.quick-credentials {
+.panel-foot {
   margin-top: 24px;
-  padding: 14px;
-  background: rgba(40, 55, 252, 0.08);
-  border: 1px dashed rgba(40, 55, 252, 0.35);
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-}
-
-.quick-title {
-  font-weight: 700;
-  color: #93c5fd;
-  margin-bottom: 6px;
-}
-
-.cred-row {
-  display: flex;
-  justify-content: space-between;
-  color: #cbd5e1;
-  margin-bottom: 10px;
-}
-
-.btn-fill-quick {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  border: 1px solid var(--border-color);
-  padding: 6px 0;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-fill-quick:hover {
-  background: var(--color-secondary);
-  border-color: var(--color-secondary);
-}
-
-.login-footer {
-  text-align: center;
-  margin-top: 22px;
+  padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
-  padding-top: 16px;
+  display: flex;
+  justify-content: center;
 }
 
-.back-link {
-  color: var(--text-muted);
-  font-size: 0.85rem;
+.store-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
   font-weight: 600;
-  transition: color 0.2s;
+  color: #94a3b8;
+  transition: color 0.16s;
 }
 
-.back-link:hover {
-  color: var(--color-primary);
+.store-back-link:hover {
+  color: #fcb728;
 }
 
-@media (max-width: 480px) {
-  .login-card {
-    padding: 28px 20px 24px;
+@media (max-width: 820px) {
+  .login-container {
+    grid-template-columns: 1fr;
+    max-width: 460px;
   }
 
-  .input-wrap input {
-    min-height: 44px;
-    font-size: 16px;
+  .login-showcase {
+    display: none;
+  }
+
+  .login-panel {
+    padding: 32px 24px;
   }
 }
 </style>

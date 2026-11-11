@@ -1,128 +1,255 @@
 <template>
-  <div class="admin-wrapper">
-    <!-- Sidebar bên trái -->
-    <aside class="admin-sidebar">
+  <div class="admin-shell">
+    <!-- Backdrop trên Mobile khi mở Drawer -->
+    <Transition name="modal-fade">
+      <div
+        v-if="mobileNavOpen"
+        class="sidebar-backdrop"
+        @click="mobileNavOpen = false"
+      ></div>
+    </Transition>
+
+    <!-- Sidebar Điều Hướng Trái -->
+    <aside :class="['admin-sidebar', { 'is-open': mobileNavOpen }]">
       <div class="sidebar-brand">
-        <div class="brand-badge">TA</div>
-        <div class="brand-info">
-          <span class="title">TÚ AUDIO</span>
-          <span class="sub">Hệ Thống Quản Trị</span>
+        <div class="brand-logo">TA</div>
+        <div class="brand-meta">
+          <span class="brand-title">TÚ AUDIO</span>
+          <span class="brand-sub">Enterprise Admin v2.0</span>
         </div>
+        <button
+          type="button"
+          class="mobile-close-nav"
+          @click="mobileNavOpen = false"
+          aria-label="Đóng menu"
+        >
+          <AdminIcon name="x" :size="18" />
+        </button>
       </div>
 
-      <nav class="sidebar-menu">
-        <div class="menu-label">ĐIỀU HÀNH BÁN HÀNG</div>
-        <router-link v-if="can('dashboard')" to="/admin/dashboard" class="menu-item">
-          <span class="icon">📊</span>
-          <span>Tổng Quan (Dashboard)</span>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Điều Hành Kinh Doanh</div>
+
+        <router-link
+          v-if="can('dashboard')"
+          to="/admin/dashboard"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="dashboard" :size="18" />
+          <span class="nav-text">Tổng Quan Điều Hành</span>
         </router-link>
 
-        <router-link v-if="can('leads')" to="/admin/leads" class="menu-item">
-          <span class="icon">📞</span>
-          <span>Khách Đăng Ký & Thử Dàn</span>
-          <span v-if="adminStore.newLeadsCount > 0" class="badge-count">
+        <router-link
+          v-if="can('leads')"
+          to="/admin/leads"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="leads" :size="18" />
+          <span class="nav-text">Khách Tư Vấn &amp; Thử Dàn</span>
+          <span v-if="adminStore.newLeadsCount > 0" class="nav-pill alert">
             {{ adminStore.newLeadsCount }}
           </span>
-        </router-link>
-
-        <router-link v-if="can('orders')" to="/admin/orders" class="menu-item">
-          <span class="icon">🛒</span>
-          <span>Đơn Đặt Mua Lẻ</span>
-          <span v-if="adminStore.newOrdersCount > 0" class="badge-count">
-            {{ adminStore.newOrdersCount }}
+          <span v-else-if="adminStore.leads.length > 0" class="nav-pill">
+            {{ adminStore.leads.length }}
           </span>
         </router-link>
 
-        <router-link v-if="can('trade-ins')" to="/admin/trade-ins" class="menu-item">
-          <span class="icon">🔄</span>
-          <span>Thu Cũ Đổi Mới</span>
-          <span v-if="adminStore.pendingTradeInsCount > 0" class="badge-count">
+        <router-link
+          v-if="can('orders')"
+          to="/admin/orders"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="orders" :size="18" />
+          <span class="nav-text">Đơn Đặt Mua Lẻ</span>
+          <span v-if="adminStore.newOrdersCount > 0" class="nav-pill alert">
+            {{ adminStore.newOrdersCount }}
+          </span>
+          <span v-else-if="adminStore.orders.length > 0" class="nav-pill">
+            {{ adminStore.orders.length }}
+          </span>
+        </router-link>
+
+        <router-link
+          v-if="can('trade-ins')"
+          to="/admin/trade-ins"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="trade-ins" :size="18" />
+          <span class="nav-text">Thu Cũ Đổi Mới</span>
+          <span v-if="adminStore.pendingTradeInsCount > 0" class="nav-pill warn">
             {{ adminStore.pendingTradeInsCount }}
           </span>
         </router-link>
 
-        <div v-if="can('products')" class="menu-label">KHO THIẾT BỊ & GÓI DÀN</div>
-        <router-link v-if="can('products')" to="/admin/products" class="menu-item">
-          <span class="icon">🔊</span>
-          <span>Quản Lý Loa & Thiết Bị</span>
-          <span class="item-count">{{ adminStore.products.length }}</span>
+        <template v-if="can('products') || can('combos')">
+          <div class="nav-section-label">Kho Loa &amp; Sản Phẩm</div>
+
+          <router-link
+            v-if="can('products')"
+            to="/admin/products"
+            class="nav-item"
+            @click="mobileNavOpen = false"
+          >
+            <AdminIcon name="products" :size="18" />
+            <span class="nav-text">Kho Loa &amp; Chạy Sale</span>
+            <span class="nav-pill">{{ adminStore.products.length }}</span>
+          </router-link>
+
+          <router-link
+            v-if="can('combos')"
+            to="/admin/combos"
+            class="nav-item"
+            @click="mobileNavOpen = false"
+          >
+            <AdminIcon name="combos" :size="18" />
+            <span class="nav-text">Cấu Hình Gói Dàn</span>
+            <span class="nav-pill">{{ adminStore.combos.length }}</span>
+          </router-link>
+        </template>
+
+        <div class="nav-section-label">Hệ Thống &amp; Phân Quyền</div>
+
+        <router-link
+          v-if="can('users')"
+          to="/admin/users"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="users" :size="18" />
+          <span class="nav-text">Tài Khoản Nhân Sự</span>
         </router-link>
 
-        <router-link v-if="can('combos')" to="/admin/combos" class="menu-item">
-          <span class="icon">🎁</span>
-          <span>Cấu Hình 2 Gói Dàn (19tr & 29tr)</span>
-        </router-link>
-
-        <div class="menu-label">TIỆN ÍCH HỆ THỐNG</div>
-        <router-link to="/" class="menu-item external-link">
-          <span class="icon">🌐</span>
-          <span>Xem Giao Diện Khách Hàng</span>
-        </router-link>
-        <router-link v-if="can('users')" to="/admin/users" class="menu-item">
-          <span class="icon">👥</span><span>Quản Lý Tài Khoản</span>
+        <router-link to="/" target="_blank" class="nav-item storefront-link">
+          <AdminIcon name="globe" :size="18" />
+          <span class="nav-text">Mở Trang Khách Hàng</span>
         </router-link>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="admin-user-card">
-          <div class="user-avatar">{{ userInitials }}</div>
-          <div class="user-details">
-            <span class="user-name">{{ authStore.currentUser.full_name }}</span>
-            <span class="user-role">{{ roleLabel }}</span>
+        <div class="profile-box">
+          <div class="profile-avatar">{{ userInitials }}</div>
+          <div class="profile-info">
+            <span class="profile-name">{{ authStore.currentUser?.full_name || 'Quản trị viên' }}</span>
+            <span class="profile-role">{{ roleLabel }}</span>
           </div>
-          <button class="logout-btn" @click="handleLogout" title="Đăng Xuất">
-            🚪
+          <button
+            type="button"
+            class="profile-logout"
+            @click="handleLogout"
+            title="Đăng xuất khỏi hệ thống"
+          >
+            <AdminIcon name="logout" :size="17" />
           </button>
         </div>
       </div>
     </aside>
 
-    <!-- Khu vực nội dung chính -->
+    <!-- Khung Nội Dung Chính -->
     <div class="admin-main">
+      <!-- Topbar Cố Định Một Hàng Gọn Gàng -->
       <header class="admin-topbar">
         <div class="topbar-left">
-          <span class="breadcrumb-item">Quản Trị</span>
-          <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-active">{{ currentRouteTitle }}</span>
+          <button
+            type="button"
+            class="mobile-menu-trigger"
+            @click="mobileNavOpen = true"
+            aria-label="Mở menu quản trị"
+          >
+            <AdminIcon name="menu" :size="20" />
+          </button>
+          <div class="breadcrumb-trail">
+            <span class="bc-root">Tú Audio CRM</span>
+            <span class="bc-sep">/</span>
+            <span class="bc-current">{{ currentRouteTitle }}</span>
+          </div>
         </div>
 
         <div class="topbar-right">
+          <router-link
+            v-if="can('leads') && adminStore.newLeadsCount > 0"
+            to="/admin/leads"
+            class="topbar-alert-pill"
+          >
+            <AdminIcon name="bell" :size="14" />
+            <span>{{ adminStore.newLeadsCount }} khách chờ gọi</span>
+          </router-link>
+
+          <router-link
+            v-if="can('orders') && adminStore.newOrdersCount > 0"
+            to="/admin/orders"
+            class="topbar-order-pill"
+          >
+            <AdminIcon name="orders" :size="14" />
+            <span>{{ adminStore.newOrdersCount }} đơn mới</span>
+          </router-link>
+
+          <div :class="['db-indicator', adminStore.dbConnected ? 'online' : 'offline']">
+            <span class="status-dot"></span>
+            <span class="db-label">
+              {{ adminStore.dbConnected ? 'PostgreSQL Live' : 'Cache Nội Bộ' }}
+            </span>
+            <span v-if="adminStore.lastSyncedAt" class="db-time">• {{ adminStore.lastSyncedAt }}</span>
+          </div>
+
           <button
             type="button"
-            class="sync-btn"
-            :disabled="adminStore.isLoading"
+            class="topbar-sync-btn"
+            :disabled="adminStore.isSyncing"
             @click="adminStore.fetchAllAdminData(false)"
-            title="Đồng bộ dữ liệu mới nhất từ máy chủ"
+            title="Đồng bộ dữ liệu mới nhất từ Aiven PostgreSQL"
           >
-            {{ adminStore.isLoading ? '⏳ Đang tải...' : '🔄 Đồng Bộ' }}
+            <AdminIcon name="sync" :size="15" :class="{ spinning: adminStore.isSyncing }" />
+            <span>{{ adminStore.isSyncing ? 'Đang tải...' : 'Đồng bộ' }}</span>
           </button>
-          <div :class="['db-status-badge', adminStore.dbConnected ? 'db-online' : 'db-local']">
-            {{ adminStore.dbConnected ? '🟢 Aiven PostgreSQL Live' : '🟡 Chế Độ Cache Nội Bộ' }}
-          </div>
-          <div class="location-badge">
-            📍 Showroom: Phú Thọ &amp; Phủ sóng 300km
-          </div>
-          <router-link to="/admin/leads" class="quick-lead-btn" v-if="can('leads') && adminStore.newLeadsCount > 0">
-            🔔 {{ adminStore.newLeadsCount }} Yêu Cầu Mới Cần Gọi
+
+          <router-link to="/" class="topbar-store-btn" title="Xem giao diện khách hàng">
+            <AdminIcon name="globe" :size="15" />
+            <span class="hide-sm">Xem Web</span>
           </router-link>
-          <button class="topbar-logout-btn" type="button" @click="handleLogout" title="Đăng Xuất">
-            Đăng Xuất
+
+          <button
+            type="button"
+            class="topbar-logout"
+            @click="handleLogout"
+            title="Đăng xuất"
+          >
+            <AdminIcon name="logout" :size="15" />
+            <span class="hide-sm">Thoát</span>
           </button>
         </div>
       </header>
 
+      <!-- Thanh Thông Báo Toast -->
       <Transition name="fade-slide">
         <div
           v-if="adminStore.adminNotice"
-          :class="['admin-toast-banner', `toast-${adminStore.adminNotice.type}`]"
+          :class="['admin-toast', `toast-${adminStore.adminNotice.type}`]"
           role="status"
         >
-          <span>{{ adminStore.adminNotice.message }}</span>
-          <button type="button" class="toast-close" @click="adminStore.clearNotice" aria-label="Đóng thông báo">&times;</button>
+          <div class="toast-msg">
+            <AdminIcon
+              :name="adminStore.adminNotice.type === 'error' ? 'alert' : 'check'"
+              :size="17"
+            />
+            <span>{{ adminStore.adminNotice.text || adminStore.adminNotice.message }}</span>
+          </div>
+          <button
+            type="button"
+            class="toast-dismiss"
+            @click="adminStore.clearNotice"
+            aria-label="Đóng thông báo"
+          >
+            <AdminIcon name="x" :size="16" />
+          </button>
         </div>
       </Transition>
 
-      <main class="admin-content-area">
+      <!-- Nội Dung Từng Phân Hệ -->
+      <main class="admin-viewport">
         <router-view v-slot="{ Component }">
           <Transition name="fade-slide" mode="out-in">
             <component :is="Component" />
@@ -134,37 +261,48 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
 import { canAccess } from '../../utils/permissions'
+import AdminIcon from '../../components/admin/AdminIcon.vue'
+import '../../assets/styles/admin.css'
 
 const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
+const mobileNavOpen = ref(false)
 
-const can = (permission) => canAccess(authStore.currentUser.role, permission)
-const roleLabel = computed(() => ({ SUPER_ADMIN: 'Quản Trị Viên Cấp Cao', SALES: 'Nhân Viên Kinh Doanh', INVENTORY: 'Quản Lý Kho' })[authStore.currentUser.role] || 'Nhân viên')
+const can = (permission) => canAccess(authStore.currentUser?.role, permission)
+
+const roleLabel = computed(() => {
+  const map = {
+    SUPER_ADMIN: 'Quản trị cấp cao',
+    SALES: 'Chuyên viên kinh doanh',
+    INVENTORY: 'Quản lý kho thiết bị'
+  }
+  return map[authStore.currentUser?.role] || 'Nhân sự hệ thống'
+})
 
 onMounted(() => {
   adminStore.fetchAllAdminData()
 })
 
 const currentRouteTitle = computed(() => {
-  if (route.path.includes('leads')) return 'Khách Hàng Đăng Ký & Thử Dàn Tại Nhà'
-  if (route.path.includes('orders')) return 'Quản Lý Đơn Đặt Mua Lẻ (Giỏ Hàng)'
-  if (route.path.includes('trade-ins')) return 'Thẩm Định Yêu Cầu Thu Cũ Đổi Mới'
-  if (route.path.includes('users')) return 'Quản Lý Tài Khoản Nhân Viên'
-  if (route.path.includes('products')) return 'Quản Lý Loa & Thiết Bị'
-  if (route.path.includes('combos')) return 'Cấu Hình 2 Gói Dàn Trọn Bộ'
-  return 'Bảng Điều Khiển Tổng Quan'
+  if (route.path.includes('leads')) return 'Khách Tư Vấn & Lịch Thử Dàn'
+  if (route.path.includes('orders')) return 'Quản Lý Đơn Đặt Mua Lẻ'
+  if (route.path.includes('trade-ins')) return 'Thẩm Định Thu Cũ Đổi Mới'
+  if (route.path.includes('users')) return 'Tài Khoản & Phân Quyền'
+  if (route.path.includes('products')) return 'Kho Loa & Chiến Dịch Sale'
+  if (route.path.includes('combos')) return 'Cấu Hình Gói Dàn Karaoke'
+  return 'Tổng Quan Điều Hành'
 })
 
 const userInitials = computed(() => {
-  const name = authStore.currentUser?.full_name || 'PT'
-  const parts = name.trim().split(' ')
+  const name = authStore.currentUser?.full_name || 'TA'
+  const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
   }
@@ -172,7 +310,7 @@ const userInitials = computed(() => {
 })
 
 const handleLogout = () => {
-  if (confirm('Bác có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?')) {
+  if (confirm('Anh có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?')) {
     authStore.logout()
     router.push('/admin/login')
   }
@@ -180,584 +318,556 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-.admin-wrapper {
+.admin-shell {
   display: flex;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 75% 45% at 75% 0%, rgba(40, 55, 252, 0.1), transparent),
-    var(--bg-dark-900);
-  color: var(--text-main);
+    radial-gradient(ellipse 70% 45% at 75% -10%, rgba(40, 55, 252, 0.1), transparent),
+    #080b14;
+  color: #f8fafc;
 }
 
+/* Sidebar */
 .admin-sidebar {
-  width: 276px;
-  background: linear-gradient(180deg, #0f1320 0%, #0b0e18 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  width: 264px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0d111e 0%, #090c16 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   height: 100vh;
-  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.35);
+  z-index: 90;
 }
 
 .sidebar-brand {
-  padding: 22px 20px;
+  height: 64px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.brand-badge {
-  width: 42px;
-  height: 42px;
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   background: var(--gradient-gold);
-  color: #080a10;
+  color: #090b10;
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 1.2rem;
-  border-radius: 11px;
+  font-size: 1.05rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 18px rgba(252, 183, 40, 0.28);
+  box-shadow: 0 0 20px rgba(252, 183, 40, 0.25);
+  flex-shrink: 0;
 }
 
-.brand-info .title {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--color-primary);
-  letter-spacing: 0.04em;
-}
-
-.brand-info .sub {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.sidebar-menu {
-  flex: 1;
-  padding: 18px 12px;
+.brand-meta {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  min-width: 0;
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #fcb728;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+
+.brand-sub {
+  font-size: 0.69rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.mobile-close-nav {
+  display: none;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   overflow-y: auto;
 }
 
-.menu-label {
-  font-size: 0.68rem;
+.nav-section-label {
+  font-size: 0.66rem;
   font-weight: 800;
-  color: var(--text-subtle);
-  letter-spacing: 0.06em;
-  margin: 16px 10px 6px;
   text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #475569;
+  padding: 14px 10px 6px;
 }
 
-.menu-item {
+.nav-item {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px 13px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 0.88rem;
+  padding: 9px 12px;
+  border-radius: 9px;
+  color: #94a3b8;
+  font-size: 0.85rem;
   font-weight: 600;
   border: 1px solid transparent;
-  transition: all 0.22s var(--ease-spring);
+  transition: all 0.16s ease;
 }
 
-.menu-item .icon {
-  font-size: 1.08rem;
+.nav-item:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.menu-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-}
-
-.menu-item.router-link-active {
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.16), rgba(252, 183, 40, 0.05));
-  color: var(--color-primary);
-  border-color: rgba(252, 183, 40, 0.35);
+.nav-item.router-link-active {
+  color: #fcb728;
   font-weight: 700;
-  box-shadow: 0 4px 16px rgba(252, 183, 40, 0.1);
+  background: linear-gradient(90deg, rgba(252, 183, 40, 0.14) 0%, rgba(252, 183, 40, 0.03) 100%);
+  border-color: rgba(252, 183, 40, 0.28);
 }
 
-.badge-count {
-  margin-left: auto;
-  background: #ef4444;
-  color: #fff;
-  font-size: 0.72rem;
+.nav-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-pill {
+  font-size: 0.7rem;
   font-weight: 800;
   padding: 2px 7px;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #cbd5e1;
 }
 
-.item-count {
-  margin-left: auto;
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2px 7px;
-  border-radius: 6px;
+.nav-pill.alert {
+  background: #ef4444;
+  color: #fff;
 }
 
-.external-link {
-  color: var(--text-muted);
+.nav-pill.warn {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.storefront-link {
+  color: #64748b;
 }
 
 .sidebar-footer {
-  padding: 14px;
+  padding: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.admin-user-card {
+.profile-box {
   display: flex;
   align-items: center;
-  gap: 11px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.user-avatar {
-  width: 36px;
-  height: 36px;
+.profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   background: var(--gradient-blue);
   color: #fff;
+  font-size: 0.8rem;
   font-weight: 800;
-  font-size: 0.85rem;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.user-name {
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.user-role {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.logout-btn {
-  background: transparent;
-  border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 8px;
-  transition: transform 0.2s, background 0.2s;
-  margin-left: auto;
-}
-
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: scale(1.08);
-}
-
-.topbar-logout-btn {
-  background: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.topbar-logout-btn:hover {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
-}
-
-.sync-btn {
-  background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  transition: background 0.2s, color 0.2s;
-}
-
-.sync-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.28);
-  color: #fff;
-}
-
-.sync-btn:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
-.admin-toast-banner {
-  margin: 14px 28px 0;
-  padding: 11px 16px;
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  font-weight: 700;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.toast-success {
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.38);
-  color: #86efac;
-}
-
-.toast-warning {
-  background: rgba(234, 179, 8, 0.14);
-  border: 1px solid rgba(234, 179, 8, 0.38);
-  color: #fde047;
-}
-
-.toast-error {
-  background: rgba(239, 68, 68, 0.16);
-  border: 1px solid rgba(239, 68, 68, 0.42);
-  color: #fca5a5;
-}
-
-.toast-close {
-  background: transparent;
-  color: inherit;
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 2px 6px;
-}
-
-.db-status-badge {
-  font-size: 0.76rem;
-  font-weight: 700;
-  padding: 6px 11px;
-  border-radius: 999px;
-}
-
-.db-online {
-  background: rgba(34, 197, 94, 0.14);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.32);
-}
-
-.db-local {
-  background: rgba(234, 179, 8, 0.14);
-  color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.32);
-}
-
-.admin-main {
+.profile-info {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   min-width: 0;
 }
 
-.admin-topbar {
-  background: rgba(12, 16, 28, 0.84);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 15px 28px;
+.profile-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-role {
+  display: block;
+  font-size: 0.7rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-logout {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  transition: all 0.16s;
+}
+
+.profile-logout:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+/* Main Content Area */
+.admin-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar {
+  height: 64px;
+  padding: 0 24px;
+  background: rgba(11, 15, 26, 0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 60;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mobile-menu-trigger {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.breadcrumb-trail {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  font-size: 0.94rem;
+  min-width: 0;
+  white-space: nowrap;
 }
 
-.breadcrumb-item {
-  color: var(--text-subtle);
+.bc-root {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
 }
 
-.breadcrumb-sep {
-  color: #475569;
+.bc-sep {
+  color: #334155;
+  font-size: 0.85rem;
 }
 
-.breadcrumb-active {
-  color: #fff;
+.bc-current {
+  font-size: 0.92rem;
   font-weight: 800;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.location-badge {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 6px 12px;
+.topbar-alert-pill,
+.topbar-order-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
   border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.quick-lead-btn {
-  background: rgba(239, 68, 68, 0.16);
+.topbar-alert-pill {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
   color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.42);
-  padding: 6px 14px;
+}
+
+.topbar-order-pill {
+  background: rgba(252, 183, 40, 0.14);
+  border: 1px solid rgba(252, 183, 40, 0.35);
+  color: #fcd34d;
+}
+
+.db-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 11px;
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  animation: pulse 2s infinite;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.72; }
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
 }
 
-.admin-content-area {
-  padding: 28px;
+.db-indicator.online {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.26);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.db-indicator.online .status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.db-indicator.offline {
+  color: #fde047;
+  border-color: rgba(234, 179, 8, 0.28);
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.db-indicator.offline .status-dot {
+  background: #eab308;
+}
+
+.db-time {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.topbar-sync-btn,
+.topbar-store-btn,
+.topbar-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.topbar-sync-btn {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+.topbar-sync-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.22);
+  color: #fff;
+}
+
+.topbar-store-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.topbar-store-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.topbar-logout {
+  background: rgba(239, 68, 68, 0.11);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
+}
+
+.topbar-logout:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toast Notification */
+.admin-toast {
+  margin: 14px 24px 0;
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toast-msg {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.toast-success {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+.toast-warning {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+}
+
+.toast-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  color: #fca5a5;
+}
+
+.toast-dismiss {
+  background: transparent;
+  color: inherit;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+}
+
+.admin-viewport {
+  padding: 24px;
   flex: 1;
+  min-width: 0;
 }
 
-/* Shared Polished Surfaces & Tables Across Admin Views */
-.admin-content-area :deep(.panel-box),
-.admin-content-area :deep(.header-box),
-.admin-content-area :deep(.leads-toolbar),
-.admin-content-area :deep(.admin-toolbar),
-.admin-content-area :deep(.combo-edit-card) {
-  background: linear-gradient(180deg, rgba(22, 27, 45, 0.9), rgba(14, 18, 30, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card), var(--inner-highlight);
+.sidebar-backdrop {
+  display: none;
 }
 
-.admin-content-area :deep(.admin-table th) {
-  background: rgba(255, 255, 255, 0.025);
-  color: var(--text-muted);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-}
-
-.admin-content-area :deep(.admin-table tbody tr) {
-  transition: background 0.18s ease;
-}
-
-.admin-content-area :deep(.admin-table tbody tr:hover) {
-  background: rgba(252, 183, 40, 0.04);
-}
-
-.admin-content-area :deep(.modal-window) {
-  background: linear-gradient(180deg, #161b2d 0%, #101422 100%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.admin-content-area :deep(.filter-chip) {
-  border-radius: 999px;
-  transition: transform 0.22s var(--ease-spring), border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.22s;
-}
-
-.admin-content-area :deep(.filter-chip:hover) {
-  transform: translateY(-1px);
-}
-
-.admin-content-area :deep(.filter-chip.active) {
-  box-shadow: 0 4px 14px rgba(252, 183, 40, 0.22);
-}
-
-.admin-content-area :deep(.status-select) {
-  border-radius: 8px;
-  padding: 7px 10px;
-}
-
-.admin-content-area :deep(.btn-icon),
-.admin-content-area :deep(.btn-del),
-.admin-content-area :deep(.btn-outline-sm),
-.admin-content-area :deep(.action-btn) {
-  border-radius: 8px;
-  transition: background 0.22s, transform 0.22s var(--ease-spring), border-color 0.2s, box-shadow 0.22s;
-}
-
-.admin-content-area :deep(.btn-icon:hover),
-.admin-content-area :deep(.btn-del:hover),
-.admin-content-area :deep(.btn-outline-sm:hover),
-.admin-content-area :deep(.action-btn:hover) {
-  transform: translateY(-1px);
-}
-
-.admin-content-area :deep(.btn-icon:active),
-.admin-content-area :deep(.btn-del:active) {
-  transform: scale(0.95);
-}
-
-@media (max-width: 992px) {
-  .admin-sidebar {
-    width: 72px;
-  }
-  .brand-info, .menu-label, .menu-item span:not(.icon), .sidebar-footer {
+@media (max-width: 1120px) {
+  .db-time,
+  .topbar-order-pill {
     display: none;
   }
-  .menu-item {
-    justify-content: center;
-    padding: 12px;
-  }
 }
 
-@media (max-width: 700px) {
-  .admin-wrapper {
-    flex-direction: column;
-    min-height: 100svh;
+@media (max-width: 960px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 7, 15, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 85;
   }
 
   .admin-sidebar {
-    position: sticky;
+    position: fixed;
+    left: 0;
     top: 0;
-    z-index: 60;
-    width: 100%;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.75);
   }
 
-  .sidebar-brand,
-  .sidebar-footer {
+  .admin-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .mobile-close-nav,
+  .mobile-menu-trigger {
+    display: inline-flex;
+  }
+
+  .bc-root,
+  .bc-sep {
     display: none;
   }
+}
 
-  .sidebar-menu {
-    flex: 0 0 auto;
-    flex-direction: row;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 8px 10px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .sidebar-menu::-webkit-scrollbar {
-    display: none;
-  }
-
-  .menu-label {
-    display: none;
-  }
-
-  .menu-item {
-    flex: 0 0 auto;
-    justify-content: flex-start;
-    gap: 6px;
-    padding: 8px 11px;
-    white-space: nowrap;
-    font-size: 0.76rem;
-    border-radius: 999px;
-  }
-
-  .menu-item span:not(.icon) {
-    display: inline;
-  }
-
-  .menu-item .icon {
-    font-size: 0.95rem;
-  }
-
-  .menu-item.router-link-active {
-    border-color: rgba(252, 183, 40, 0.45);
-  }
-
-  .badge-count,
-  .item-count {
-    margin-left: 0;
-  }
-
-  .admin-main {
-    width: 100%;
-    min-width: 0;
-  }
-
+@media (max-width: 680px) {
   .admin-topbar {
-    position: relative;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 14px;
+    padding: 0 14px;
+    height: 56px;
   }
 
-  .topbar-left {
-    flex-wrap: wrap;
-    font-size: 0.82rem;
+  .db-label,
+  .hide-sm,
+  .topbar-alert-pill {
+    display: none;
   }
 
-  .breadcrumb-active {
-    overflow-wrap: anywhere;
+  .db-indicator {
+    padding: 0 9px;
   }
 
-  .topbar-right {
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 7px;
-  }
-
-  .db-status-badge,
-  .location-badge {
-    font-size: 0.68rem;
-    padding: 5px 9px;
-  }
-
-  .topbar-logout-btn {
-    margin-left: auto;
-  }
-
-  .quick-lead-btn {
-    order: 4;
-    width: 100%;
-    text-align: center;
-  }
-
-  .admin-content-area {
-    min-width: 0;
-    padding: 12px;
-  }
-
-  .admin-content-area .panel-box {
-    min-width: 0;
+  .admin-viewport {
     padding: 14px;
   }
 
-  .admin-content-area .table-responsive,
-  .admin-content-area .table-wrap {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .admin-content-area .admin-table,
-  .admin-content-area .table-wrap table {
-    min-width: 760px;
+  .admin-toast {
+    margin: 12px 14px 0;
   }
 }
 </style>

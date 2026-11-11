@@ -1,182 +1,346 @@
 <template>
-  <section class="users-view">
-    <header class="panel-box">
-      <h2>Quản lý tài khoản nhân viên</h2>
-      <p>Tạo tài khoản kinh doanh hoặc quản lý kho, phân quyền, khóa/mở khóa hoặc cấp lại mật khẩu (tối thiểu 12 ký tự).</p>
-    </header>
-
-    <form class="panel-box user-form" @submit.prevent="createUser">
-      <h3>Tạo tài khoản mới</h3>
-      <div class="form-grid">
-        <label>
-          Tên đăng nhập
-          <input
-            v-model="form.username"
-            required
-            minlength="3"
-            maxlength="50"
-            autocomplete="off"
-            placeholder="vd: dmanh hoặc sales_hanoi"
-          />
-          <span class="field-hint">Viết liền không dấu, tự chuyển thành chữ thường</span>
-        </label>
-        <label>
-          Họ tên
-          <input v-model="form.fullName" required maxlength="100" placeholder="vd: Nguyễn Duy Mạnh" />
-        </label>
-        <label>
-          Số điện thoại
-          <input v-model="form.phone" required type="tel" placeholder="vd: 0971356791" />
-        </label>
-        <label>
-          Mật khẩu tạm (từ 12 ký tự)
-          <div class="pwd-input-wrap">
-            <input
-              v-model="form.password"
-              required
-              :type="showCreatePwd ? 'text' : 'password'"
-              minlength="12"
-              maxlength="128"
-              autocomplete="new-password"
-              placeholder="Ít nhất 12 ký tự..."
-            />
-            <button type="button" class="pwd-eye-btn" @click="showCreatePwd = !showCreatePwd" title="Ẩn/hiện mật khẩu">
-              {{ showCreatePwd ? 'Ẩn' : 'Hiện' }}
-            </button>
-          </div>
-          <span class="field-hint">Đã nhập: {{ form.password.length }}/12+ ký tự</span>
-        </label>
-        <label>
-          Vai trò
-          <select v-model="form.role">
-            <option value="SALES">Nhân viên kinh doanh</option>
-            <option value="INVENTORY">Quản lý kho</option>
-            <option value="SUPER_ADMIN">Quản trị viên cấp cao</option>
-          </select>
-        </label>
+  <div class="adm-page">
+    <!-- Đầu trang Phân Quyền & Nhân Sự -->
+    <div class="adm-page-head">
+      <div>
+        <h1 class="adm-page-title">Tài Khoản Nhân Sự &amp; Phân Quyền</h1>
+        <p class="adm-page-sub">
+          Cấp tài khoản đăng nhập cho chuyên viên kinh doanh hoặc thủ kho, phân quyền truy cập, khóa tạm thời hoặc đặt lại mật khẩu bảo mật (&ge; 12 ký tự).
+        </p>
       </div>
-      <p v-if="error" class="error-banner" role="alert">⚠️ {{ error }}</p>
-      <p v-if="message" class="message-banner" role="status">✓ {{ message }}</p>
-      <button class="btn-primary" type="submit" :disabled="busy">{{ busy ? '⏳ Đang lưu…' : 'Tạo tài khoản' }}</button>
-    </form>
-
-    <div class="panel-box table-wrap">
-      <div class="list-head">
-        <h3>Tài khoản hiện có ({{ users.length }})</h3>
-        <button type="button" class="btn-reload" :disabled="busy" @click="loadUsers">🔄 Tải lại</button>
+      <div class="adm-head-actions">
+        <button type="button" class="adm-btn adm-btn-ghost" :disabled="busy" @click="loadUsers">
+          <AdminIcon name="sync" :size="15" />
+          <span>Tải Lại Danh Sách</span>
+        </button>
+        <button type="button" class="adm-btn adm-btn-gold" @click="showCreateForm = !showCreateForm">
+          <AdminIcon :name="showCreateForm ? 'x' : 'plus'" :size="16" />
+          <span>{{ showCreateForm ? 'Thu Gọn Biểu Mẫu' : '+ Tạo Tài Khoản Mới' }}</span>
+        </button>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Tài khoản</th>
-            <th>Họ tên</th>
-            <th>Điện thoại</th>
-            <th>Vai trò</th>
-            <th>Trạng thái</th>
-            <th>Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users" :key="user.id">
-            <td><strong>{{ user.username }}</strong></td>
-            <td>{{ user.full_name }}</td>
-            <td>{{ user.phone }}</td>
-            <td>
-              <select :value="user.role" :disabled="busy || !user.is_active" @change="changeRole(user, $event.target.value)">
-                <option value="SUPER_ADMIN">Quản trị cấp cao</option>
-                <option value="SALES">Kinh doanh</option>
-                <option value="INVENTORY">Quản lý kho</option>
-              </select>
-            </td>
-            <td>
-              <span :class="['state-pill', user.is_active ? 'active-pill' : 'locked-pill']">
-                {{ user.is_active ? 'Đang hoạt động' : 'Đã khóa' }}
-              </span>
-            </td>
-            <td>
-              <div class="user-actions">
-                <button
-                  type="button"
-                  class="btn-reset-pwd"
-                  :disabled="busy"
-                  @click="openPasswordReset(user)"
-                >
-                  🔑 Đổi MK
-                </button>
-                <button
-                  v-if="user.is_active && user.id !== currentUserId"
-                  type="button"
-                  class="btn-disable"
-                  :disabled="busy"
-                  @click="toggleUserActive(user, false)"
-                >
-                  Khóa
-                </button>
-                <button
-                  v-else-if="!user.is_active"
-                  type="button"
-                  class="btn-enable"
-                  :disabled="busy"
-                  @click="toggleUserActive(user, true)"
-                >
-                  Mở khóa
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="!users.length">
-            <td colspan="6">Chưa có dữ liệu tài khoản.</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
 
-    <div v-if="pwdModalUser" class="modal-backdrop" @click.self="pwdModalUser = null">
-      <div class="modal-window">
-        <h3>Đặt lại mật khẩu: {{ pwdModalUser.username }}</h3>
-        <p class="sub-note">Mật khẩu mới yêu cầu tối thiểu 12 ký tự.</p>
-        <form @submit.prevent="submitPasswordReset" class="pwd-form">
-          <div class="pwd-input-wrap">
-            <input
-              :type="showResetPwd ? 'text' : 'password'"
-              v-model="newPassword"
-              minlength="12"
-              maxlength="128"
-              required
-              placeholder="Nhập mật khẩu mới (>= 12 ký tự)..."
-              autocomplete="new-password"
-            />
-            <button type="button" class="pwd-eye-btn" @click="showResetPwd = !showResetPwd">
-              {{ showResetPwd ? 'Ẩn' : 'Hiện' }}
-            </button>
+    <!-- 3 Thẻ Cấp Độ Phân Quyền -->
+    <div class="adm-kpi-grid cols-3">
+      <div class="adm-kpi-card">
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Quản Trị Cấp Cao</span>
+          <span class="adm-kpi-value">{{ countByRole('SUPER_ADMIN') }} tài khoản</span>
+          <span class="adm-kpi-meta">Toàn quyền hệ thống, giá bán &amp; nhân sự</span>
+        </div>
+        <div class="adm-kpi-icon tone-gold">
+          <AdminIcon name="shield" :size="20" />
+        </div>
+      </div>
+
+      <div class="adm-kpi-card">
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Chuyên Viên Kinh Doanh</span>
+          <span class="adm-kpi-value">{{ countByRole('SALES') }} tài khoản</span>
+          <span class="adm-kpi-meta">Quản lý Leads, Đơn hàng &amp; Thu cũ</span>
+        </div>
+        <div class="adm-kpi-icon tone-blue">
+          <AdminIcon name="leads" :size="20" />
+        </div>
+      </div>
+
+      <div class="adm-kpi-card">
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Quản Lý Kho Thiết Bị</span>
+          <span class="adm-kpi-value">{{ countByRole('INVENTORY') }} tài khoản</span>
+          <span class="adm-kpi-meta">Cập nhật Loa, Giá Sale &amp; Gói dàn</span>
+        </div>
+        <div class="adm-kpi-icon tone-green">
+          <AdminIcon name="products" :size="20" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Thông báo phản hồi -->
+    <div v-if="error" class="feedback-banner error" role="alert">
+      <AdminIcon name="alert" :size="17" />
+      <span>{{ error }}</span>
+    </div>
+    <div v-if="message" class="feedback-banner success" role="status">
+      <AdminIcon name="check" :size="17" />
+      <span>{{ message }}</span>
+    </div>
+
+    <!-- Khối Tạo Tài Khoản Nhân Sự Mới -->
+    <Transition name="fade-slide">
+      <form v-if="showCreateForm" class="adm-card adm-card-p create-user-card" @submit.prevent="createUser">
+        <div class="create-head">
+          <div>
+            <h2 class="adm-card-title">Cấp Tài Khoản Quản Trị Mới</h2>
+            <p class="adm-card-sub">Tên đăng nhập viết liền không dấu; mật khẩu bắt buộc tối thiểu 12 ký tự</p>
           </div>
-          <div class="pwd-actions">
-            <button type="button" class="btn-outline" @click="pwdModalUser = null">Hủy</button>
-            <button type="submit" class="btn-primary" :disabled="busy">Cập nhật mật khẩu</button>
+        </div>
+
+        <div class="user-form-grid">
+          <div class="adm-field">
+            <label>Tên đăng nhập</label>
+            <input
+              v-model="form.username"
+              required
+              minlength="3"
+              maxlength="50"
+              autocomplete="off"
+              placeholder="vd: dmanh hoặc sales_hanoi"
+            />
+            <span class="adm-hint">Tự động chuyển chữ thường (a-z, 0-9, dấu chấm, gạch nối)</span>
+          </div>
+
+          <div class="adm-field">
+            <label>Họ và tên nhân sự</label>
+            <input v-model="form.fullName" required maxlength="100" placeholder="vd: Nguyễn Duy Mạnh" />
+          </div>
+
+          <div class="adm-field">
+            <label>Số điện thoại liên hệ</label>
+            <input v-model="form.phone" required type="tel" placeholder="vd: 0971356791" />
+          </div>
+
+          <div class="adm-field">
+            <label>Mật khẩu khởi tạo (&ge; 12 ký tự)</label>
+            <div class="pwd-box">
+              <input
+                v-model="form.password"
+                required
+                :type="showCreatePwd ? 'text' : 'password'"
+                minlength="12"
+                maxlength="128"
+                autocomplete="new-password"
+                placeholder="Nhập ít nhất 12 ký tự..."
+              />
+              <button
+                type="button"
+                class="pwd-eye"
+                @click="showCreatePwd = !showCreatePwd"
+                :title="showCreatePwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+              >
+                <AdminIcon :name="showCreatePwd ? 'eye-off' : 'eye'" :size="16" />
+              </button>
+            </div>
+            <span class="adm-hint">Độ dài hiện tại: {{ form.password.length }}/12+ ký tự</span>
+          </div>
+
+          <div class="adm-field">
+            <label>Vai trò phân quyền</label>
+            <select v-model="form.role">
+              <option value="SALES">Chuyên viên kinh doanh (CRM &amp; Đơn hàng)</option>
+              <option value="INVENTORY">Quản lý kho (Sản phẩm &amp; Gói dàn)</option>
+              <option value="SUPER_ADMIN">Quản trị viên cấp cao (Toàn quyền)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="create-foot">
+          <button type="submit" class="adm-btn adm-btn-gold" :disabled="busy">
+            <AdminIcon name="check" :size="16" />
+            <span>{{ busy ? 'Đang khởi tạo...' : 'Tạo Tài Khoản Nhân Sự' }}</span>
+          </button>
+        </div>
+      </form>
+    </Transition>
+
+    <!-- Danh sách Tài khoản hiện có -->
+    <div class="adm-card">
+      <div class="adm-toolbar">
+        <div class="adm-toolbar-row">
+          <div class="adm-search-box">
+            <AdminIcon name="search" :size="16" class="search-ico" />
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="Tìm theo tài khoản, họ tên hoặc số điện thoại..."
+            />
+          </div>
+          <span class="adm-hint">Tổng cộng {{ filteredUsers.length }} tài khoản trong hệ thống</span>
+        </div>
+      </div>
+
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th>Tài Khoản</th>
+              <th>Họ Tên Nhân Sự</th>
+              <th>Số Điện Thoại</th>
+              <th>Cấp Độ Phân Quyền</th>
+              <th>Trạng Thái</th>
+              <th class="th-right">Thao Tác Bảo Mật</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in filteredUsers" :key="user.id">
+              <td>
+                <div class="user-id-cell">
+                  <div class="u-avatar">{{ getInitials(user.full_name || user.username) }}</div>
+                  <div>
+                    <strong class="u-login">{{ user.username }}</strong>
+                    <span v-if="user.id === currentUserId" class="you-tag">Đang đăng nhập</span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ user.full_name }}</td>
+              <td>{{ user.phone || '—' }}</td>
+              <td>
+                <select
+                  class="adm-status-select adm-status-blue"
+                  :value="user.role"
+                  :disabled="busy || !user.is_active"
+                  @change="changeRole(user, $event.target.value)"
+                >
+                  <option value="SUPER_ADMIN">Quản trị cấp cao</option>
+                  <option value="SALES">Chuyên viên kinh doanh</option>
+                  <option value="INVENTORY">Quản lý kho</option>
+                </select>
+              </td>
+              <td>
+                <span :class="['adm-badge', user.is_active ? 'adm-badge-green' : 'adm-badge-red']">
+                  {{ user.is_active ? 'Đang hoạt động' : 'Đã khóa' }}
+                </span>
+              </td>
+              <td>
+                <div class="action-group">
+                  <button
+                    type="button"
+                    class="adm-btn adm-btn-sm adm-btn-ghost"
+                    :disabled="busy"
+                    @click="openPasswordReset(user)"
+                  >
+                    <AdminIcon name="key" :size="14" />
+                    <span>Đổi mật khẩu</span>
+                  </button>
+
+                  <button
+                    v-if="user.is_active && user.id !== currentUserId"
+                    type="button"
+                    class="adm-btn adm-btn-sm adm-btn-danger"
+                    :disabled="busy"
+                    @click="toggleUserActive(user, false)"
+                  >
+                    <AdminIcon name="lock" :size="14" />
+                    <span>Khóa</span>
+                  </button>
+
+                  <button
+                    v-else-if="!user.is_active"
+                    type="button"
+                    class="adm-btn adm-btn-sm adm-btn-export"
+                    :disabled="busy"
+                    @click="toggleUserActive(user, true)"
+                  >
+                    <AdminIcon name="check" :size="14" />
+                    <span>Mở khóa</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="!filteredUsers.length">
+              <td colspan="6" class="adm-empty">Không tìm thấy tài khoản nhân sự phù hợp.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal Đặt Lại Mật Khẩu -->
+    <div v-if="pwdModalUser" class="adm-modal-backdrop" @click.self="pwdModalUser = null">
+      <div class="adm-modal pwd-modal">
+        <div class="adm-modal-head">
+          <div>
+            <h3>Cấp Lại Mật Khẩu: {{ pwdModalUser.username }}</h3>
+            <p>Mật khẩu mới bắt buộc từ 12 ký tự trở lên để đảm bảo an toàn</p>
+          </div>
+          <button type="button" class="adm-modal-close" @click="pwdModalUser = null">
+            <AdminIcon name="x" :size="18" />
+          </button>
+        </div>
+
+        <form @submit.prevent="submitPasswordReset">
+          <div class="adm-modal-body">
+            <div class="adm-field">
+              <label>Mật khẩu mới (&ge; 12 ký tự)</label>
+              <div class="pwd-box">
+                <input
+                  :type="showResetPwd ? 'text' : 'password'"
+                  v-model="newPassword"
+                  minlength="12"
+                  maxlength="128"
+                  required
+                  placeholder="Nhập mật khẩu mới..."
+                  autocomplete="new-password"
+                />
+                <button type="button" class="pwd-eye" @click="showResetPwd = !showResetPwd">
+                  <AdminIcon :name="showResetPwd ? 'eye-off' : 'eye'" :size="16" />
+                </button>
+              </div>
+              <span class="adm-hint">Đã nhập: {{ newPassword.length }}/12+ ký tự</span>
+            </div>
+          </div>
+
+          <div class="adm-modal-foot">
+            <button type="button" class="adm-btn adm-btn-ghost" @click="pwdModalUser = null">Hủy</button>
+            <button type="submit" class="adm-btn adm-btn-gold" :disabled="busy">
+              <AdminIcon name="check" :size="16" />
+              <span>Cập Nhật Mật Khẩu</span>
+            </button>
           </div>
         </form>
       </div>
     </div>
-  </section>
+  </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { apiRequest } from '../../utils/api'
 import { useAuthStore } from '../../stores/authStore'
+import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const auth = useAuthStore()
 const currentUserId = computed(() => auth.currentUser?.id)
+
 const users = ref([])
+const searchQuery = ref('')
+const showCreateForm = ref(true)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
 const showCreatePwd = ref(false)
 const showResetPwd = ref(false)
-const form = reactive({ username: '', fullName: '', phone: '', password: '', role: 'SALES' })
+
+const form = reactive({
+  username: '',
+  fullName: '',
+  phone: '',
+  password: '',
+  role: 'SALES'
+})
 
 const pwdModalUser = ref(null)
 const newPassword = ref('')
+
+const countByRole = (role) => users.value.filter(u => u.role === role).length
+
+const getInitials = (str) => {
+  const s = String(str || 'TA').trim()
+  const parts = s.split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return s.slice(0, 2).toUpperCase()
+}
+
+const filteredUsers = computed(() => {
+  const kw = searchQuery.value.toLowerCase().trim()
+  if (!kw) return users.value
+  return users.value.filter(
+    u =>
+      u.username?.toLowerCase().includes(kw) ||
+      u.full_name?.toLowerCase().includes(kw) ||
+      u.phone?.includes(kw)
+  )
+})
 
 const loadUsers = async () => {
   try {
@@ -232,10 +396,13 @@ const changeRole = async (user, role) => {
   error.value = ''
   message.value = ''
   try {
-    const response = await apiRequest(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ role }) })
+    const response = await apiRequest(`/admin/users/${user.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    })
     Object.assign(user, response.data)
     if (response.newToken) auth.updateSessionToken(response.newToken, response.data)
-    message.value = `Đã cập nhật vai trò cho ${user.username}.`
+    message.value = `Đã cập nhật phân quyền cho tài khoản ${user.username}.`
   } catch (err) {
     error.value = err.message || 'Không cập nhật được vai trò.'
     await loadUsers()
@@ -251,7 +418,10 @@ const toggleUserActive = async (user, nextActive) => {
   error.value = ''
   message.value = ''
   try {
-    const response = await apiRequest(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: nextActive }) })
+    const response = await apiRequest(`/admin/users/${user.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive: nextActive })
+    })
     Object.assign(user, response.data)
     message.value = `Đã ${actionLabel.toLowerCase()} tài khoản ${user.username}.`
   } catch (err) {
@@ -297,128 +467,115 @@ onMounted(loadUsers)
 </script>
 
 <style scoped>
-.users-view { display: flex; flex-direction: column; gap: 20px; }
-.panel-box {
-  background: linear-gradient(180deg, rgba(22, 27, 45, 0.92), rgba(14, 18, 30, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-card), var(--inner-highlight);
+.th-right {
+  text-align: right;
 }
-h2, h3 { color: #fff; margin-bottom: 8px; }
-p { color: var(--text-muted); }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 18px 0; }
-label { display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary); font-size: .85rem; font-weight: 700; }
-.field-hint { font-size: 0.74rem; font-weight: 500; color: var(--text-muted); }
-input, select {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-sm);
-  color: #fff;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+
+.feedback-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
-input:focus, select:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+
+.feedback-banner.error {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
 }
-.pwd-input-wrap {
+
+.feedback-banner.success {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+.create-user-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.pwd-box {
   position: relative;
   display: flex;
   align-items: center;
 }
-.pwd-input-wrap input {
-  padding-right: 54px;
-}
-.pwd-eye-btn {
-  position: absolute;
-  right: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-.list-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.btn-reload {
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  color: #93c5fd;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-table { width: 100%; border-collapse: collapse; color: var(--text-secondary); }
-th { text-align: left; font-size: 0.74rem; font-weight: 800; color: var(--text-subtle); text-transform: uppercase; padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-td { text-align: left; padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
-.table-wrap { overflow-x: auto; }
-.state-pill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.active-pill { background: rgba(34, 197, 94, 0.15); color: #86efac; }
-.locked-pill { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
-.user-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-reset-pwd { color: #93c5fd; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.35); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
-.btn-disable { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
-.btn-enable { color: #86efac; background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.38); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
-.error-banner {
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.38);
-  color: #fca5a5;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  margin: 12px 0;
-}
-.message-banner {
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.38);
-  color: #86efac;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  margin: 12px 0;
+
+.pwd-box input {
+  padding-right: 42px;
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
+.pwd-eye {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  color: #94a3b8;
+  padding: 4px;
+  display: flex;
+}
+
+.pwd-eye:hover {
+  color: #f8fafc;
+}
+
+.create-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.user-id-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.u-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.32);
+  color: #93c5fd;
+  font-size: 0.76rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  flex-shrink: 0;
 }
-.modal-window {
-  width: 100%;
-  max-width: 440px;
-  padding: 24px;
-  border-radius: var(--radius-lg);
-}
-.sub-note { font-size: 0.82rem; margin-bottom: 14px; }
-.pwd-form { display: flex; flex-direction: column; gap: 14px; }
-.pwd-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
-@media(max-width: 700px) {
-  .table-wrap table { min-width: 750px; }
-  input, select { min-height: 44px; font-size: 16px; }
+.u-login {
+  display: block;
+  color: #f8fafc;
+  font-size: 0.86rem;
+}
+
+.you-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fcb728;
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pwd-modal {
+  max-width: 460px;
 }
 </style>

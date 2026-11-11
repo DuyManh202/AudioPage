@@ -1,192 +1,277 @@
 <template>
-  <div class="combos-admin-view">
-    <div class="header-box">
+  <div class="adm-page">
+    <!-- Đầu trang Cấu Hình Gói Dàn -->
+    <div class="adm-page-head">
       <div>
-        <h2>Cấu Hình 2 Gói Dàn Karaoke Trọn Bộ</h2>
-        <p class="header-sub">
-          Đây là 2 sản phẩm lõi (Core Offer). Chỉnh sửa giá bán, tổng giá trị thực, video thực tế, danh sách thiết bị và quà tặng rồi bấm <strong>Lưu &amp; Đồng Bộ Lên Website</strong>.
+        <h1 class="adm-page-title">Cấu Hình Gói Dàn Karaoke Trọn Bộ</h1>
+        <p class="adm-page-sub">
+          Quản lý sản phẩm chủ lực (Core Offer) hiển thị ngay đầu Trang Chủ — chỉnh sửa giá trọn gói, video hát thử thực tế, danh mục thiết bị và quà tặng đi kèm.
         </p>
+      </div>
+      <div class="adm-head-actions">
+        <router-link to="/#combo-packages" target="_blank" class="adm-btn adm-btn-ghost">
+          <AdminIcon name="globe" :size="15" />
+          <span>Xem Ngoài Trang Chủ</span>
+        </router-link>
       </div>
     </div>
 
+    <!-- Lưới Chỉnh Sửa 2 Gói Dàn -->
     <div class="combos-grid">
       <div
         v-for="combo in adminStore.combos"
         :key="combo.id"
-        class="combo-edit-card"
+        class="adm-card combo-panel"
       >
         <template v-if="drafts[combo.id]">
-          <div class="card-head">
-            <div class="badge-row">
-              <input
-                type="text"
-                class="badge-input"
-                v-model="drafts[combo.id].badge"
-                @input="markDirty(combo.id)"
-                placeholder="Nhãn gói dàn"
-              />
-              <input
-                type="text"
-                class="room-input"
-                v-model="drafts[combo.id].roomSize"
-                @input="markDirty(combo.id)"
-                placeholder="Diện tích phòng..."
-              />
+          <!-- Thanh Trạng Thái Đầu Thẻ -->
+          <div class="combo-panel-head">
+            <div class="combo-head-badges">
+              <span class="adm-badge adm-badge-gold">{{ drafts[combo.id].badge || 'Gói Dàn Chủ Lực' }}</span>
+              <span class="adm-badge adm-badge-blue">{{ drafts[combo.id].roomSize || 'Phòng gia đình' }}</span>
             </div>
-            <input
-              type="text"
-              class="combo-title-input"
-              v-model="drafts[combo.id].name"
-              @input="markDirty(combo.id)"
-            />
-            <textarea
-              rows="2"
-              class="combo-tagline-input"
-              v-model="drafts[combo.id].tagline"
-              @input="markDirty(combo.id)"
-            ></textarea>
+            <span v-if="dirtyMap[combo.id]" class="adm-badge adm-badge-red">Chưa lưu thay đổi</span>
+            <span v-else class="adm-badge adm-badge-green">Đã đồng bộ CSDL</span>
           </div>
 
-          <div class="video-config-box">
-            <div class="box-title">🎥 Video Mô Tả &amp; Hát Thử Thực Tế</div>
-
-            <div class="form-group-sm">
-              <label>Link Video YouTube hoặc File MP4:</label>
-              <input
-                type="text"
-                v-model="drafts[combo.id].videoUrl"
-                @input="markDirty(combo.id)"
-                placeholder="https://www.youtube.com/watch?v=..."
-              />
-            </div>
-
-            <div class="form-group-sm">
-              <label>Tiêu Đề Video:</label>
-              <input
-                type="text"
-                v-model="drafts[combo.id].videoTitle"
-                @input="markDirty(combo.id)"
-                placeholder="Ví dụ: Video Hát Thử Dàn Tại Nhà Khách..."
-              />
-            </div>
-
-            <div class="combo-video-preview" v-if="getEmbed(drafts[combo.id].videoUrl)">
-              <video
-                v-if="isDirectVideo(drafts[combo.id].videoUrl)"
-                :src="getEmbed(drafts[combo.id].videoUrl)"
-                controls
-                preload="metadata"
-                playsinline
-              ></video>
-              <iframe
-                v-else
-                :src="getEmbed(drafts[combo.id].videoUrl)"
-                title="Video test dàn"
-                frameborder="0"
-                allowfullscreen
-              ></iframe>
-            </div>
-          </div>
-
-          <div class="price-editor-box">
-            <div class="price-input-group">
-              <label>Giá Bán Trọn Gói (VNĐ):</label>
-              <input
-                type="number"
-                v-model.number="drafts[combo.id].price"
-                @input="markDirty(combo.id)"
-              />
-            </div>
-
-            <div class="price-input-group">
-              <label>Giá Ưu Đãi Nhanh / CK (VNĐ):</label>
-              <input
-                type="number"
-                v-model.number="drafts[combo.id].fastActionPrice"
-                @input="markDirty(combo.id)"
-              />
-            </div>
-
-            <div class="price-input-group">
-              <label>Giá Niêm Yết Thiết Bị (VNĐ):</label>
-              <input
-                type="number"
-                v-model.number="drafts[combo.id].listPrice"
-                @input="markDirty(combo.id)"
-              />
-            </div>
-
-            <div class="price-input-group">
-              <label>Tổng Giá Trị Thật + Quà (VNĐ):</label>
-              <input
-                type="number"
-                v-model.number="drafts[combo.id].totalRealValue"
-                @input="markDirty(combo.id)"
-              />
-            </div>
-          </div>
-
-          <div class="components-editor">
-            <div class="editor-head">
-              <h4>Thiết Bị Cấu Thành ({{ drafts[combo.id].components.length }}):</h4>
-              <button type="button" class="mini-add-btn" @click="addComponent(combo.id)">+ Thêm thiết bị</button>
-            </div>
-            <div class="comp-edit-list">
-              <div v-for="(comp, idx) in drafts[combo.id].components" :key="idx" class="comp-edit-row">
-                <div class="comp-fields">
-                  <input
-                    type="text"
-                    v-model="comp.item"
-                    @input="markDirty(combo.id)"
-                    placeholder="Tên & số lượng thiết bị..."
-                  />
-                  <input
-                    type="text"
-                    v-model="comp.role"
-                    @input="markDirty(combo.id)"
-                    placeholder="Vai trò âm học..."
-                  />
-                </div>
-                <button type="button" class="mini-del-btn" @click="removeComponent(combo.id, idx)" title="Xóa dòng">&times;</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="gifts-editor">
-            <div class="editor-head">
-              <h4>🎁 Quà Tặng &amp; Dịch Vụ Kèm ({{ drafts[combo.id].gifts.length }}):</h4>
-              <button type="button" class="mini-add-btn" @click="addGift(combo.id)">+ Thêm quà tặng</button>
-            </div>
-            <div class="gift-edit-list">
-              <div v-for="(_, gIdx) in drafts[combo.id].gifts" :key="gIdx" class="gift-edit-row">
+          <div class="combo-panel-body">
+            <!-- Thông tin tiêu đề & nhãn -->
+            <div class="adm-form-grid">
+              <div class="adm-field">
+                <label>Nhãn Nổi Bật Gói Dàn</label>
                 <input
                   type="text"
-                  v-model="drafts[combo.id].gifts[gIdx]"
+                  v-model="drafts[combo.id].badge"
                   @input="markDirty(combo.id)"
-                  placeholder="Nội dung quà tặng / bảo hành..."
+                  placeholder="Bán Chạy Số 1 / Tiết Kiệm Nhất..."
                 />
-                <button type="button" class="mini-del-btn" @click="removeGift(combo.id, gIdx)" title="Xóa quà">&times;</button>
+              </div>
+              <div class="adm-field">
+                <label>Diện Tích Phòng Đề Xuất</label>
+                <input
+                  type="text"
+                  v-model="drafts[combo.id].roomSize"
+                  @input="markDirty(combo.id)"
+                  placeholder="Phòng 25 - 45m²..."
+                />
+              </div>
+            </div>
+
+            <div class="adm-field">
+              <label>Tên Gói Dàn Trọn Bộ</label>
+              <input
+                type="text"
+                class="title-strong-input"
+                v-model="drafts[combo.id].name"
+                @input="markDirty(combo.id)"
+              />
+            </div>
+
+            <div class="adm-field">
+              <label>Mô Tả Giá Trị Cốt Lõi (Tagline)</label>
+              <textarea
+                rows="2"
+                v-model="drafts[combo.id].tagline"
+                @input="markDirty(combo.id)"
+              ></textarea>
+            </div>
+
+            <!-- Cấu hình Giá & Tiết kiệm -->
+            <div class="pricing-block">
+              <div class="block-label-row">
+                <span class="sub-title">Bảng Định Giá &amp; Ưu Đãi Trọn Bộ</span>
+                <span class="saved-live">
+                  Khách tiết kiệm: <strong>{{ formatCurrency(calcSaved(drafts[combo.id])) }}</strong>
+                </span>
+              </div>
+
+              <div class="adm-form-grid">
+                <div class="adm-field">
+                  <label>Giá Bán Trọn Gói ({{ formatCurrency(drafts[combo.id].price) }})</label>
+                  <input
+                    type="number"
+                    min="0"
+                    v-model.number="drafts[combo.id].price"
+                    @input="markDirty(combo.id)"
+                  />
+                </div>
+
+                <div class="adm-field">
+                  <label>Giá Ưu Đãi Chuyển Khoản ({{ formatCurrency(drafts[combo.id].fastActionPrice) }})</label>
+                  <input
+                    type="number"
+                    min="0"
+                    v-model.number="drafts[combo.id].fastActionPrice"
+                    @input="markDirty(combo.id)"
+                  />
+                </div>
+
+                <div class="adm-field">
+                  <label>Giá Lẻ Cộng Gộp ({{ formatCurrency(drafts[combo.id].listPrice) }})</label>
+                  <input
+                    type="number"
+                    min="0"
+                    v-model.number="drafts[combo.id].listPrice"
+                    @input="markDirty(combo.id)"
+                  />
+                </div>
+
+                <div class="adm-field">
+                  <label>Tổng Giá Trị Kèm Quà ({{ formatCurrency(drafts[combo.id].totalRealValue) }})</label>
+                  <input
+                    type="number"
+                    min="0"
+                    v-model.number="drafts[combo.id].totalRealValue"
+                    @input="markDirty(combo.id)"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Video Test Dàn Thực Tế -->
+            <div class="video-block">
+              <div class="block-label-row">
+                <span class="sub-title">
+                  <AdminIcon name="video" :size="15" />
+                  Video Hát Thử Thực Tế
+                </span>
+              </div>
+
+              <div class="adm-form-grid">
+                <div class="adm-field">
+                  <label>Đường Dẫn YouTube hoặc MP4</label>
+                  <input
+                    type="text"
+                    v-model="drafts[combo.id].videoUrl"
+                    @input="markDirty(combo.id)"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                </div>
+                <div class="adm-field">
+                  <label>Tiêu Đề Video</label>
+                  <input
+                    type="text"
+                    v-model="drafts[combo.id].videoTitle"
+                    @input="markDirty(combo.id)"
+                    placeholder="Video Test Dàn Tại Nhà Khách..."
+                  />
+                </div>
+              </div>
+
+              <div v-if="getEmbed(drafts[combo.id].videoUrl)" class="video-embed-box">
+                <video
+                  v-if="isDirectVideo(drafts[combo.id].videoUrl)"
+                  :src="getEmbed(drafts[combo.id].videoUrl)"
+                  controls
+                  preload="metadata"
+                  playsinline
+                ></video>
+                <iframe
+                  v-else
+                  :src="getEmbed(drafts[combo.id].videoUrl)"
+                  title="Video test dàn"
+                  frameborder="0"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </div>
+
+            <!-- Danh mục Thiết bị cấu thành -->
+            <div class="list-editor-block">
+              <div class="block-label-row">
+                <span class="sub-title">Thiết Bị Trong Bộ Dàn ({{ drafts[combo.id].components.length }})</span>
+                <button type="button" class="adm-btn adm-btn-sm adm-btn-ghost" @click="addComponent(combo.id)">
+                  <AdminIcon name="plus" :size="13" /> Thêm thiết bị
+                </button>
+              </div>
+
+              <div class="rows-stack">
+                <div
+                  v-for="(comp, idx) in drafts[combo.id].components"
+                  :key="idx"
+                  class="comp-item-row"
+                >
+                  <div class="comp-inputs">
+                    <input
+                      type="text"
+                      v-model="comp.item"
+                      @input="markDirty(combo.id)"
+                      placeholder="Tên & số lượng thiết bị (vd: Đôi Loa Full 30 PF 12 Pro)..."
+                    />
+                    <input
+                      type="text"
+                      v-model="comp.role"
+                      @input="markDirty(combo.id)"
+                      placeholder="Vai trò âm học (vd: Tái tạo tiếng ca dày, sáng rõ)..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="row-del-btn"
+                    @click="removeComponent(combo.id, idx)"
+                    title="Xóa thiết bị này"
+                  >
+                    <AdminIcon name="x" :size="14" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Danh mục Quà tặng & Dịch vụ -->
+            <div class="list-editor-block">
+              <div class="block-label-row">
+                <span class="sub-title">Quà Tặng &amp; Đặc Quyền Kèm Theo ({{ drafts[combo.id].gifts.length }})</span>
+                <button type="button" class="adm-btn adm-btn-sm adm-btn-ghost" @click="addGift(combo.id)">
+                  <AdminIcon name="plus" :size="13" /> Thêm quà tặng
+                </button>
+              </div>
+
+              <div class="rows-stack">
+                <div
+                  v-for="(_, gIdx) in drafts[combo.id].gifts"
+                  :key="gIdx"
+                  class="gift-item-row"
+                >
+                  <input
+                    type="text"
+                    v-model="drafts[combo.id].gifts[gIdx]"
+                    @input="markDirty(combo.id)"
+                    placeholder="Nội dung quà tặng / cam kết lắp đặt..."
+                  />
+                  <button
+                    type="button"
+                    class="row-del-btn"
+                    @click="removeGift(combo.id, gIdx)"
+                    title="Xóa dòng quà tặng"
+                  >
+                    <AdminIcon name="x" :size="14" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="card-foot">
-            <span class="saved-badge">
-              Tiết kiệm thực cho khách: {{ formatCurrency(calcSaved(drafts[combo.id])) }}
+          <!-- Chân thẻ: Lưu đồng bộ -->
+          <div class="combo-panel-foot">
+            <span class="foot-note">
+              Giá bán hiển thị: <strong>{{ formatCurrency(drafts[combo.id].price) }}</strong>
             </span>
             <button
               type="button"
-              class="btn-primary"
+              class="adm-btn adm-btn-gold"
               :disabled="savingId === combo.id"
               @click="saveCombo(combo.id)"
             >
-              {{
-                savingId === combo.id
-                  ? '⏳ Đang Lưu...'
-                  : dirtyMap[combo.id]
-                    ? '💾 Lưu & Đồng Bộ Lên Website'
-                    : '✓ Đã Đồng Bộ (Bấm Lưu Lại)'
-              }}
+              <AdminIcon name="check" :size="16" />
+              <span>
+                {{
+                  savingId === combo.id
+                    ? 'Đang lưu lên CSDL...'
+                    : dirtyMap[combo.id]
+                      ? 'Lưu & Đồng Bộ Lên Website'
+                      : 'Lưu Cập Nhật Gói Dàn'
+                }}
+              </span>
             </button>
           </div>
         </template>
@@ -201,6 +286,7 @@ import { useAdminStore } from '../../stores/adminStore'
 import { useProductStore } from '../../stores/productStore'
 import { formatCurrency } from '../../utils/formatters'
 import { getEmbedVideoUrl, isDirectVideo } from '../../utils/videoHelper'
+import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const adminStore = useAdminStore()
 const productStore = useProductStore()
@@ -223,7 +309,9 @@ const syncDraftsFromStore = (combos) => {
         totalRealValue: Number(c.totalRealValue || c.listPrice) || 0,
         videoUrl: c.videoUrl || '',
         videoTitle: c.videoTitle || '',
-        components: Array.isArray(c.components) ? c.components.map(x => ({ item: x.item || '', role: x.role || '' })) : [],
+        components: Array.isArray(c.components)
+          ? c.components.map(x => ({ item: x.item || '', role: x.role || '' }))
+          : [],
         gifts: Array.isArray(c.gifts) ? [...c.gifts] : []
       }
       dirtyMap[c.id] = false
@@ -231,9 +319,13 @@ const syncDraftsFromStore = (combos) => {
   }
 }
 
-watch(() => adminStore.combos, (list) => {
-  syncDraftsFromStore(list)
-}, { immediate: true, deep: true })
+watch(
+  () => adminStore.combos,
+  (list) => {
+    syncDraftsFromStore(list)
+  },
+  { immediate: true, deep: true }
+)
 
 const markDirty = (comboId) => {
   dirtyMap[comboId] = true
@@ -295,7 +387,7 @@ const saveCombo = async (comboId) => {
     dirtyMap[comboId] = false
     await productStore.refreshProducts()
   } catch {
-    // adminStore.adminNotice displays exact server error
+    // Error handled in store
   } finally {
     savingId.value = ''
   }
@@ -303,311 +395,183 @@ const saveCombo = async (comboId) => {
 </script>
 
 <style scoped>
-.combos-admin-view {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.header-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  padding: 24px;
-  border-radius: var(--radius-md);
-}
-
-.header-box h2 {
-  font-size: 1.5rem;
-  color: #fff;
-  margin-bottom: 6px;
-}
-
-.header-sub {
-  font-size: 0.9rem;
-  color: #94a3b8;
-}
-
 .combos-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 20px;
 }
 
-.combo-edit-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 26px;
+.combo-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
 }
 
-.badge-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.combo-panel-head {
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(9, 12, 21, 0.55);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.combo-head-badges {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
-.badge-input,
-.room-input,
-.combo-title-input,
-.combo-tagline-input {
-  width: 100%;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-sm);
-  color: #fff;
-  padding: 8px 10px;
-  outline: none;
+.combo-panel-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
 }
 
-.badge-input {
-  color: var(--color-primary);
+.title-strong-input {
   font-weight: 800;
-  font-size: 0.8rem;
+  font-size: 1rem !important;
+  color: #fcb728 !important;
 }
 
-.room-input {
-  color: #93c5fd;
-  font-size: 0.8rem;
-}
-
-.combo-title-input {
-  font-size: 1.15rem;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.combo-tagline-input {
-  font-size: 0.84rem;
-  color: #cbd5e1;
-  resize: vertical;
-}
-
-.video-config-box {
-  background: rgba(40, 55, 252, 0.08);
-  border: 1px solid rgba(40, 55, 252, 0.35);
-  border-radius: var(--radius-md);
-  padding: 16px;
+.pricing-block,
+.video-block,
+.list-editor-block {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(9, 12, 21, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.box-title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #93c5fd;
-  text-transform: uppercase;
+.block-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.form-group-sm label {
-  display: block;
+.sub-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: #cbd5e1;
-  margin-bottom: 4px;
 }
 
-.form-group-sm input {
+.saved-live {
+  font-size: 0.78rem;
+  color: #86efac;
+}
+
+.video-embed-box {
   width: 100%;
-  padding: 8px 12px;
-  background: var(--bg-dark-900);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: #fff;
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.form-group-sm input:focus {
-  border-color: var(--color-primary);
-}
-
-.combo-video-preview {
-  position: relative;
-  width: 100%;
-  padding-top: 56.25%;
-  border-radius: var(--radius-sm);
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
   overflow: hidden;
-  background: #000;
-  margin-top: 4px;
+  background: #05070d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.combo-video-preview iframe,
-.combo-video-preview video {
-  position: absolute;
-  top: 0;
-  left: 0;
+.video-embed-box iframe,
+.video-embed-box video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.price-editor-box {
-  background: rgba(13, 15, 24, 0.7);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.price-input-group {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.price-input-group label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #cbd5e1;
-}
-
-.price-input-group input {
-  width: 175px;
-  padding: 8px 12px;
-  background: var(--bg-dark-900);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--color-primary);
-  font-weight: 800;
-  font-size: 0.95rem;
-  text-align: right;
-  outline: none;
-}
-
-.editor-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.components-editor h4,
-.gifts-editor h4 {
-  font-size: 0.9rem;
-  color: #fff;
-}
-
-.mini-add-btn {
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  color: #86efac;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-
-.comp-edit-list,
-.gift-edit-list {
+.rows-stack {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.comp-edit-row,
-.gift-edit-row {
+.comp-item-row,
+.gift-item-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
 }
 
-.comp-fields {
+.comp-inputs {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-.comp-fields input,
-.gift-edit-row input {
+.comp-inputs input,
+.gift-item-row input {
   width: 100%;
-  background: var(--bg-dark-900);
+  padding: 8px 10px;
+  background: #090c15;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: #f1f5f9;
+  border-radius: 7px;
+  color: #f8fafc;
   font-size: 0.82rem;
   outline: none;
 }
 
-.comp-fields input:last-child {
+.comp-inputs input:last-child {
   color: #94a3b8;
-  font-size: 0.78rem;
+  font-size: 0.77rem;
 }
 
-.mini-del-btn {
-  width: 30px;
-  height: 32px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.14);
+.comp-inputs input:focus,
+.gift-item-row input:focus {
+  border-color: #fcb728;
+}
+
+.row-del-btn {
+  width: 32px;
+  height: 34px;
+  border-radius: 7px;
+  background: rgba(239, 68, 68, 0.12);
   color: #fca5a5;
-  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.card-foot {
-  margin-top: auto;
-  border-top: 1px solid var(--border-color);
-  padding-top: 16px;
+.row-del-btn:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+.combo-panel-foot {
+  padding: 15px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(9, 12, 21, 0.65);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.saved-badge {
+.foot-note {
   font-size: 0.82rem;
-  color: #4ade80;
-  font-weight: 700;
+  color: #94a3b8;
 }
 
-@media (max-width: 992px) {
+.foot-note strong {
+  color: #fcb728;
+}
+
+@media (max-width: 1060px) {
   .combos-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .header-box {
-    padding: 16px;
-  }
-
-  .combo-edit-card {
-    padding: 18px 14px;
-  }
-
-  .badge-row {
-    grid-template-columns: 1fr;
-  }
-
-  .price-input-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .price-input-group input {
-    width: 100%;
-    text-align: left;
-    min-height: 44px;
-    font-size: 16px;
-  }
-
-  .card-foot {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .card-foot .btn-primary {
-    width: 100%;
   }
 }
 </style>

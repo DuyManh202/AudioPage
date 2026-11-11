@@ -72,6 +72,7 @@ export const useAdminStore = defineStore('admin', {
     leadSearchKeyword: '',
     isSyncing: false,
     dbConnected: false,
+    lastSyncedAt: '',
     adminNotice: null
   }),
 
@@ -193,6 +194,7 @@ export const useAdminStore = defineStore('admin', {
 
         const allOk = results.every(result => result.status === 'fulfilled' && result.value?.success)
         this.dbConnected = allOk
+        this.lastSyncedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
         if (!silent) {
           if (allOk) {
             this.showNotice('Đã đồng bộ dữ liệu mới nhất từ Aiven PostgreSQL.', 'success')

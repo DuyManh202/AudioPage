@@ -1,109 +1,227 @@
 <template>
-  <div class="tradeins-admin-view">
-    <div class="header-box">
+  <div class="adm-page">
+    <!-- Đầu trang Thu Cũ Đổi Mới -->
+    <div class="adm-page-head">
       <div>
-        <h2>Quản Lý Yêu Cầu Thu Cũ Đổi Mới</h2>
-        <p class="header-sub">
-          Xem ảnh thiết bị cũ khách gửi lên, định giá thu hồi hợp lý để hỗ trợ khách lên đời dàn 19tr hoặc 29tr.
+        <h1 class="adm-page-title">Thẩm Định Thu Cũ Đổi Mới</h1>
+        <p class="adm-page-sub">
+          Kiểm tra ảnh thiết bị cũ khách gửi, nhập mức định giá thu hồi để hỗ trợ khách bù chênh lệch nâng cấp lên gói dàn mới.
         </p>
+      </div>
+      <div class="adm-head-actions">
+        <button type="button" class="adm-btn adm-btn-export" @click="exportTradeInsCsv">
+          <AdminIcon name="download" :size="15" />
+          <span>Xuất Excel (CSV)</span>
+        </button>
       </div>
     </div>
 
-    <div class="panel-box">
-      <div class="table-responsive">
-        <table class="admin-table">
+    <!-- 4 Chỉ số KPI Thu Cũ -->
+    <div class="adm-kpi-grid">
+      <div
+        :class="['adm-kpi-card clickable', { 'active-kpi': statusFilter === 'ALL' }]"
+        @click="statusFilter = 'ALL'"
+      >
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Tổng Yêu Cầu Thu Cũ</span>
+          <span class="adm-kpi-value">{{ adminStore.tradeIns.length }} hồ sơ</span>
+          <span class="adm-kpi-meta">Toàn bộ yêu cầu gửi lên</span>
+        </div>
+        <div class="adm-kpi-icon tone-blue">
+          <AdminIcon name="trade-ins" :size="20" />
+        </div>
+      </div>
+
+      <div
+        :class="['adm-kpi-card clickable', { 'active-kpi': statusFilter === 'CHO_DINH_GIA' }]"
+        @click="statusFilter = 'CHO_DINH_GIA'"
+      >
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Chờ Định Giá</span>
+          <span class="adm-kpi-value">{{ adminStore.pendingTradeInsCount }} yêu cầu</span>
+          <span class="adm-kpi-meta">Cần xem ảnh &amp; báo giá Zalo</span>
+        </div>
+        <div class="adm-kpi-icon tone-gold">
+          <AdminIcon name="alert" :size="20" />
+        </div>
+      </div>
+
+      <div
+        :class="['adm-kpi-card clickable', { 'active-kpi': statusFilter === 'DA_DUYET' }]"
+        @click="statusFilter = 'DA_DUYET'"
+      >
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Đã Báo Giá Khách</span>
+          <span class="adm-kpi-value">{{ quotedCount }} hồ sơ</span>
+          <span class="adm-kpi-meta">Đang chờ khách chốt lịch đổi</span>
+        </div>
+        <div class="adm-kpi-icon tone-purple">
+          <AdminIcon name="message" :size="20" />
+        </div>
+      </div>
+
+      <div
+        :class="['adm-kpi-card clickable', { 'active-kpi': statusFilter === 'DA_THU_HOI' }]"
+        @click="statusFilter = 'DA_THU_HOI'"
+      >
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Đã Thu Đổi Thành Công</span>
+          <span class="adm-kpi-value">{{ completedCount }} bộ</span>
+          <span class="adm-kpi-meta">Khách đã nâng cấp dàn mới</span>
+        </div>
+        <div class="adm-kpi-icon tone-green">
+          <AdminIcon name="check" :size="20" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Bảng & Thanh Lọc -->
+    <div class="adm-card">
+      <div class="adm-toolbar">
+        <div class="adm-toolbar-row">
+          <div class="adm-search-box">
+            <AdminIcon name="search" :size="16" class="search-ico" />
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="Tìm tên khách, số điện thoại, tên loa/amply cũ..."
+            />
+          </div>
+
+          <div class="adm-tabs">
+            <button
+              v-for="tab in statusTabs"
+              :key="tab.key"
+              type="button"
+              :class="['adm-tab', { active: statusFilter === tab.key }]"
+              @click="statusFilter = tab.key"
+            >
+              {{ tab.label }}
+              <span class="adm-tab-count">{{ tab.count }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="adm-table-wrap">
+        <table class="adm-table">
           <thead>
             <tr>
               <th>Ngày Gửi</th>
-              <th>Khách Hàng & Zalo</th>
-              <th>Ảnh Thiết Bị Cũ</th>
-              <th>Tên Thiết Bị & Tình Trạng</th>
-              <th>Muốn Đổi Lên</th>
+              <th>Khách Hàng &amp; Liên Hệ</th>
+              <th>Ảnh Thiết Bị</th>
+              <th>Thiết Bị Cũ &amp; Tình Trạng</th>
+              <th>Muốn Lên Đời</th>
               <th>Định Giá Thu Hồi (VNĐ)</th>
               <th>Trạng Thái</th>
-              <th>Xóa</th>
+              <th v-if="isSuperAdmin" class="th-right">Xóa</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in adminStore.tradeIns" :key="item.id">
+            <tr v-for="item in filteredTradeIns" :key="item.id">
               <td>
-                <span class="time-sub">{{ item.createdAt }}</span>
+                <span class="sub-line">{{ item.createdAt }}</span>
               </td>
+
               <td>
-                <strong class="customer-name">{{ item.customerName }}</strong>
-                <a :href="`tel:${cleanPhone(item.customerPhone)}`" class="phone-link">
-                  📞 {{ item.customerPhone }}
-                </a>
-                <a 
-                  :href="`https://zalo.me/${cleanPhone(item.customerPhone)}`" 
-                  target="_blank" 
-                  class="zalo-link"
-                >
-                  💬 Nhắn Zalo
-                </a>
-                <span class="addr-sub">{{ item.customerAddress }}</span>
-              </td>
-              <td>
-                <div 
-                  v-if="item.oldDeviceImages" 
-                  class="old-img-thumb" 
-                  @click="previewImage = item.oldDeviceImages"
-                  title="Bấm để phóng to ảnh"
-                >
-                  <img :src="item.oldDeviceImages" alt="Thiết bị cũ" />
+                <strong class="cust-name">{{ item.customerName }}</strong>
+                <div class="adm-contact-row">
+                  <a :href="`tel:${cleanPhone(item.customerPhone)}`" class="adm-contact-chip">
+                    <AdminIcon name="phone" :size="12" />
+                    {{ item.customerPhone }}
+                  </a>
+                  <a
+                    :href="`https://zalo.me/${cleanPhone(item.customerPhone)}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="adm-contact-chip zalo"
+                  >
+                    Zalo
+                  </a>
                 </div>
-                <span v-else class="no-img">Không có ảnh</span>
+                <span class="sub-line">{{ item.customerAddress }}</span>
               </td>
-              <td>
-                <strong class="device-name">{{ item.oldDeviceName }}</strong>
-                <span class="cond-note">{{ item.conditionNote || 'Không có mô tả thêm' }}</span>
-              </td>
-              <td>
-                <span class="upgrade-pill">{{ item.upgradeToItem }}</span>
-              </td>
-              <td>
-                <input 
-                  type="number" 
-                  class="price-input" 
-                  :value="item.estimatedPrice" 
-                  @change="updateEstimatedPrice(item.id, $event.target.value)"
-                />
-              </td>
-              <td>
-                <select 
-                  :value="item.status" 
-                  @change="updateStatus(item.id, $event.target.value)"
-                  :class="['status-select', getStatusClass(item.status)]"
-                >
-                  <option value="CHO_DINH_GIA">🟡 Chờ Định Giá</option>
-                  <option value="DA_DUYET">🔵 Đã Báo Giá Khách</option>
-                  <option value="DA_THU_HOI">🟢 Đã Đổi Thành Công</option>
-                  <option value="HUY">⚪ Đã Hủy</option>
-                </select>
-              </td>
+
               <td>
                 <button
-                  v-if="isSuperAdmin"
-                  class="btn-del"
+                  v-if="item.oldDeviceImages"
                   type="button"
+                  class="device-thumb-btn"
+                  @click="previewImage = item.oldDeviceImages"
+                  title="Bấm để phóng to ảnh thiết bị cũ"
+                >
+                  <img :src="item.oldDeviceImages" alt="Thiết bị cũ" />
+                </button>
+                <span v-else class="adm-badge adm-badge-slate">Chưa gửi ảnh</span>
+              </td>
+
+              <td>
+                <strong class="cust-name">{{ item.oldDeviceName }}</strong>
+                <span class="cond-text">{{ item.conditionNote || 'Chưa có mô tả chi tiết' }}</span>
+              </td>
+
+              <td>
+                <span class="adm-badge adm-badge-gold">{{ item.upgradeToItem }}</span>
+              </td>
+
+              <td>
+                <div class="appraisal-box">
+                  <input
+                    type="number"
+                    min="0"
+                    class="appraisal-input"
+                    :value="item.estimatedPrice"
+                    @change="updateEstimatedPrice(item.id, $event.target.value)"
+                    placeholder="Nhập giá thu..."
+                  />
+                  <span class="appraisal-formatted">
+                    {{ item.estimatedPrice > 0 ? formatCurrency(item.estimatedPrice) : 'Chưa định giá' }}
+                  </span>
+                </div>
+              </td>
+
+              <td>
+                <select
+                  :value="item.status"
+                  @change="updateStatus(item.id, $event.target.value)"
+                  :class="['adm-status-select', getStatusClass(item.status)]"
+                >
+                  <option value="CHO_DINH_GIA">Chờ định giá</option>
+                  <option value="DA_DUYET">Đã báo giá khách</option>
+                  <option value="DA_THU_HOI">Đã đổi thành công</option>
+                  <option value="HUY">Đã hủy</option>
+                </select>
+              </td>
+
+              <td v-if="isSuperAdmin" class="th-right">
+                <button
+                  type="button"
+                  class="adm-btn adm-btn-sm adm-btn-danger"
                   @click="handleDelete(item.id)"
-                  title="Xóa"
-                >🗑️</button>
+                  title="Xóa yêu cầu"
+                >
+                  <AdminIcon name="trash" :size="14" />
+                </button>
               </td>
             </tr>
-            <tr v-if="adminStore.tradeIns.length === 0">
-              <td colspan="8" class="text-center py-4">Chưa có yêu cầu Thu Cũ Đổi Mới nào.</td>
+
+            <tr v-if="filteredTradeIns.length === 0">
+              <td :colspan="isSuperAdmin ? 8 : 7" class="adm-empty">
+                Không có yêu cầu Thu Cũ Đổi Mới nào khớp bộ lọc.
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Modal phóng to ảnh -->
-    <div v-if="previewImage" class="img-modal-backdrop" @click="previewImage = null">
-      <div class="img-modal-box">
-        <img :src="previewImage" alt="Phóng to thiết bị cũ" />
-        <p class="close-hint">Bấm ra ngoài để đóng</p>
+    <!-- Hộp phóng to ảnh thiết bị cũ -->
+    <div v-if="previewImage" class="adm-modal-backdrop" @click="previewImage = null">
+      <div class="lightbox-wrap" @click.stop>
+        <button type="button" class="lightbox-close" @click="previewImage = null">
+          <AdminIcon name="x" :size="18" />
+        </button>
+        <img :src="previewImage" alt="Ảnh thực tế thiết bị cũ của khách" />
       </div>
     </div>
   </div>
@@ -113,13 +231,62 @@
 import { ref, computed } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
+import { formatCurrency } from '../../utils/formatters'
+import { exportRowsToCsv } from '../../utils/csvExport'
+import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
+
+const searchQuery = ref('')
+const statusFilter = ref('ALL')
 const previewImage = ref(null)
 
-const cleanPhone = (phone) => phone ? phone.replace(/[^0-9]/g, '') : ''
+const cleanPhone = (phone) => (phone ? String(phone).replace(/[^0-9]/g, '') : '')
+
+const quotedCount = computed(() => adminStore.tradeIns.filter(t => t.status === 'DA_DUYET').length)
+const completedCount = computed(() => adminStore.tradeIns.filter(t => t.status === 'DA_THU_HOI').length)
+
+const statusTabs = computed(() => [
+  { key: 'ALL', label: 'Tất Cả', count: adminStore.tradeIns.length },
+  { key: 'CHO_DINH_GIA', label: 'Chờ Định Giá', count: adminStore.pendingTradeInsCount },
+  { key: 'DA_DUYET', label: 'Đã Báo Giá', count: quotedCount.value },
+  { key: 'DA_THU_HOI', label: 'Đã Đổi Xong', count: completedCount.value },
+  { key: 'HUY', label: 'Đã Hủy', count: adminStore.tradeIns.filter(t => t.status === 'HUY').length }
+])
+
+const filteredTradeIns = computed(() => {
+  const kw = searchQuery.value.toLowerCase().trim()
+  return adminStore.tradeIns.filter(t => {
+    if (statusFilter.value !== 'ALL' && t.status !== statusFilter.value) return false
+    if (!kw) return true
+    return (
+      t.customerName?.toLowerCase().includes(kw) ||
+      t.customerPhone?.includes(kw) ||
+      t.oldDeviceName?.toLowerCase().includes(kw) ||
+      t.upgradeToItem?.toLowerCase().includes(kw)
+    )
+  })
+})
+
+const exportTradeInsCsv = () => {
+  exportRowsToCsv(
+    `thu-cu-doi-moi-${new Date().toISOString().slice(0, 10)}.csv`,
+    [
+      { label: 'Ngày gửi', value: r => r.createdAt },
+      { label: 'Khách hàng', value: r => r.customerName },
+      { label: 'Điện thoại', value: r => r.customerPhone },
+      { label: 'Địa chỉ', value: r => r.customerAddress },
+      { label: 'Thiết bị cũ', value: r => r.oldDeviceName },
+      { label: 'Tình trạng', value: r => r.conditionNote || '' },
+      { label: 'Muốn đổi lên', value: r => r.upgradeToItem },
+      { label: 'Giá thu dự kiến', value: r => r.estimatedPrice || 0 },
+      { label: 'Trạng thái', value: r => r.status }
+    ],
+    filteredTradeIns.value
+  )
+}
 
 const updateEstimatedPrice = (id, val) => {
   const num = parseInt(val, 10) || 0
@@ -131,209 +298,122 @@ const updateStatus = (id, status) => {
 }
 
 const handleDelete = (id) => {
-  if (confirm('Xóa yêu cầu thu cũ đổi mới này?')) {
+  if (confirm('Anh có chắc chắn muốn xóa yêu cầu thu cũ đổi mới này?')) {
     adminStore.deleteTradeIn(id)
   }
 }
 
-const getStatusClass = (status) => {
-  switch (status) {
-    case 'CHO_DINH_GIA': return 'status-yellow'
-    case 'DA_DUYET': return 'status-blue'
-    case 'DA_THU_HOI': return 'status-green'
-    case 'HUY': return 'status-gray'
-    default: return ''
-  }
-}
+const getStatusClass = (status) => ({
+  CHO_DINH_GIA: 'adm-status-yellow',
+  DA_DUYET: 'adm-status-blue',
+  DA_THU_HOI: 'adm-status-green',
+  HUY: 'adm-status-gray'
+}[status] || '')
 </script>
 
 <style scoped>
-.tradeins-admin-view {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.th-right {
+  text-align: right;
 }
 
-.header-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  padding: 20px 24px;
-  border-radius: var(--radius-md);
-}
-
-.header-box h2 {
-  font-size: 1.4rem;
-  color: #fff;
-  margin-bottom: 4px;
-}
-
-.header-sub {
-  font-size: 0.88rem;
-  color: #94a3b8;
-}
-
-.panel-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.admin-table th {
-  text-align: left;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #64748b;
-  text-transform: uppercase;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.admin-table td {
-  padding: 14px;
+.cust-name {
+  display: block;
+  color: #f8fafc;
   font-size: 0.86rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.time-sub {
-  font-size: 0.75rem;
+.sub-line {
+  display: block;
+  font-size: 0.73rem;
   color: #64748b;
+  margin-top: 2px;
 }
 
-.customer-name {
+.cond-text {
   display: block;
-  color: #fff;
-}
-
-.phone-link {
-  display: block;
-  color: #60a5fa;
-  font-weight: 700;
-  font-size: 0.82rem;
-}
-
-.zalo-link {
-  display: inline-block;
-  color: #38bdf8;
   font-size: 0.76rem;
-  text-decoration: underline;
-  margin: 2px 0;
-}
-
-.addr-sub {
-  display: block;
-  font-size: 0.75rem;
   color: #94a3b8;
+  margin-top: 3px;
+  max-width: 240px;
 }
 
-.old-img-thumb {
-  width: 64px;
-  height: 64px;
-  border-radius: 6px;
+.device-thumb-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #090c15;
+  padding: 0;
+  transition: transform 0.16s, border-color 0.16s;
 }
 
-.old-img-thumb img {
+.device-thumb-btn:hover {
+  transform: scale(1.05);
+  border-color: #fcb728;
+}
+
+.device-thumb-btn img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.no-img {
-  font-size: 0.75rem;
-  color: #64748b;
+.appraisal-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.device-name {
-  display: block;
-  color: #f1f5f9;
-}
-
-.cond-note {
-  display: block;
-  font-size: 0.76rem;
-  color: #94a3b8;
-  max-width: 220px;
-}
-
-.upgrade-pill {
-  font-size: 0.78rem;
-  background: rgba(252, 183, 40, 0.12);
-  color: var(--color-primary);
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.price-input {
-  width: 130px;
-  padding: 7px 10px;
-  background: var(--bg-dark-900);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--color-primary);
+.appraisal-input {
+  width: 138px;
+  height: 34px;
+  padding: 0 10px;
+  background: #090c15;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  color: #fcb728;
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   outline: none;
 }
 
-.price-input:focus {
-  border-color: var(--color-primary);
+.appraisal-input:focus {
+  border-color: #fcb728;
 }
 
-.status-select {
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  border: 1px solid transparent;
-  outline: none;
+.appraisal-formatted {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 600;
 }
 
-.status-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; }
-.status-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.status-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-.status-gray { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
-
-.btn-del {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  padding: 6px 10px;
-  border-radius: 4px;
+.lightbox-wrap {
+  position: relative;
+  max-width: 88vw;
+  max-height: 86vh;
 }
 
-.py-4 { padding: 32px 0; }
-.text-center { text-align: center; }
+.lightbox-wrap img {
+  max-width: 88vw;
+  max-height: 82vh;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85);
+}
 
-.img-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  z-index: 1000;
+.lightbox-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #141a2e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-}
-
-.img-modal-box img {
-  max-width: 90vw;
-  max-height: 80vh;
-  border-radius: 10px;
-  border: 2px solid var(--color-primary);
-}
-
-.close-hint {
-  text-align: center;
-  color: #94a3b8;
-  font-size: 0.85rem;
-  margin-top: 10px;
 }
 </style>
