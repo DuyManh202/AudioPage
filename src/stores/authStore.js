@@ -55,6 +55,16 @@ export const useAuthStore = defineStore('auth', {
       return false
     },
 
+    updateSessionToken(newToken, updatedUser = null) {
+      if (!newToken) return
+      this.token = newToken
+      if (updatedUser) this.user = { ...this.user, ...updatedUser }
+      const useLocal = Boolean(localStorage.getItem('audioshop_token'))
+      const storage = useLocal ? localStorage : sessionStorage
+      storage.setItem('audioshop_token', newToken)
+      if (this.user) storage.setItem('audioshop_user', JSON.stringify(this.user))
+    },
+
     logout() {
       this.user = null
       this.token = null

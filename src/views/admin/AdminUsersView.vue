@@ -8,11 +8,46 @@
     <form class="panel-box user-form" @submit.prevent="createUser">
       <h3>Tạo tài khoản mới</h3>
       <div class="form-grid">
-        <label>Tên đăng nhập<input v-model="form.username" required minlength="3" maxlength="50" autocomplete="off" placeholder="vd: sales_hanoi"></label>
-        <label>Họ tên<input v-model="form.fullName" required maxlength="100" placeholder="vd: Nguyễn Văn Nam"></label>
-        <label>Số điện thoại<input v-model="form.phone" required type="tel" placeholder="0984..."></label>
-        <label>Mật khẩu tạm (từ 12 ký tự)<input v-model="form.password" required type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>
-        <label>Vai trò
+        <label>
+          Tên đăng nhập
+          <input
+            v-model="form.username"
+            required
+            minlength="3"
+            maxlength="50"
+            autocomplete="off"
+            placeholder="vd: dmanh hoặc sales_hanoi"
+          />
+          <span class="field-hint">Viết liền không dấu, tự chuyển thành chữ thường</span>
+        </label>
+        <label>
+          Họ tên
+          <input v-model="form.fullName" required maxlength="100" placeholder="vd: Nguyễn Duy Mạnh" />
+        </label>
+        <label>
+          Số điện thoại
+          <input v-model="form.phone" required type="tel" placeholder="vd: 0971356791" />
+        </label>
+        <label>
+          Mật khẩu tạm (từ 12 ký tự)
+          <div class="pwd-input-wrap">
+            <input
+              v-model="form.password"
+              required
+              :type="showCreatePwd ? 'text' : 'password'"
+              minlength="12"
+              maxlength="128"
+              autocomplete="new-password"
+              placeholder="Ít nhất 12 ký tự..."
+            />
+            <button type="button" class="pwd-eye-btn" @click="showCreatePwd = !showCreatePwd" title="Ẩn/hiện mật khẩu">
+              {{ showCreatePwd ? 'Ẩn' : 'Hiện' }}
+            </button>
+          </div>
+          <span class="field-hint">Đã nhập: {{ form.password.length }}/12+ ký tự</span>
+        </label>
+        <label>
+          Vai trò
           <select v-model="form.role">
             <option value="SALES">Nhân viên kinh doanh</option>
             <option value="INVENTORY">Quản lý kho</option>
@@ -20,13 +55,16 @@
           </select>
         </label>
       </div>
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
-      <p v-if="message" class="message" role="status">{{ message }}</p>
-      <button class="btn-primary" type="submit" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Tạo tài khoản' }}</button>
+      <p v-if="error" class="error-banner" role="alert">⚠️ {{ error }}</p>
+      <p v-if="message" class="message-banner" role="status">✓ {{ message }}</p>
+      <button class="btn-primary" type="submit" :disabled="busy">{{ busy ? '⏳ Đang lưu…' : 'Tạo tài khoản' }}</button>
     </form>
 
     <div class="panel-box table-wrap">
-      <h3>Tài khoản hiện có ({{ users.length }})</h3>
+      <div class="list-head">
+        <h3>Tài khoản hiện có ({{ users.length }})</h3>
+        <button type="button" class="btn-reload" :disabled="busy" @click="loadUsers">🔄 Tải lại</button>
+      </div>
       <table>
         <thead>
           <tr>
@@ -98,15 +136,20 @@
         <h3>Đặt lại mật khẩu: {{ pwdModalUser.username }}</h3>
         <p class="sub-note">Mật khẩu mới yêu cầu tối thiểu 12 ký tự.</p>
         <form @submit.prevent="submitPasswordReset" class="pwd-form">
-          <input
-            type="password"
-            v-model="newPassword"
-            minlength="12"
-            maxlength="128"
-            required
-            placeholder="Nhập mật khẩu mới (>= 12 ký tự)..."
-            autocomplete="new-password"
-          />
+          <div class="pwd-input-wrap">
+            <input
+              :type="showResetPwd ? 'text' : 'password'"
+              v-model="newPassword"
+              minlength="12"
+              maxlength="128"
+              required
+              placeholder="Nhập mật khẩu mới (>= 12 ký tự)..."
+              autocomplete="new-password"
+            />
+            <button type="button" class="pwd-eye-btn" @click="showResetPwd = !showResetPwd">
+              {{ showResetPwd ? 'Ẩn' : 'Hiện' }}
+            </button>
+          </div>
           <div class="pwd-actions">
             <button type="button" class="btn-outline" @click="pwdModalUser = null">Hủy</button>
             <button type="submit" class="btn-primary" :disabled="busy">Cập nhật mật khẩu</button>
@@ -118,16 +161,18 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { apiRequest } from '../../utils/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const auth = useAuthStore()
-const currentUserId = auth.currentUser.id
+const currentUserId = computed(() => auth.currentUser?.id)
 const users = ref([])
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
+const showCreatePwd = ref(false)
+const showResetPwd = ref(false)
 const form = reactive({ username: '', fullName: '', phone: '', password: '', role: 'SALES' })
 
 const pwdModalUser = ref(null)
@@ -143,17 +188,37 @@ const loadUsers = async () => {
 }
 
 const createUser = async () => {
+  const cleanUsername = form.username.trim().toLowerCase()
+  if (!/^[a-z0-9._-]{3,50}$/.test(cleanUsername)) {
+    error.value = 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm hoặc gạch nối (3–50 ký tự, viết liền không khoảng trắng).'
+    return
+  }
+  if (form.password.length < 12) {
+    error.value = `Mật khẩu cần ít nhất 12 ký tự (hiện tại ${form.password.length} ký tự).`
+    return
+  }
+
   busy.value = true
   error.value = ''
   message.value = ''
   try {
-    await apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(form) })
+    const res = await apiRequest('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: cleanUsername,
+        fullName: form.fullName.trim(),
+        phone: form.phone.trim(),
+        password: form.password,
+        role: form.role
+      })
+    })
     form.username = ''
     form.fullName = ''
     form.phone = ''
     form.password = ''
     form.role = 'SALES'
-    message.value = 'Đã tạo tài khoản nhân viên thành công.'
+    showCreatePwd.value = false
+    message.value = `Đã tạo tài khoản "${res.data?.username || cleanUsername}" thành công.`
     await loadUsers()
   } catch (err) {
     error.value = err.message || 'Không tạo được tài khoản.'
@@ -169,6 +234,7 @@ const changeRole = async (user, role) => {
   try {
     const response = await apiRequest(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify({ role }) })
     Object.assign(user, response.data)
+    if (response.newToken) auth.updateSessionToken(response.newToken, response.data)
     message.value = `Đã cập nhật vai trò cho ${user.username}.`
   } catch (err) {
     error.value = err.message || 'Không cập nhật được vai trò.'
@@ -198,6 +264,7 @@ const toggleUserActive = async (user, nextActive) => {
 const openPasswordReset = (user) => {
   pwdModalUser.value = user
   newPassword.value = ''
+  showResetPwd.value = false
   error.value = ''
   message.value = ''
 }
@@ -211,10 +278,11 @@ const submitPasswordReset = async () => {
   error.value = ''
   message.value = ''
   try {
-    await apiRequest(`/admin/users/${pwdModalUser.value.id}`, {
+    const response = await apiRequest(`/admin/users/${pwdModalUser.value.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ password: newPassword.value })
     })
+    if (response.newToken) auth.updateSessionToken(response.newToken, response.data)
     message.value = `Đã đổi mật khẩu cho tài khoản ${pwdModalUser.value.username}.`
     pwdModalUser.value = null
     newPassword.value = ''
@@ -239,9 +307,11 @@ onMounted(loadUsers)
 }
 h2, h3 { color: #fff; margin-bottom: 8px; }
 p { color: var(--text-muted); }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 18px 0; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 18px 0; }
 label { display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary); font-size: .85rem; font-weight: 700; }
+.field-hint { font-size: 0.74rem; font-weight: 500; color: var(--text-muted); }
 input, select {
+  width: 100%;
   padding: 10px 12px;
   background: var(--bg-dark-900);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -253,6 +323,41 @@ input, select {
 input:focus, select:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+}
+.pwd-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pwd-input-wrap input {
+  padding-right: 54px;
+}
+.pwd-eye-btn {
+  position: absolute;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.btn-reload {
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 table { width: 100%; border-collapse: collapse; color: var(--text-secondary); }
 th { text-align: left; font-size: 0.74rem; font-weight: 800; color: var(--text-subtle); text-transform: uppercase; padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
@@ -272,8 +377,24 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .btn-reset-pwd { color: #93c5fd; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.35); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
 .btn-disable { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
 .btn-enable { color: #86efac; background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.38); padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
-.error { color: #fca5a5; margin: 12px 0; }
-.message { color: #86efac; margin: 12px 0; }
+.error-banner {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  color: #fca5a5;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin: 12px 0;
+}
+.message-banner {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.38);
+  color: #86efac;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin: 12px 0;
+}
 
 .modal-backdrop {
   position: fixed;

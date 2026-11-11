@@ -12,10 +12,11 @@ CREATE TABLE IF NOT EXISTS admins (
     phone VARCHAR(20) NOT NULL,
     role VARCHAR(20) DEFAULT 'SUPER_ADMIN',
     is_active BOOLEAN DEFAULT TRUE,
+    auth_version INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0;
 
 -- Vô hiệu hóa tài khoản seed cũ có thông tin xác thực công khai.
 UPDATE admins SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP

@@ -82,17 +82,18 @@ const authenticateAdmin = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Phiên làm việc hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.' })
   }
   try {
-    const result = await query('SELECT id, username, full_name, role, is_active, auth_version FROM admins WHERE id = $1', [decoded.id])
+    const result = await query('SELECT id, username, full_name, role, is_active, COALESCE(auth_version, 0) AS auth_version FROM admins WHERE id = $1', [decoded.id])
     const admin = result.rows[0]
     if (!admin || !admin.is_active) {
       return res.status(401).json({ success: false, message: 'Tài khoản đã bị khóa hoặc không còn tồn tại.' })
     }
-    if (admin.auth_version !== decoded.authVersion) {
+    if (Number(admin.auth_version ?? 0) !== Number(decoded.authVersion ?? 0)) {
       return res.status(401).json({ success: false, message: 'Tài khoản đã thay đổi. Vui lòng đăng nhập lại.' })
     }
     req.admin = { id: admin.id, username: admin.username, role: admin.role, name: admin.full_name }
     next()
   } catch (err) {
+    console.error('[authenticateAdmin] DB error:', err.message)
     return res.status(500).json({ success: false, message: 'Không thể xác thực tài khoản lúc này.' })
   }
 }
@@ -405,7 +406,7 @@ app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
     loginAttempts.delete(req.ip)
 
     const token = jwt.sign(
-      { id: admin.id, username: admin.username, role: admin.role, name: admin.full_name, authVersion: admin.auth_version },
+      { id: admin.id, username: admin.username, role: admin.role, name: admin.full_name, authVersion: Number(admin.auth_version ?? 0) },
       JWT_SECRET,
       { expiresIn: '8h' }
     )
@@ -433,16 +434,30 @@ app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN')
   try {
     const { username, password, fullName, phone, role } = req.body
     const cleanUsername = typeof username === 'string' ? username.trim().toLowerCase() : ''
-    if (!/^[a-z0-9._-]{3,50}$/.test(cleanUsername) || typeof fullName !== 'string' || !fullName.trim() || fullName.length > 100 || !validPhone(phone) || !validRoles.has(role) || role === 'SUPER_ADMIN' && req.admin.role !== 'SUPER_ADMIN') {
-      return res.status(400).json({ success: false, message: 'Thông tin tài khoản hoặc vai trò không hợp lệ.' })
+    if (!/^[a-z0-9._-]{3,50}$/.test(cleanUsername)) {
+      return res.status(400).json({ success: false, message: 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm hoặc gạch nối (3–50 ký tự, viết liền không khoảng trắng).' })
+    }
+    if (typeof fullName !== 'string' || !fullName.trim() || fullName.trim().length > 100) {
+      return res.status(400).json({ success: false, message: 'Họ tên không được để trống và tối đa 100 ký tự.' })
+    }
+    const cleanPhone = String(phone || '').trim()
+    if (!validPhone(cleanPhone) || cleanPhone.length > 20) {
+      return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ (từ 8 đến 15 chữ số).' })
+    }
+    if (!validRoles.has(role) || (role === 'SUPER_ADMIN' && req.admin.role !== 'SUPER_ADMIN')) {
+      return res.status(400).json({ success: false, message: 'Vai trò được chọn không hợp lệ.' })
     }
     if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
       return res.status(400).json({ success: false, message: 'Mật khẩu nhân viên cần dài từ 12 đến 128 ký tự.' })
     }
+    const existing = await query('SELECT id FROM admins WHERE LOWER(username) = $1', [cleanUsername])
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ success: false, message: `Tên đăng nhập "${cleanUsername}" đã tồn tại.` })
+    }
     const passwordHash = await bcrypt.hash(password, 12)
     const result = await query(
-      'INSERT INTO admins (id, username, password_hash, full_name, phone, role, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, username, full_name, phone, role, is_active, created_at',
-      [randomUUID(), cleanUsername, passwordHash, fullName.trim(), phone.trim(), role]
+      'INSERT INTO admins (id, username, password_hash, full_name, phone, role, is_active, auth_version) VALUES ($1, $2, $3, $4, $5, $6, TRUE, 0) RETURNING id, username, full_name, phone, role, is_active, created_at',
+      [randomUUID(), cleanUsername, passwordHash, fullName.trim(), cleanPhone, role]
     )
     res.status(201).json({ success: true, data: result.rows[0] })
   } catch (err) {
@@ -460,7 +475,7 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     }
     if (role !== undefined && !validRoles.has(role)) return res.status(400).json({ success: false, message: 'Vai trò không hợp lệ.' })
     if (fullName !== undefined && (typeof fullName !== 'string' || !fullName.trim() || fullName.length > 100)) return res.status(400).json({ success: false, message: 'Họ tên không hợp lệ.' })
-    if (phone !== undefined && !validPhone(phone)) return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ.' })
+    if (phone !== undefined && (!validPhone(phone) || String(phone).trim().length > 20)) return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ.' })
     if (password !== undefined && (typeof password !== 'string' || password.length < 12 || password.length > 128)) return res.status(400).json({ success: false, message: 'Mật khẩu cần dài từ 12 đến 128 ký tự.' })
     if (isActive === false || role && role !== 'SUPER_ADMIN') {
       const superCount = await query("SELECT COUNT(*)::int AS count FROM admins WHERE role = 'SUPER_ADMIN' AND is_active = TRUE AND id <> $1", [id])
@@ -473,12 +488,22 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     const result = await query(
       `UPDATE admins SET role = COALESCE($1, role), is_active = COALESCE($2, is_active),
         full_name = COALESCE($3, full_name), phone = COALESCE($4, phone),
-        password_hash = COALESCE($5, password_hash), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6 RETURNING id, username, full_name, phone, role, is_active, created_at`,
+        password_hash = COALESCE($5, password_hash), auth_version = COALESCE(auth_version, 0) + 1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6 RETURNING id, username, full_name, phone, role, is_active, auth_version, created_at`,
       [role ?? null, isActive ?? null, fullName?.trim() ?? null, phone?.trim() ?? null, passwordHash, id]
     )
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' })
-    res.json({ success: true, data: result.rows[0] })
+    const updatedRow = result.rows[0]
+    let refreshedToken = null
+    if (id === req.admin.id && updatedRow.is_active) {
+      refreshedToken = jwt.sign(
+        { id: updatedRow.id, username: updatedRow.username, role: updatedRow.role, name: updatedRow.full_name, authVersion: Number(updatedRow.auth_version ?? 0) },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      )
+    }
+    const { auth_version: _av, ...publicAdmin } = updatedRow
+    res.json({ success: true, data: publicAdmin, ...(refreshedToken ? { newToken: refreshedToken } : {}) })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -910,7 +935,19 @@ app.delete('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_
   }
 })
 
+// Tự động đảm bảo cột bảo mật cần thiết tồn tại trên CSDL khi khởi động
+const ensureDatabaseSchema = async () => {
+  try {
+    await query('ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0')
+    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_username_lower ON admins (LOWER(username))')
+  } catch (err) {
+    console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
+  }
+}
+
 // Khởi chạy máy chủ
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`📡 Backend API Server đang chạy tại: http://localhost:${PORT}`)
+ensureDatabaseSchema().finally(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`📡 Backend API Server đang chạy tại: http://localhost:${PORT}`)
+  })
 })
