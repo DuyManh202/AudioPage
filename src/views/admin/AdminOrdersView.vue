@@ -125,7 +125,7 @@
           <tbody>
             <tr v-for="ord in filteredOrders" :key="ord.id">
               <td>
-                <strong class="ord-code">{{ ord.id }}</strong>
+                <strong class="ord-code" :title="ord.id">{{ shortCode(ord.id) }}</strong>
                 <span class="sub-line">{{ ord.createdAt }}</span>
               </td>
 
@@ -221,7 +221,7 @@
       <div class="adm-modal invoice-modal">
         <div class="adm-modal-head no-print">
           <div>
-            <h3>Phiếu Đơn Hàng: {{ selectedOrder.id }}</h3>
+            <h3>Phiếu Đơn Hàng: {{ shortCode(selectedOrder.id) }}</h3>
             <p>Kiểm tra danh mục thiết bị đóng gói và in phiếu xuất kho kèm kiện hàng</p>
           </div>
           <button type="button" class="adm-modal-close" @click="selectedOrder = null">
@@ -233,11 +233,11 @@
           <div class="slip-header">
             <div>
               <strong class="slip-brand">TÚ AUDIO — ÂM THANH KARAOKE CHUYÊN NGHIỆP</strong>
-              <span>Showroom Phú Thọ • Hotline kỹ thuật &amp; bảo hành: 0971.356.791</span>
+              <span>Showroom Phú Thọ • Hotline kỹ thuật &amp; bảo hành: {{ CONTACT_INFO.phoneDisplay }}</span>
             </div>
             <div class="slip-meta">
               <strong>PHIẾU GIAO THIẾT BỊ</strong>
-              <span>Mã đơn: {{ selectedOrder.id }}</span>
+              <span>Mã đơn: {{ shortCode(selectedOrder.id) }}</span>
               <span>Ngày đặt: {{ selectedOrder.createdAt }}</span>
             </div>
           </div>
@@ -298,6 +298,7 @@ import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
 import { exportRowsToCsv } from '../../utils/csvExport'
+import { CONTACT_INFO } from '../../config/contact'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const adminStore = useAdminStore()
@@ -310,6 +311,11 @@ const paymentFilter = ref('ALL')
 const selectedOrder = ref(null)
 
 const cleanPhone = (phone) => (phone ? String(phone).replace(/[^0-9]/g, '') : '')
+
+const shortCode = (id) => {
+  const s = String(id || '')
+  return s.length > 14 ? s.slice(0, 12).toUpperCase() : s
+}
 
 const allOrdersValue = computed(() => {
   return adminStore.orders

@@ -97,7 +97,7 @@
 
           <div class="adm-field">
             <label>Số điện thoại liên hệ</label>
-            <input v-model="form.phone" required type="tel" placeholder="vd: 0971356791" />
+            <input v-model="form.phone" required type="tel" placeholder="vd: 0984259898" />
           </div>
 
           <div class="adm-field">

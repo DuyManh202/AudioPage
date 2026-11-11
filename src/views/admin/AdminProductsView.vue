@@ -868,13 +868,13 @@ const handleDelete = async (id) => {
 .prod-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 240px;
+  gap: 10px;
+  min-width: 190px;
 }
 
 .prod-thumb {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -896,19 +896,19 @@ const handleDelete = async (id) => {
 }
 
 .prod-title {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   color: #f8fafc;
   line-height: 1.25;
 }
 
 .prod-desc {
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   color: #64748b;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  max-width: 290px;
+  max-width: 220px;
 }
 
 .prod-tags-line {

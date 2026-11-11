@@ -123,7 +123,7 @@
           <tbody>
             <tr v-for="lead in adminStore.filteredLeads" :key="lead.id">
               <td>
-                <strong class="code-text">{{ lead.id }}</strong>
+                <strong class="code-text" :title="lead.id">{{ shortCode(lead.id) }}</strong>
                 <span class="sub-line">{{ lead.createdAt }}</span>
               </td>
 
@@ -314,6 +314,11 @@ const filterOptions = computed(() => [
 ])
 
 const cleanPhone = (phone) => (phone ? String(phone).replace(/[^0-9]/g, '') : '')
+
+const shortCode = (id) => {
+  const s = String(id || '')
+  return s.length > 14 ? s.slice(0, 11).toUpperCase() : s
+}
 
 const formatAppointment = (val) => {
   if (!val) return ''
