@@ -128,11 +128,19 @@
               <div class="form-row">
                 <div class="form-group flex-1">
                   <label>Giá Bán Khuyến Mại (VNĐ):</label>
-                  <input type="number" v-model.number="formData.price" required />
+                  <input type="number" min="0" v-model.number="formData.price" required />
                 </div>
                 <div class="form-group flex-1">
-                  <label>Giá Gốc Niêm Yết (VNĐ):</label>
-                  <input type="number" v-model.number="formData.originalPrice" />
+                  <label>
+                    Giá Gốc Niêm Yết (VNĐ):
+                    <span v-if="previewDiscountPercent > 0" class="discount-live-chip">
+                      Hiển thị -{{ previewDiscountPercent }}%
+                    </span>
+                  </label>
+                  <input type="number" min="0" v-model.number="formData.originalPrice" />
+                  <span v-if="formData.originalPrice > 0 && formData.originalPrice < formData.price" class="price-warn-hint">
+                    ⚠️ Giá gốc đang thấp hơn giá bán (sẽ ẩn nhãn % giảm giá)
+                  </span>
                 </div>
               </div>
 
@@ -143,11 +151,36 @@
                 </div>
                 <div class="form-group flex-1">
                   <label>Công Suất RMS (W):</label>
-                  <input type="number" v-model.number="formData.powerRMS" placeholder="Ví dụ: 350" />
+                  <input type="number" min="0" v-model.number="formData.powerRMS" placeholder="Ví dụ: 350" />
                 </div>
                 <div class="form-group flex-1">
-                  <label>Diện Tích Phòng Đề Xuất:</label>
+                  <label>Công Suất Peak (W):</label>
+                  <input type="number" min="0" v-model.number="formData.powerPeak" placeholder="Ví dụ: 1400" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label>Diện Tích Phòng (Thẻ ↕):</label>
                   <input type="text" v-model="formData.roomSize" placeholder="Ví dụ: 20 - 35m²" />
+                </div>
+                <div class="form-group flex-1">
+                  <label>Điểm Sao (1.0 - 5.0):</label>
+                  <input type="number" min="1" max="5" step="0.1" v-model.number="formData.rating" />
+                </div>
+                <div class="form-group flex-1">
+                  <label>Số Bộ Đã Lắp:</label>
+                  <input type="number" min="0" v-model.number="formData.reviewsCount" placeholder="Ví dụ: 42" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label>Trạng Thái Tồn Kho:</label>
+                  <select v-model="formData.inStock">
+                    <option :value="true">🟢 Đang sẵn hàng (Cho phép đặt giỏ hàng)</option>
+                    <option :value="false">🔴 Tạm hết hàng (Chỉ nhận tư vấn đặt trước)</option>
+                  </select>
                 </div>
               </div>
 
@@ -240,10 +273,17 @@
                 </div>
               </div>
 
-              <!-- Phần nhập Ảnh đại diện -->
+              <!-- Phần nhập Ảnh đại diện (Hỗ trợ cả tải file từ máy & dán URL) -->
               <div class="image-input-box">
                 <div class="form-group">
-                  <label>🖼️ Link Hình Ảnh (URL):</label>
+                  <label>🖼️ Ảnh Đại Diện Sản Phẩm (Tải ảnh lên hoặc dán Link URL):</label>
+                  <div class="img-upload-row">
+                    <label class="upload-file-btn">
+                      <input type="file" accept="image/*" @change="handleProductImageUpload" hidden />
+                      📤 Tải Ảnh Từ Máy / Điện Thoại
+                    </label>
+                    <span class="upload-or-txt">hoặc dán link:</span>
+                  </div>
                   <input type="text" v-model="formData.image" placeholder="https://..." required />
                 </div>
                 <div class="image-preview" v-if="formData.image">
@@ -305,6 +345,14 @@ const editingId = ref(null)
 const giftsText = ref('')
 const specsRows = ref([])
 
+const slugifyVi = (text) => String(text || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[đĐ]/g, 'd')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '') || 'thiet-bi'
+
 const formData = ref({
   name: '',
   category: 'loa-full',
@@ -313,7 +361,11 @@ const formData = ref({
   badge: '',
   bassSize: '30 cm',
   powerRMS: 350,
+  powerPeak: 1400,
   roomSize: '20 - 35m²',
+  rating: 5.0,
+  reviewsCount: 25,
+  inStock: true,
   image: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80',
   videoUrl: '',
   videoTitle: '',
@@ -321,9 +373,42 @@ const formData = ref({
   shortDesc: ''
 })
 
+const previewDiscountPercent = computed(() => {
+  const price = Number(formData.value.price || 0)
+  const original = Number(formData.value.originalPrice || 0)
+  if (!original || original <= price || price <= 0) return 0
+  return Math.round(((original - price) / original) * 100)
+})
+
 const embedUrl = computed(() => {
   return getEmbedVideoUrl(formData.value.videoUrl)
 })
+
+const handleProductImageUpload = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    const img = new Image()
+    img.onload = () => {
+      const maxDim = 900
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      formData.value.image = canvas.toDataURL('image/jpeg', 0.84)
+    }
+    img.src = String(reader.result || '')
+  }
+  reader.readAsDataURL(file)
+}
 
 const addSpecRow = () => {
   specsRows.value.push({ key: '', value: '' })
@@ -343,7 +428,11 @@ const openAddModal = () => {
     badge: 'Mới Về',
     bassSize: '30 cm',
     powerRMS: 350,
+    powerPeak: 1400,
     roomSize: '20 - 35m²',
+    rating: 5.0,
+    reviewsCount: 25,
+    inStock: true,
     image: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80',
     videoUrl: '',
     videoTitle: 'Video Test Âm Thanh Thực Tế — Hát Nhẹ Không Hú',
@@ -364,6 +453,10 @@ const openEditModal = (product) => {
   editingId.value = product.id
   formData.value = { 
     ...product,
+    powerPeak: Number(product.powerPeak || 0),
+    rating: Number(product.rating || 5),
+    reviewsCount: Number(product.reviewsCount || 25),
+    inStock: product.inStock !== false,
     videoUrl: product.videoUrl || '',
     videoTitle: product.videoTitle || ''
   }
@@ -395,6 +488,13 @@ const saveProduct = async () => {
 
   const payload = {
     ...formData.value,
+    price: Number(formData.value.price || 0),
+    originalPrice: Number(formData.value.originalPrice || 0),
+    powerRMS: Number(formData.value.powerRMS || 0),
+    powerPeak: Number(formData.value.powerPeak || 0),
+    rating: Math.min(5, Math.max(1, Number(formData.value.rating || 5))),
+    reviewsCount: Math.max(0, Math.round(Number(formData.value.reviewsCount || 0))),
+    inStock: formData.value.inStock !== false,
     gifts,
     specs
   }
@@ -403,13 +503,11 @@ const saveProduct = async () => {
     if (editingId.value) {
       await adminStore.updateProduct(editingId.value, payload)
     } else {
+      const slugBase = slugifyVi(formData.value.name)
       await adminStore.addProduct({
         ...payload,
-        id: 'sp-' + Date.now(),
-        slug: formData.value.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        rating: 5.0,
-        reviewsCount: 1,
-        inStock: true
+        id: `sp-${slugBase.slice(0, 32)}-${Date.now().toString().slice(-4)}`,
+        slug: slugBase
       })
     }
     await productStore.refreshProducts()
@@ -874,6 +972,50 @@ const saveProduct = async () => {
     grid-template-columns: 1fr;
     gap: 20px;
   }
+}
+
+.discount-live-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.price-warn-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: #fbbf24;
+}
+
+.img-upload-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.upload-file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #080a10;
+  background: var(--gradient-gold);
+  cursor: pointer;
+}
+
+.upload-or-txt {
+  font-size: 0.76rem;
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {

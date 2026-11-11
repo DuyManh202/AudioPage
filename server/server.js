@@ -618,32 +618,59 @@ app.delete('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_A
   }
 })
 
-// Thêm sản phẩm mới (có video mô tả, specs, quà tặng)
+const slugifyVi = (text) => String(text || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[đĐ]/g, 'd')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '') || 'thiet-bi'
+
+const validProductImage = (img) => {
+  if (typeof img !== 'string' || !img.trim()) return false
+  if (/^https?:\/\//i.test(img)) return img.length <= 2048
+  if (/^data:image\/(png|jpe?g|webp);base64,/i.test(img)) return img.length <= 2000000
+  return false
+}
+
+// Thêm sản phẩm mới (đồng bộ đầy đủ với thẻ 2 cột Mobile & trang Chi tiết)
 app.post('/api/v1/admin/products', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'INVENTORY'), async (req, res) => {
   try {
     const p = req.body
     if (typeof p.name !== 'string' || !p.name.trim() || p.name.length > 200 || !validCategories.has(p.category || 'loa-full') || !validMoney(p.price) || p.originalPrice !== undefined && !validMoney(p.originalPrice)) {
       return res.status(400).json({ success: false, message: 'Tên hoặc giá sản phẩm không hợp lệ.' })
     }
-    if (p.image && (typeof p.image !== 'string' || p.image.length > 2048 || !/^https?:\/\//i.test(p.image))) {
-      return res.status(400).json({ success: false, message: 'Đường dẫn ảnh phải là URL HTTP/HTTPS hợp lệ.' })
+    if (!validProductImage(p.image)) {
+      return res.status(400).json({ success: false, message: 'Ảnh sản phẩm phải là link HTTP/HTTPS hoặc ảnh tải lên hợp lệ (JPG/PNG/WebP).' })
     }
-    const id = p.id || 'sp-' + Date.now()
-    const slug = (p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '-' + Date.now().toString().slice(-4)
+    const cleanRating = p.rating !== undefined ? Math.min(5, Math.max(1, Number(p.rating) || 5)) : 5.0
+    const cleanReviews = p.reviewsCount !== undefined ? Math.max(0, Math.round(Number(p.reviewsCount) || 0)) : 18
+    const cleanPowerRMS = Math.max(0, Math.round(Number(p.powerRMS) || 0))
+    const cleanPowerPeak = Math.max(0, Math.round(Number(p.powerPeak) || 0))
+    const cleanInStock = p.inStock === undefined ? true : Boolean(p.inStock)
+
+    const id = p.id || `sp-${slugifyVi(p.name).slice(0, 32)}-${Date.now().toString().slice(-4)}`
+    const slug = `${slugifyVi(p.slug || p.name)}-${Date.now().toString().slice(-4)}`
 
     const sql = `
       INSERT INTO products (
-        id, name, slug, category_id, bass_size, power_rms, price, original_price,
-        room_size, badge, image_url, video_url, video_title, matching_amplifier, short_desc, specs, gifts
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::json, $17::json)
+        id, name, slug, category_id, bass_size, power_rms, power_peak, price, original_price,
+        room_size, badge, in_stock, rating, reviews_count,
+        image_url, video_url, video_title, matching_amplifier, short_desc, specs, gifts
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, $11, $12, $13, $14,
+        $15, $16, $17, $18, $19, $20::json, $21::json
+      )
       RETURNING *
     `
     const result = await query(sql, [
-      id, p.name, slug, p.category || 'loa-full', p.bassSize || '-', p.powerRMS || 0,
-      p.price, p.originalPrice || 0, p.roomSize || '20 - 35m²', p.badge || '',
-      p.image, p.videoUrl || '', p.videoTitle || '', p.matchingAmplifier || '', p.shortDesc || '',
-      JSON.stringify(p.specs || { "Đường kính Bass": p.bassSize || "-", "Công suất RMS": `${p.powerRMS || 0} W` }),
-      JSON.stringify(p.gifts || [])
+      id, p.name.trim(), slug, p.category || 'loa-full', p.bassSize || '-', cleanPowerRMS, cleanPowerPeak,
+      Number(p.price), Number(p.originalPrice || 0), p.roomSize || '20 - 35m²', p.badge || '',
+      cleanInStock, cleanRating, cleanReviews,
+      p.image.trim(), p.videoUrl || '', p.videoTitle || '', p.matchingAmplifier || '', p.shortDesc || '',
+      JSON.stringify(p.specs || { "Đường kính Bass": p.bassSize || "-", "Công suất RMS": `${cleanPowerRMS} W` }),
+      JSON.stringify(Array.isArray(p.gifts) ? p.gifts : [])
     ])
 
     res.status(201).json({ success: true, data: mapProductRow(result.rows[0]) })
@@ -660,9 +687,14 @@ app.put('/api/v1/admin/products/:id', authenticateAdmin, authorizeRoles('SUPER_A
     if (p.name !== undefined && (typeof p.name !== 'string' || !p.name.trim() || p.name.length > 200) || p.category !== undefined && !validCategories.has(p.category) || p.price !== undefined && !validMoney(p.price) || p.originalPrice !== undefined && !validMoney(p.originalPrice)) {
       return res.status(400).json({ success: false, message: 'Tên hoặc giá sản phẩm không hợp lệ.' })
     }
-    if (p.image && (typeof p.image !== 'string' || p.image.length > 2048 || !/^https?:\/\//i.test(p.image))) {
-      return res.status(400).json({ success: false, message: 'Đường dẫn ảnh phải là URL HTTP/HTTPS hợp lệ.' })
+    if (p.image !== undefined && !validProductImage(p.image)) {
+      return res.status(400).json({ success: false, message: 'Ảnh sản phẩm phải là link HTTP/HTTPS hoặc ảnh tải lên hợp lệ (JPG/PNG/WebP).' })
     }
+    const cleanRating = p.rating !== undefined ? Math.min(5, Math.max(1, Number(p.rating) || 5)) : null
+    const cleanReviews = p.reviewsCount !== undefined ? Math.max(0, Math.round(Number(p.reviewsCount) || 0)) : null
+    const cleanPowerRMS = p.powerRMS !== undefined ? Math.max(0, Math.round(Number(p.powerRMS) || 0)) : null
+    const cleanPowerPeak = p.powerPeak !== undefined ? Math.max(0, Math.round(Number(p.powerPeak) || 0)) : null
+    const cleanInStock = p.inStock !== undefined ? Boolean(p.inStock) : null
 
     const sql = `
       UPDATE products
@@ -671,25 +703,30 @@ app.put('/api/v1/admin/products/:id', authenticateAdmin, authorizeRoles('SUPER_A
         category_id = COALESCE($2, category_id),
         bass_size = COALESCE($3, bass_size),
         power_rms = COALESCE($4, power_rms),
-        price = COALESCE($5, price),
-        original_price = COALESCE($6, original_price),
-        room_size = COALESCE($7, room_size),
-        badge = COALESCE($8, badge),
-        image_url = COALESCE($9, image_url),
-        video_url = COALESCE($10, video_url),
-        video_title = COALESCE($11, video_title),
-        matching_amplifier = COALESCE($12, matching_amplifier),
-        short_desc = COALESCE($13, short_desc),
-        specs = COALESCE($14::json, specs),
-        gifts = COALESCE($15::json, gifts),
+        power_peak = COALESCE($5, power_peak),
+        price = COALESCE($6, price),
+        original_price = COALESCE($7, original_price),
+        room_size = COALESCE($8, room_size),
+        badge = COALESCE($9, badge),
+        in_stock = COALESCE($10, in_stock),
+        rating = COALESCE($11, rating),
+        reviews_count = COALESCE($12, reviews_count),
+        image_url = COALESCE($13, image_url),
+        video_url = COALESCE($14, video_url),
+        video_title = COALESCE($15, video_title),
+        matching_amplifier = COALESCE($16, matching_amplifier),
+        short_desc = COALESCE($17, short_desc),
+        specs = COALESCE($18::json, specs),
+        gifts = COALESCE($19::json, gifts),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $16
+      WHERE id = $20
       RETURNING *
     `
     const result = await query(sql, [
-      p.name ?? null, p.category ?? null, p.bassSize ?? null, p.powerRMS ?? null,
+      p.name ? p.name.trim() : null, p.category ?? null, p.bassSize ?? null, cleanPowerRMS, cleanPowerPeak,
       p.price ?? null, p.originalPrice ?? null, p.roomSize ?? null, p.badge ?? null,
-      p.image ?? null, p.videoUrl ?? null, p.videoTitle ?? null, p.matchingAmplifier ?? null,
+      cleanInStock, cleanRating, cleanReviews,
+      p.image ? p.image.trim() : null, p.videoUrl ?? null, p.videoTitle ?? null, p.matchingAmplifier ?? null,
       p.shortDesc ?? null,
       p.specs ? JSON.stringify(p.specs) : null,
       p.gifts ? JSON.stringify(p.gifts) : null,

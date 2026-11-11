@@ -2,7 +2,10 @@
   <article class="product-card">
     <!-- Hàng tag nhỏ phía trên ảnh (chuẩn bố cục TMĐT 2 cột) -->
     <div class="card-top-tags">
-      <span class="status-tag">
+      <span v-if="product.inStock === false" class="status-tag out-stock-tag">
+        ● Đặt trước
+      </span>
+      <span v-else class="status-tag">
         <span class="star-dot" aria-hidden="true">★</span> Bán chạy
       </span>
       <span v-if="product.roomSize" class="room-pill" :title="`Diện tích phù hợp: ${product.roomSize}`">
@@ -68,6 +71,7 @@
       <!-- Cụm nút thao tác gọn gàng vừa khít cột mobile -->
       <div class="card-actions">
         <button
+          v-if="product.inStock !== false"
           class="btn-cart-icon"
           type="button"
           @click="handleAddToCart"
@@ -77,7 +81,7 @@
           🛒
         </button>
         <button class="btn-consult" type="button" @click="handleOrder">
-          Tư Vấn Ngay
+          {{ product.inStock === false ? 'Đặt Trước Ngay' : 'Tư Vấn Ngay' }}
         </button>
       </div>
     </div>
@@ -190,6 +194,10 @@ const handleAddToCart = () => {
 .star-dot {
   font-size: 0.72rem;
   color: #10b981;
+}
+
+.out-stock-tag {
+  color: #fbbf24;
 }
 
 .room-pill {
