@@ -296,7 +296,7 @@ const resetFilter = () => {
 .page-title {
   font-size: clamp(1.65rem, 3vw, 2.25rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin: 10px 0 8px;
 }
 
@@ -308,15 +308,15 @@ const resetFilter = () => {
 
 /* Khung lọc kiểu TMĐT hiện đại */
 .filter-panel {
-  background: linear-gradient(180deg, rgba(22, 27, 45, 0.92), rgba(14, 18, 30, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: 16px;
   padding: 16px 18px;
   margin-bottom: 26px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: var(--shadow-card), var(--inner-highlight);
+  box-shadow: var(--shadow-card);
 }
 
 .cat-picker-head {
@@ -330,7 +330,7 @@ const resetFilter = () => {
 .picker-label {
   font-size: 0.92rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .active-search-pill {
@@ -339,17 +339,18 @@ const resetFilter = () => {
   gap: 6px;
   font-size: 0.76rem;
   font-weight: 700;
-  color: var(--color-primary);
-  background: rgba(252, 183, 40, 0.12);
-  border: 1px solid rgba(252, 183, 40, 0.35);
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
   padding: 3px 10px;
   border-radius: 999px;
 }
 
 .active-search-pill button {
   background: none;
-  color: #fff;
+  color: #dc2626;
   font-size: 0.75rem;
+  font-weight: 800;
 }
 
 /* Dải thẻ danh mục có icon trượt ngang */
@@ -367,7 +368,7 @@ const resetFilter = () => {
 }
 
 .category-cards-scroll::-webkit-scrollbar-thumb {
-  background: rgba(252, 183, 40, 0.35);
+  background: #cbd5e1;
   border-radius: 999px;
 }
 
@@ -376,9 +377,9 @@ const resetFilter = () => {
   min-width: 112px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  color: var(--text-secondary);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -389,16 +390,17 @@ const resetFilter = () => {
 }
 
 .cat-visual-card:hover {
-  border-color: rgba(252, 183, 40, 0.55);
-  color: #fff;
+  border-color: #93c5fd;
+  background: #ffffff;
+  color: #1d4ed8;
   transform: translateY(-2px);
 }
 
 .cat-visual-card.active {
-  background: linear-gradient(180deg, rgba(252, 183, 40, 0.22), rgba(245, 158, 11, 0.08));
-  border-color: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 6px 18px -6px rgba(252, 183, 40, 0.45);
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.28);
 }
 
 .cat-card-icon {
@@ -413,7 +415,7 @@ const resetFilter = () => {
 }
 
 .cat-visual-card.active .cat-card-name {
-  color: var(--color-primary);
+  color: #1d4ed8;
   font-weight: 800;
 }
 
@@ -432,9 +434,9 @@ const resetFilter = () => {
 
 .chip-select {
   flex: 0 0 auto;
-  background: rgba(10, 14, 24, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #e2e8f0;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
   padding: 7px 12px;
   border-radius: 9px;
   font-size: 0.8rem;
@@ -444,7 +446,8 @@ const resetFilter = () => {
 }
 
 .chip-select:focus {
-  border-color: var(--color-primary);
+  background: #ffffff;
+  border-color: #2563eb;
 }
 
 /* Hàng checkbox ưu đãi + Sắp xếp */
@@ -455,7 +458,7 @@ const resetFilter = () => {
   flex-wrap: wrap;
   gap: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid #eef2f7;
 }
 
 .toggle-checks {
@@ -471,7 +474,7 @@ const resetFilter = () => {
   gap: 6px;
   font-size: 0.79rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #334155;
   cursor: pointer;
   user-select: none;
 }
@@ -479,12 +482,12 @@ const resetFilter = () => {
 .check-pill input {
   width: 15px;
   height: 15px;
-  accent-color: #FCB728;
+  accent-color: #2563eb;
   cursor: pointer;
 }
 
 .check-pill.checked {
-  color: var(--color-primary);
+  color: #1d4ed8;
 }
 
 .sort-wrap {
@@ -494,7 +497,7 @@ const resetFilter = () => {
 .sort-link-select {
   background: transparent;
   border: none;
-  color: #60a5fa;
+  color: #1d4ed8;
   font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
@@ -502,18 +505,18 @@ const resetFilter = () => {
 }
 
 .sort-link-select option {
-  background: #0f1424;
-  color: #f8fafc;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 /* Khung TOP THIẾT BỊ BÁN CHẠY nổi bật */
 .top-hot-box {
-  background: linear-gradient(180deg, #b45309 0%, #7c2d12 18%, rgba(20, 24, 39, 0.98) 55%, rgba(14, 18, 31, 0.99) 100%);
-  border: 1.5px solid rgba(252, 183, 40, 0.5);
+  background: linear-gradient(180deg, #ea580c 0%, #dc2626 100%);
+  border: 1.5px solid #f97316;
   border-radius: 18px;
   padding: 16px 16px 18px;
   margin-bottom: 30px;
-  box-shadow: 0 18px 42px -14px rgba(0, 0, 0, 0.75), 0 0 28px rgba(245, 158, 11, 0.14);
+  box-shadow: 0 18px 40px -14px rgba(220, 38, 38, 0.35);
 }
 
 .top-hot-banner {
@@ -535,9 +538,9 @@ const resetFilter = () => {
 .top-hot-heading {
   font-size: clamp(1.12rem, 2.2vw, 1.55rem);
   font-weight: 900;
-  color: #fff;
+  color: #ffffff;
   text-transform: uppercase;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .spark {
@@ -556,7 +559,7 @@ const resetFilter = () => {
 .catalog-sub-title {
   font-size: 1.18rem;
   font-weight: 800;
-  color: #fff;
+  color: #0f172a;
 }
 
 .result-counter {
@@ -565,7 +568,7 @@ const resetFilter = () => {
 }
 
 .result-counter strong {
-  color: var(--color-primary);
+  color: #dc2626;
 }
 
 /* Lưới sản phẩm: 4 cột Desktop rộng, 3 cột Laptop, 2 cột Tablet & Mobile */

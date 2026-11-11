@@ -176,17 +176,17 @@ const handleConsult = () => {
 <style scoped>
 .calculator-section {
   padding: 68px 0;
-  background: linear-gradient(180deg, #0c101c 0%, #101525 50%, #0c101c 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, #EAF1FB 0%, #F4F7FB 100%);
+  border-top: 1px solid #DCE4F0;
+  border-bottom: 1px solid #DCE4F0;
 }
 
 .calc-box {
-  background: linear-gradient(165deg, rgba(22, 27, 45, 0.92), rgba(14, 18, 30, 0.96));
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: #FFFFFF;
+  border: 1.5px solid #BFDBFE;
   border-radius: var(--radius-xl);
   padding: 38px;
-  box-shadow: var(--shadow-elevated), var(--inner-highlight);
+  box-shadow: var(--shadow-elevated);
 }
 
 .text-center {
@@ -201,12 +201,12 @@ const handleConsult = () => {
 .calc-header h2 {
   font-size: clamp(1.5rem, 2.8vw, 2rem);
   font-weight: 900;
-  color: #fff;
+  color: #0F172A;
   margin: 12px 0 8px;
 }
 
 .calc-header p {
-  color: var(--text-muted);
+  color: #475569;
   font-size: 0.94rem;
 }
 
@@ -218,8 +218,8 @@ const handleConsult = () => {
 }
 
 .control-group {
-  background: rgba(0, 0, 0, 0.26);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
   border-radius: var(--radius-lg);
   padding: 18px;
 }
@@ -228,7 +228,7 @@ const handleConsult = () => {
   display: block;
   font-size: 0.88rem;
   font-weight: 800;
-  color: #fff;
+  color: #0F172A;
   margin-bottom: 12px;
 }
 
@@ -239,20 +239,19 @@ const handleConsult = () => {
 }
 
 .chip-btn {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: var(--text-secondary);
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
   font-size: 0.84rem;
   font-weight: 600;
   padding: 9px 15px;
   border-radius: 11px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition: all 0.24s var(--ease-spring);
 }
 
 .chip-btn:hover {
-  border-color: rgba(252, 183, 40, 0.52);
-  color: #fff;
+  border-color: #2563EB;
+  color: #1D4ED8;
   transform: translateY(-2px);
 }
 
@@ -261,16 +260,16 @@ const handleConsult = () => {
 }
 
 .chip-btn.active {
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.24), rgba(245, 158, 11, 0.12));
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+  border-color: #2563EB;
+  color: #1D4ED8;
   font-weight: 800;
-  box-shadow: 0 6px 20px -4px rgba(252, 183, 40, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 18px -6px rgba(37, 99, 235, 0.28);
 }
 
 .calc-result {
-  background: rgba(8, 11, 20, 0.85);
-  border: 1px solid rgba(252, 183, 40, 0.34);
+  background: #F8FAFC;
+  border: 1.5px solid #F59E0B;
   border-radius: var(--radius-lg);
   padding: 24px;
 }
@@ -288,8 +287,9 @@ const handleConsult = () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(252, 183, 40, 0.14);
-  color: var(--color-primary);
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
   font-size: 0.78rem;
   font-weight: 800;
   padding: 5px 12px;
@@ -305,7 +305,8 @@ const handleConsult = () => {
 
 .meter-label {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: #475569;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -314,14 +315,14 @@ const handleConsult = () => {
   min-width: 90px;
   height: 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #E2E8F0;
   overflow: hidden;
 }
 
 .meter-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #3b82f6 0%, #FCB728 70%, #f59e0b 100%);
+  background: linear-gradient(90deg, #2563EB 0%, #F59E0B 70%, #EA580C 100%);
   transition: width 0.45s var(--ease-spring);
 }
 
@@ -333,35 +334,36 @@ const handleConsult = () => {
 }
 
 .result-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
   border-radius: var(--radius-md);
   padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.06);
 }
 
 .res-label {
   font-size: 0.76rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #64748B;
   text-transform: uppercase;
 }
 
 .res-val {
   font-size: 1rem;
   font-weight: 800;
-  color: #fff;
+  color: #0F172A;
 }
 
 .res-val.highlight {
-  color: var(--color-primary);
+  color: #1D4ED8;
 }
 
 .res-sub {
   font-size: 0.79rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.45;
 }
 
@@ -372,16 +374,16 @@ const handleConsult = () => {
   flex-wrap: wrap;
   gap: 14px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid #E2E8F0;
 }
 
 .best-match-text {
   font-size: 0.94rem;
-  color: var(--text-secondary);
+  color: #334155;
 }
 
 .best-match-text strong {
-  color: var(--color-primary);
+  color: #DC2626;
 }
 
 @media (max-width: 860px) {

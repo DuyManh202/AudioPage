@@ -111,6 +111,39 @@ const validOptionalText = (value, maxLength) => value === undefined || value ===
 const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
 
+const parseDateRange = (req, res) => {
+  const from = typeof req.query.from === 'string' ? req.query.from : ''
+  const to = typeof req.query.to === 'string' ? req.query.to : ''
+  const isDateOnly = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+    const date = new Date(`${value}T00:00:00.000Z`)
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  }
+
+  if ((from && !isDateOnly(from)) || (to && !isDateOnly(to))) {
+    res.status(400).json({ success: false, message: 'Ngày lọc không hợp lệ. Dùng định dạng YYYY-MM-DD.' })
+    return null
+  }
+  if (from && to && from > to) {
+    res.status(400).json({ success: false, message: 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.' })
+    return null
+  }
+  return { from, to }
+}
+
+const createdAtDateFilter = ({ from, to }, params) => {
+  let sql = ''
+  if (from) {
+    params.push(from)
+    sql += ` AND created_at >= $${params.length}::date`
+  }
+  if (to) {
+    params.push(to)
+    sql += ` AND created_at < ($${params.length}::date + INTERVAL '1 day')`
+  }
+  return sql
+}
+
 const loginAttempts = new Map()
 const loginRateLimit = (req, res, next) => {
   const now = Date.now()
@@ -540,8 +573,12 @@ app.get('/api/v1/admin/dashboard/stats', authenticateAdmin, authorizeRoles('SUPE
 app.get('/api/v1/admin/leads', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const { status, keyword } = req.query
+    const dateRange = parseDateRange(req, res)
+    if (!dateRange) return
     let sql = 'SELECT * FROM leads WHERE 1=1'
     const params = []
+
+    sql += createdAtDateFilter(dateRange, params)
 
     if (status && status !== 'ALL') {
       params.push(status)
@@ -868,7 +905,10 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
 // Quản lý Yêu cầu Thu Cũ Đổi Mới (Trade-Ins)
 app.get('/api/v1/admin/trade-ins', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const result = await query('SELECT * FROM trade_ins ORDER BY created_at DESC')
+    const dateRange = parseDateRange(req, res)
+    if (!dateRange) return
+    const params = []
+    const result = await query(`SELECT * FROM trade_ins WHERE 1=1${createdAtDateFilter(dateRange, params)} ORDER BY created_at DESC`, params)
     res.json({
       success: true,
       data: result.rows.map(row => ({
@@ -927,7 +967,10 @@ app.delete('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUP
 // Quản lý Đơn Đặt Mua Lẻ (Orders)
 app.get('/api/v1/admin/orders', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const result = await query('SELECT * FROM orders ORDER BY created_at DESC')
+    const dateRange = parseDateRange(req, res)
+    if (!dateRange) return
+    const params = []
+    const result = await query(`SELECT * FROM orders WHERE 1=1${createdAtDateFilter(dateRange, params)} ORDER BY created_at DESC`, params)
     res.json({
       success: true,
       data: result.rows.map(row => ({

@@ -24,8 +24,8 @@ import ComboOffers from '../components/home/ComboOffers.vue'
 }
 
 .combo-banner-wrap {
-  background: radial-gradient(ellipse 70% 80% at 50% 0%, rgba(40, 55, 252, 0.16), transparent 70%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, #eaf2ff 0%, #f4f7fb 100%);
+  border-bottom: 1px solid #dce4f0;
 }
 
 .combo-header-banner {
@@ -38,14 +38,14 @@ import ComboOffers from '../components/home/ComboOffers.vue'
 .combo-header-banner h1 {
   font-size: clamp(1.7rem, 3.2vw, 2.4rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin: 14px 0 10px;
   line-height: 1.25;
 }
 
 .combo-header-banner p {
   font-size: 1rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.6;
 }
 

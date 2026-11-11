@@ -93,8 +93,8 @@ import { CONTACT_INFO } from '../../config/contact'
 <style scoped>
 .app-footer {
   position: relative;
-  background: linear-gradient(180deg, #0b0e18 0%, #070910 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #FFFFFF 0%, #EDF3FA 100%);
+  border-top: 1px solid #DCE4F0;
   padding-top: 60px;
   margin-top: 72px;
 }
@@ -106,8 +106,8 @@ import { CONTACT_INFO } from '../../config/contact'
   transform: translateX(-50%);
   width: min(620px, 80%);
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-  opacity: 0.7;
+  background: linear-gradient(90deg, transparent, #2563EB, #F59E0B, transparent);
+  opacity: 0.75;
 }
 
 .footer-grid {
@@ -145,26 +145,26 @@ import { CONTACT_INFO } from '../../config/contact'
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: #0F172A;
   letter-spacing: 0.04em;
 }
 
 .brand-sub {
   display: block;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: #64748B;
 }
 
 .desc {
   font-size: 0.88rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.65;
   margin-bottom: 18px;
 }
 
 .trust-points {
   font-size: 0.84rem;
-  color: #e2e8f0;
+  color: #1E293B;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -174,18 +174,19 @@ import { CONTACT_INFO } from '../../config/contact'
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e2e8f0;
+  color: #1E293B;
+  font-weight: 600;
 }
 
 .trust-item .check {
-  color: var(--color-primary);
+  color: #16A34A;
   font-weight: 900;
 }
 
 .footer-col h4 {
   font-size: 1rem;
   font-weight: 800;
-  color: #fff;
+  color: #0F172A;
   margin-bottom: 18px;
   position: relative;
   padding-bottom: 10px;
@@ -212,7 +213,7 @@ import { CONTACT_INFO } from '../../config/contact'
 .footer-col ul li a,
 .footer-col ul li {
   font-size: 0.88rem;
-  color: var(--text-muted);
+  color: #475569;
   transition: color 0.2s, transform 0.2s;
 }
 
@@ -221,42 +222,43 @@ import { CONTACT_INFO } from '../../config/contact'
 }
 
 .footer-col ul li a:hover {
-  color: var(--color-primary);
+  color: #1D4ED8;
   transform: translateX(3px);
 }
 
 .contact-card {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #FFFFFF;
+  border: 1px solid #DCE4F0;
   border-radius: var(--radius-md);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: 0 6px 20px -10px rgba(15, 23, 42, 0.08);
 }
 
 .contact-card p {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.5;
 }
 
 .footer-phone {
-  color: var(--color-primary);
+  color: #DC2626;
   font-weight: 800;
   margin-left: 4px;
 }
 
 .contact-inline-link {
-  color: var(--text-secondary);
+  color: #1D4ED8;
   text-decoration: underline;
-  text-decoration-color: rgba(252, 183, 40, 0.4);
+  text-decoration-color: rgba(37, 99, 235, 0.35);
   text-underline-offset: 3px;
   transition: color 0.2s;
 }
 
 .contact-inline-link:hover {
-  color: var(--color-primary);
+  color: #B45309;
 }
 
 .social-links-row {
@@ -274,10 +276,9 @@ import { CONTACT_INFO } from '../../config/contact'
   font-weight: 700;
   padding: 7px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-  color: #e2e8f0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid #CBD5E1;
+  background: #F8FAFC;
+  color: #1E293B;
   transition: border-color 0.24s, background 0.24s, transform 0.24s var(--ease-spring), box-shadow 0.24s, color 0.24s;
 }
 
@@ -286,45 +287,40 @@ import { CONTACT_INFO } from '../../config/contact'
 }
 
 .social-pill.zalo-pill:hover {
-  border-color: rgba(14, 165, 233, 0.65);
-  background: rgba(14, 165, 233, 0.16);
-  color: #7dd3fc;
-  box-shadow: 0 8px 18px -6px rgba(14, 165, 233, 0.45);
+  border-color: #0284C7;
+  background: #E0F2FE;
+  color: #0369A1;
 }
 
 .social-pill.messenger-pill:hover {
-  border-color: rgba(139, 92, 246, 0.65);
-  background: rgba(139, 92, 246, 0.16);
-  color: #c4b5fd;
-  box-shadow: 0 8px 18px -6px rgba(139, 92, 246, 0.45);
+  border-color: #7C3AED;
+  background: #F3E8FF;
+  color: #6D28D9;
 }
 
 .social-pill.yt-pill:hover {
-  border-color: rgba(239, 68, 68, 0.65);
-  background: rgba(239, 68, 68, 0.16);
-  color: #fca5a5;
-  box-shadow: 0 8px 18px -6px rgba(239, 68, 68, 0.45);
+  border-color: #DC2626;
+  background: #FEE2E2;
+  color: #B91C1C;
 }
 
 .social-pill.fb-pill:hover {
-  border-color: rgba(59, 130, 246, 0.65);
-  background: rgba(59, 130, 246, 0.16);
-  color: #93c5fd;
-  box-shadow: 0 8px 18px -6px rgba(59, 130, 246, 0.45);
+  border-color: #2563EB;
+  background: #DBEAFE;
+  color: #1D4ED8;
 }
 
 .social-pill.map-pill:hover {
-  border-color: rgba(34, 197, 94, 0.65);
-  background: rgba(34, 197, 94, 0.16);
-  color: #86efac;
-  box-shadow: 0 8px 18px -6px rgba(34, 197, 94, 0.45);
+  border-color: #16A34A;
+  background: #DCFCE7;
+  color: #15803D;
 }
 
 .footer-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid #DCE4F0;
   padding: 20px 0;
   font-size: 0.82rem;
-  color: var(--text-subtle);
+  color: #64748B;
 }
 
 .text-center {

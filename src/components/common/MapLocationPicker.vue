@@ -469,19 +469,19 @@ onBeforeUnmount(destroyMap)
 .address-input-row input {
   flex: 1;
   min-width: 0;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
   border-radius: var(--radius-sm);
   padding: 10px 13px;
-  color: #fff;
+  color: #0F172A;
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .address-input-row input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .map-toggle-btn {
@@ -493,27 +493,26 @@ onBeforeUnmount(destroyMap)
   gap: 5px;
   padding: 0 13px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.2), rgba(245, 158, 11, 0.08));
-  border: 1px solid rgba(252, 183, 40, 0.48);
-  color: var(--color-primary);
+  background: #FFFBEB;
+  border: 1px solid #F59E0B;
+  color: #B45309;
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transition: all 0.22s var(--ease-spring);
 }
 
 .map-toggle-btn:hover {
-  background: rgba(252, 183, 40, 0.28);
+  background: #FEF3C7;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px -4px rgba(252, 183, 40, 0.35);
+  box-shadow: 0 6px 16px -4px rgba(245, 158, 11, 0.28);
 }
 
 .map-toggle-btn.active {
-  background: rgba(239, 68, 68, 0.16);
-  border-color: rgba(239, 68, 68, 0.45);
-  color: #fca5a5;
+  background: #FEF2F2;
+  border-color: #F87171;
+  color: #DC2626;
 }
 
 .distance-hint {
@@ -524,26 +523,26 @@ onBeforeUnmount(destroyMap)
 }
 
 .distance-hint.in-zone {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #86efac;
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
+  color: #15803D;
 }
 
 .distance-hint.out-zone {
-  background: rgba(252, 183, 40, 0.1);
-  border: 1px solid rgba(252, 183, 40, 0.3);
-  color: #fde68a;
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  color: #92400E;
 }
 
 .map-drawer-panel {
-  background: rgba(9, 12, 22, 0.96);
-  border: 1px solid rgba(252, 183, 40, 0.36);
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
   border-radius: var(--radius-md);
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.1);
 }
 
 .map-toolbar {
@@ -555,8 +554,8 @@ onBeforeUnmount(destroyMap)
   flex: 1;
   min-width: 0;
   display: flex;
-  background: var(--bg-dark-800);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -567,7 +566,7 @@ onBeforeUnmount(destroyMap)
   background: transparent;
   border: none;
   padding: 7px 10px;
-  color: #fff;
+  color: #0F172A;
   font-size: 0.8rem;
   outline: none;
 }
@@ -581,9 +580,9 @@ onBeforeUnmount(destroyMap)
 }
 
 .gps-btn {
-  background: rgba(40, 55, 252, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.45);
-  color: #bfdbfe;
+  background: #EFF6FF;
+  border: 1px solid #93C5FD;
+  color: #1D4ED8;
   font-size: 0.76rem;
   font-weight: 700;
   padding: 0 11px;
@@ -593,7 +592,7 @@ onBeforeUnmount(destroyMap)
 }
 
 .gps-btn:hover {
-  background: rgba(40, 55, 252, 0.34);
+  background: #DBEAFE;
   transform: translateY(-1px);
 }
 
@@ -607,17 +606,17 @@ onBeforeUnmount(destroyMap)
 
 .search-result-item {
   text-align: left;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  color: #1E293B;
   padding: 6px 8px;
   border-radius: 6px;
   font-size: 0.75rem;
 }
 
 .search-result-item:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: #2563EB;
+  color: #1D4ED8;
 }
 
 .quick-cities {
@@ -627,9 +626,9 @@ onBeforeUnmount(destroyMap)
 }
 
 .city-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text-secondary);
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
   font-size: 0.7rem;
   font-weight: 700;
   padding: 4px 10px;
@@ -638,9 +637,9 @@ onBeforeUnmount(destroyMap)
 }
 
 .city-chip:hover {
-  border-color: var(--color-primary);
-  background: rgba(252, 183, 40, 0.12);
-  color: var(--color-primary);
+  border-color: #2563EB;
+  background: #EFF6FF;
+  color: #1D4ED8;
 }
 
 .map-canvas-wrap {
@@ -649,7 +648,7 @@ onBeforeUnmount(destroyMap)
   height: 230px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid #CBD5E1;
 }
 
 .leaflet-canvas {

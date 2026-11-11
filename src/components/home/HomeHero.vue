@@ -137,9 +137,9 @@ const handleOrder29 = () => {
 .hero-section {
   position: relative;
   overflow: hidden;
-  padding: 68px 0 76px;
-  background: linear-gradient(180deg, #0b0e19 0%, #090c14 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 64px 0 72px;
+  background: linear-gradient(180deg, #EBF3FF 0%, #F7FAFF 58%, #F4F7FB 100%);
+  border-bottom: 1px solid #DCE4F0;
 }
 
 .hero-backdrop {
@@ -153,7 +153,7 @@ const handleOrder29 = () => {
   position: absolute;
   border-radius: 50%;
   filter: blur(85px);
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .hero-orb-blue {
@@ -161,7 +161,7 @@ const handleOrder29 = () => {
   right: 6%;
   width: 480px;
   height: 480px;
-  background: radial-gradient(circle, rgba(40, 55, 252, 0.38), transparent 70%);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.22), transparent 70%);
   animation: orbFloat 11s ease-in-out infinite alternate;
 }
 
@@ -170,7 +170,7 @@ const handleOrder29 = () => {
   left: -4%;
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, rgba(252, 183, 40, 0.2), transparent 70%);
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.22), transparent 70%);
   animation: orbFloat 13s ease-in-out infinite alternate-reverse;
 }
 
@@ -187,8 +187,8 @@ const handleOrder29 = () => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(30, 58, 138, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 58, 138, 0.045) 1px, transparent 1px);
   background-size: 46px 46px;
   mask-image: radial-gradient(ellipse 85% 75% at 50% 45%, #000 35%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 45%, #000 35%, transparent 100%);
@@ -226,15 +226,15 @@ const handleOrder29 = () => {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.16), rgba(252, 183, 40, 0.06));
-  color: var(--color-primary);
-  border: 1px solid rgba(252, 183, 40, 0.35);
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #F59E0B;
   padding: 7px 15px;
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 800;
   margin-bottom: 20px;
-  box-shadow: 0 0 24px rgba(252, 183, 40, 0.12);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.14);
 }
 
 .hero-title {
@@ -243,12 +243,12 @@ const handleOrder29 = () => {
   line-height: 1.18;
   letter-spacing: -0.02em;
   margin-bottom: 18px;
-  color: #fff;
+  color: #0F172A;
 }
 
 .highlight {
   display: inline-block;
-  background: linear-gradient(135deg, #ffe08a 0%, #FCB728 50%, #f59e0b 100%);
+  background: linear-gradient(135deg, #1D4ED8 0%, #D97706 58%, #DC2626 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -256,7 +256,7 @@ const handleOrder29 = () => {
 
 .hero-sub {
   font-size: 1.04rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.68;
   margin-bottom: 30px;
   max-width: 580px;
@@ -278,11 +278,11 @@ const handleOrder29 = () => {
   display: flex;
   align-items: center;
   gap: 28px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #FFFFFF;
+  border: 1px solid #DCE4F0;
   border-radius: var(--radius-md);
   padding: 16px 22px;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px -10px rgba(15, 23, 42, 0.08);
 }
 
 .stat-item {
@@ -293,51 +293,51 @@ const handleOrder29 = () => {
 .stat-num {
   font-family: var(--font-display);
   font-size: 1.55rem;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 800;
+  color: #1D4ED8;
   line-height: 1.2;
 }
 
 .stat-label {
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: #64748B;
   margin-top: 2px;
+  font-weight: 600;
 }
 
 .stat-divider {
   width: 1px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #E2E8F0;
 }
 
 .featured-offer-box {
   position: relative;
-  background: linear-gradient(165deg, rgba(25, 31, 52, 0.95) 0%, rgba(15, 19, 32, 0.98) 100%);
-  border: 1.5px solid rgba(252, 183, 40, 0.65);
+  background: #FFFFFF;
+  border: 2px solid #F59E0B;
   border-radius: var(--radius-xl);
   padding: 32px 28px 28px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 42px rgba(252, 183, 40, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: 0 22px 50px -12px rgba(15, 23, 42, 0.14), 0 0 0 4px rgba(252, 183, 40, 0.12);
   transition: transform 0.35s var(--ease-spring), box-shadow 0.35s var(--ease-smooth);
 }
 
 .featured-offer-box:hover {
   transform: translateY(-4px);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.72), 0 0 54px rgba(252, 183, 40, 0.28);
+  box-shadow: 0 28px 60px -12px rgba(15, 23, 42, 0.18), 0 0 0 6px rgba(252, 183, 40, 0.18);
 }
 
 .box-badge {
   position: absolute;
   top: -13px;
   left: 26px;
-  background: var(--gradient-gold);
-  color: #080a10;
+  background: linear-gradient(135deg, #DC2626, #EA580C);
+  color: #FFFFFF;
   font-size: 0.74rem;
   font-weight: 900;
   letter-spacing: 0.04em;
   padding: 5px 14px;
   border-radius: 999px;
-  box-shadow: 0 6px 16px rgba(252, 183, 40, 0.4);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.32);
 }
 
 .box-top-meta {
@@ -351,9 +351,9 @@ const handleOrder29 = () => {
 .meta-chip {
   font-size: 0.73rem;
   font-weight: 700;
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #1D4ED8;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
   padding: 3px 10px;
   border-radius: 999px;
 }
@@ -363,28 +363,28 @@ const handleOrder29 = () => {
   align-items: center;
   gap: 6px;
   font-size: 0.72rem;
-  font-weight: 700;
-  color: #4ade80;
+  font-weight: 800;
+  color: #15803D;
 }
 
 .featured-offer-box h3 {
   font-size: 1.55rem;
   font-weight: 900;
-  color: #fff;
+  color: #0F172A;
   margin-bottom: 8px;
 }
 
 .box-tagline {
   font-size: 0.88rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.55;
   margin-bottom: 18px;
 }
 
 .box-pricing {
   margin-bottom: 18px;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.45), rgba(252, 183, 40, 0.08));
-  border: 1px solid rgba(252, 183, 40, 0.22);
+  background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+  border: 1px solid #FCD34D;
   padding: 14px 16px;
   border-radius: var(--radius-md);
 }
@@ -392,28 +392,29 @@ const handleOrder29 = () => {
 .price-val {
   font-family: var(--font-display);
   font-size: 1.95rem;
-  font-weight: 700;
-  color: var(--color-primary);
+  font-weight: 800;
+  color: #DC2626;
   line-height: 1.15;
 }
 
 .savings-val {
   font-size: 0.82rem;
-  color: #4ade80;
-  font-weight: 700;
+  color: #15803D;
+  font-weight: 800;
   margin-top: 4px;
 }
 
 .fast-bonus-line {
   font-size: 0.78rem;
-  color: #fde68a;
+  color: #78350F;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px dashed rgba(252, 183, 40, 0.25);
+  border-top: 1px dashed rgba(217, 119, 6, 0.35);
 }
 
 .fast-bonus-line strong {
-  color: var(--color-primary);
+  color: #B45309;
+  font-weight: 900;
 }
 
 .box-perks {
@@ -422,7 +423,7 @@ const handleOrder29 = () => {
   flex-direction: column;
   gap: 9px;
   font-size: 0.86rem;
-  color: var(--text-secondary);
+  color: #334155;
   margin-bottom: 24px;
 }
 
@@ -433,7 +434,7 @@ const handleOrder29 = () => {
 }
 
 .perk-check {
-  color: var(--color-primary);
+  color: #16A34A;
   font-weight: 900;
 }
 

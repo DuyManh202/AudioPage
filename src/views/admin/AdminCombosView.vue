@@ -408,8 +408,8 @@ const saveCombo = async (comboId) => {
 
 .combo-panel-head {
   padding: 15px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(9, 12, 21, 0.55);
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -435,7 +435,7 @@ const saveCombo = async (comboId) => {
 .title-strong-input {
   font-weight: 800;
   font-size: 1rem !important;
-  color: #fcb728 !important;
+  color: #1d4ed8 !important;
 }
 
 .pricing-block,
@@ -443,8 +443,8 @@ const saveCombo = async (comboId) => {
 .list-editor-block {
   padding: 14px;
   border-radius: 12px;
-  background: rgba(9, 12, 21, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -466,12 +466,13 @@ const saveCombo = async (comboId) => {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #cbd5e1;
+  color: #334155;
 }
 
 .saved-live {
   font-size: 0.78rem;
-  color: #86efac;
+  font-weight: 700;
+  color: #15803d;
 }
 
 .video-embed-box {
@@ -479,8 +480,8 @@ const saveCombo = async (comboId) => {
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
-  background: #05070d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f172a;
+  border: 1px solid #e2e8f0;
 }
 
 .video-embed-box iframe,
@@ -514,30 +515,31 @@ const saveCombo = async (comboId) => {
 .gift-item-row input {
   width: 100%;
   padding: 8px 10px;
-  background: #090c15;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 7px;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.82rem;
   outline: none;
 }
 
 .comp-inputs input:last-child {
-  color: #94a3b8;
+  color: #475569;
   font-size: 0.77rem;
 }
 
 .comp-inputs input:focus,
 .gift-item-row input:focus {
-  border-color: #fcb728;
+  border-color: #2563eb;
 }
 
 .row-del-btn {
   width: 32px;
   height: 34px;
   border-radius: 7px;
-  background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -551,8 +553,8 @@ const saveCombo = async (comboId) => {
 
 .combo-panel-foot {
   padding: 15px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(9, 12, 21, 0.65);
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -562,11 +564,11 @@ const saveCombo = async (comboId) => {
 
 .foot-note {
   font-size: 0.82rem;
-  color: #94a3b8;
+  color: #475569;
 }
 
 .foot-note strong {
-  color: #fcb728;
+  color: #dc2626;
 }
 
 @media (max-width: 1060px) {

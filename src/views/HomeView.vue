@@ -130,16 +130,16 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
 <style scoped>
 .speakers-section {
   padding: 56px 0 68px;
-  background: var(--bg-dark-900);
+  background: var(--bg-page);
 }
 
 .hot-showcase-frame {
   position: relative;
-  background: linear-gradient(180deg, rgba(180, 83, 9, 0.24) 0%, rgba(28, 22, 34, 0.96) 22%, rgba(13, 17, 30, 0.98) 100%);
-  border: 1.5px solid rgba(252, 183, 40, 0.42);
+  background: linear-gradient(180deg, #ea580c 0%, #dc2626 100%);
+  border: 1.5px solid #f97316;
   border-radius: 22px;
   padding: 24px 22px 26px;
-  box-shadow: 0 22px 48px -16px rgba(0, 0, 0, 0.78), 0 0 32px rgba(252, 183, 40, 0.08);
+  box-shadow: 0 20px 44px -16px rgba(220, 38, 38, 0.35);
 }
 
 .hot-showcase-header {
@@ -149,7 +149,7 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   gap: 14px;
   margin-bottom: 22px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(252, 183, 40, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .hot-header-titles {
@@ -162,16 +162,16 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: #fde68a;
+  color: #fef08a;
   text-transform: uppercase;
 }
 
 .hot-title {
   font-size: clamp(1.32rem, 2.5vw, 1.95rem);
   font-weight: 900;
-  color: #fff;
+  color: #ffffff;
   letter-spacing: 0.01em;
-  text-shadow: 0 2px 14px rgba(252, 183, 40, 0.22);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .view-all-link {
@@ -183,15 +183,15 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   font-size: 0.86rem;
   padding: 9px 16px;
   border-radius: 999px;
-  background: var(--gradient-gold);
-  border: 1px solid rgba(255, 232, 163, 0.55);
+  background: linear-gradient(135deg, #fde047 0%, #facc15 55%, #f59e0b 100%);
+  border: 1px solid #fef08a;
   white-space: nowrap;
-  box-shadow: 0 6px 16px -4px rgba(252, 183, 40, 0.45);
+  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.22);
   transition: filter 0.2s, transform 0.2s;
 }
 
 .view-all-link:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.05);
   transform: translateX(3px);
 }
 
@@ -203,7 +203,7 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
 
 .trade-in-section {
   padding: 58px 0;
-  background: var(--bg-dark-900);
+  background: var(--bg-page);
 }
 
 .trade-in-box {
@@ -213,11 +213,11 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.85fr);
   gap: 36px;
   align-items: center;
-  background: linear-gradient(135deg, rgba(24, 31, 64, 0.9) 0%, rgba(16, 20, 35, 0.96) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+  border: 1.5px solid #bfdbfe;
   border-radius: var(--radius-xl);
   padding: 42px;
-  box-shadow: var(--shadow-elevated), var(--inner-highlight);
+  box-shadow: var(--shadow-elevated);
 }
 
 .trade-ring-decor {
@@ -227,19 +227,19 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   width: 360px;
   height: 360px;
   border-radius: 50%;
-  border: 42px solid rgba(40, 55, 252, 0.08);
+  border: 42px solid rgba(37, 99, 235, 0.06);
   pointer-events: none;
 }
 
 .trade-in-content h2 {
   font-size: clamp(1.5rem, 2.8vw, 2.05rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin: 12px 0 12px;
 }
 
 .trade-in-content p {
-  color: var(--text-secondary);
+  color: #334155;
   font-size: 0.96rem;
   line-height: 1.65;
   margin-bottom: 18px;
@@ -252,7 +252,7 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   gap: 9px;
   margin-bottom: 24px;
   font-size: 0.9rem;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .trade-perks li {
@@ -262,7 +262,7 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
 }
 
 .trade-perks .check {
-  color: var(--color-primary);
+  color: #16a34a;
   font-weight: 900;
 }
 
@@ -275,11 +275,11 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
 }
 
 .trade-stat-card {
-  background: rgba(8, 11, 20, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: var(--radius-lg);
   padding: 20px;
-  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
 }
 
 .ts-num {
@@ -287,18 +287,20 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   font-family: var(--font-display);
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--color-primary);
+  color: #1d4ed8;
   margin-bottom: 4px;
 }
 
 .ts-text {
   font-size: 0.86rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.45;
 }
 
 .pain-points-section {
   padding: 68px 0 44px;
+  background: #eaf1fb;
+  border-top: 1px solid #dbe6f5;
 }
 
 .text-center {
@@ -310,8 +312,15 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   margin: 0 auto 40px;
 }
 
+.section-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 900;
+  color: #0f172a;
+  margin: 12px 0 8px;
+}
+
 .section-desc {
-  color: var(--text-muted);
+  color: #475569;
   font-size: 0.95rem;
   margin-top: 8px;
 }
@@ -325,17 +334,18 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
 .pain-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(24, 29, 46, 0.9) 0%, rgba(16, 20, 34, 0.96) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: var(--radius-lg);
   padding: 28px 24px;
-  box-shadow: var(--shadow-card), var(--inner-highlight);
-  transition: transform 0.3s var(--ease-spring), border-color 0.25s;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.3s var(--ease-spring), border-color 0.25s, box-shadow 0.25s;
 }
 
 .pain-card:hover {
   transform: translateY(-5px);
-  border-color: var(--border-focus);
+  border-color: #93c5fd;
+  box-shadow: var(--shadow-elevated);
 }
 
 .card-num {
@@ -345,7 +355,7 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
   font-family: var(--font-display);
   font-size: 2.3rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.05);
+  color: rgba(15, 23, 42, 0.06);
   line-height: 1;
 }
 
@@ -357,13 +367,13 @@ const featuredProducts = computed(() => productStore.products.slice(0, 6))
 .pain-card h3 {
   font-size: 1.12rem;
   font-weight: 800;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 10px;
 }
 
 .pain-card p {
   font-size: 0.88rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.65;
 }
 

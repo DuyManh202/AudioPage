@@ -156,20 +156,20 @@ const handleAddToCart = () => {
 
 <style scoped>
 .product-card {
-  background: linear-gradient(180deg, rgba(24, 30, 48, 0.95) 0%, rgba(14, 18, 31, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 20px -8px rgba(15, 23, 42, 0.08);
   transition: transform 0.28s var(--ease-spring), border-color 0.24s, box-shadow 0.28s;
 }
 
 .product-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(252, 183, 40, 0.55);
-  box-shadow: 0 20px 38px -12px rgba(0, 0, 0, 0.78), 0 0 24px rgba(252, 183, 40, 0.14);
+  border-color: #f59e0b;
+  box-shadow: 0 18px 34px -12px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(245, 158, 11, 0.25);
 }
 
 /* Hàng nhãn mini trên đầu thẻ */
@@ -187,25 +187,25 @@ const handleAddToCart = () => {
   gap: 3px;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #34d399;
+  color: #15803d;
   white-space: nowrap;
 }
 
 .star-dot {
   font-size: 0.72rem;
-  color: #10b981;
+  color: #16a34a;
 }
 
 .out-stock-tag {
-  color: #fbbf24;
+  color: #b45309;
 }
 
 .room-pill {
   display: inline-flex;
   align-items: center;
-  background: rgba(139, 92, 246, 0.16);
-  border: 1px solid rgba(167, 139, 250, 0.32);
-  color: #c4b5fd;
+  background: #f3e8ff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
   font-size: 0.69rem;
   font-weight: 700;
   padding: 2px 7px;
@@ -223,15 +223,15 @@ const handleAddToCart = () => {
   margin: 0 10px;
   border-radius: 10px;
   aspect-ratio: 4 / 3;
-  background: #0b0e18;
+  background: #f8fafc;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid #edf2f7;
 }
 
 .thumb-stage-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 60%, rgba(40, 55, 252, 0.18), transparent 72%);
+  background: radial-gradient(circle at 50% 60%, rgba(37, 99, 235, 0.06), transparent 72%);
   pointer-events: none;
   z-index: 1;
 }
@@ -256,10 +256,10 @@ const handleAddToCart = () => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(8, 10, 18, 0.84);
+  background: rgba(15, 23, 42, 0.84);
   backdrop-filter: blur(6px);
-  color: #fecaca;
-  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
   font-size: 0.66rem;
   font-weight: 800;
   padding: 2px 7px;
@@ -267,7 +267,7 @@ const handleAddToCart = () => {
 }
 
 .play-pulse {
-  color: #ef4444;
+  color: #f87171;
   font-size: 0.6rem;
 }
 
@@ -299,7 +299,7 @@ const handleAddToCart = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.28);
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.22);
 }
 
 .promo-ribbon .bolt {
@@ -320,12 +320,12 @@ const handleAddToCart = () => {
 }
 
 .card-title a {
-  color: #f8fafc;
+  color: #0f172a;
   transition: color 0.2s;
 }
 
 .card-title a:hover {
-  color: var(--color-primary);
+  color: #1d4ed8;
 }
 
 .specs-mini {
@@ -336,9 +336,9 @@ const handleAddToCart = () => {
 }
 
 .spec-pill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: var(--text-secondary);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
   font-size: 0.69rem;
   font-weight: 600;
   padding: 2px 7px;
@@ -356,7 +356,7 @@ const handleAddToCart = () => {
   font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: #dc2626;
   line-height: 1.2;
 }
 
@@ -370,7 +370,7 @@ const handleAddToCart = () => {
 
 .old-price {
   font-size: 0.78rem;
-  color: var(--text-subtle);
+  color: #94a3b8;
   text-decoration: line-through;
 }
 
@@ -389,7 +389,7 @@ const handleAddToCart = () => {
 /* Quà tặng */
 .gift-line {
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.35;
   margin-bottom: 8px;
   white-space: nowrap;
@@ -398,12 +398,12 @@ const handleAddToCart = () => {
 }
 
 .gift-label {
-  color: var(--text-muted);
+  color: #64748b;
   margin-right: 4px;
 }
 
 .gift-text {
-  color: #fca5a5;
+  color: #dc2626;
   font-weight: 700;
 }
 
@@ -415,22 +415,22 @@ const handleAddToCart = () => {
   font-size: 0.74rem;
   padding-top: 7px;
   margin-bottom: 10px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.09);
+  border-top: 1px dashed #e2e8f0;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .rating-chip {
-  color: #fbbf24;
+  color: #d97706;
   font-weight: 800;
 }
 
 .meta-divider {
-  color: rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
 }
 
 .sold-count {
-  color: var(--text-secondary);
+  color: #475569;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -451,15 +451,15 @@ const handleAddToCart = () => {
   align-items: center;
   justify-content: center;
   font-size: 0.95rem;
-  background: rgba(252, 183, 40, 0.12);
-  border: 1px solid rgba(252, 183, 40, 0.38);
-  color: var(--color-primary);
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  color: #b45309;
   transition: transform 0.22s var(--ease-spring), background 0.2s, border-color 0.2s;
 }
 
 .btn-cart-icon:hover {
-  background: rgba(252, 183, 40, 0.24);
-  border-color: var(--color-primary);
+  background: #fef3c7;
+  border-color: #d97706;
   transform: translateY(-2px);
 }
 
@@ -472,19 +472,19 @@ const handleAddToCart = () => {
   border-radius: 9px;
   padding: 0 10px;
   background: var(--gradient-gold);
-  border: 1px solid rgba(255, 232, 163, 0.55);
+  border: 1px solid #f59e0b;
   color: #080a10;
   font-size: 0.8rem;
   font-weight: 800;
   white-space: nowrap;
-  box-shadow: 0 6px 16px -5px rgba(252, 183, 40, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 16px -5px rgba(245, 158, 11, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   transition: transform 0.22s var(--ease-spring), filter 0.2s, box-shadow 0.22s;
 }
 
 .btn-consult:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.04);
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px -5px rgba(252, 183, 40, 0.62);
+  box-shadow: 0 10px 20px -5px rgba(245, 158, 11, 0.52);
 }
 
 .btn-cart-icon:active,

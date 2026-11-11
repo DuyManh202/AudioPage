@@ -76,12 +76,12 @@ const openConsult = () => {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
     padding: 6px;
-    background: rgba(12, 16, 28, 0.9);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid #CBD5E1;
     border-radius: 16px;
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
   }
 
   .bar-btn {
@@ -96,16 +96,15 @@ const openConsult = () => {
     padding: 5px 2px;
     border-radius: 12px;
     background: transparent;
-    color: var(--text-secondary);
+    color: #334155;
     transition: background 0.22s var(--ease-smooth), color 0.22s var(--ease-smooth),
       transform 0.22s var(--ease-spring), box-shadow 0.22s;
   }
 
   .bar-btn.router-link-active {
-    background: rgba(252, 183, 40, 0.16);
-    border: 1px solid rgba(252, 183, 40, 0.34);
-    color: var(--color-primary);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: #EFF6FF;
+    border: 1px solid #93C5FD;
+    color: #1D4ED8;
   }
 
   .bar-btn:active {

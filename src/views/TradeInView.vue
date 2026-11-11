@@ -254,13 +254,13 @@ const resetForm = () => {
 .page-header h1 {
   font-size: clamp(1.7rem, 3.1vw, 2.3rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin: 12px 0 10px;
 }
 
 .page-header p {
   font-size: 0.96rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.65;
 }
 
@@ -273,20 +273,20 @@ const resetForm = () => {
 
 .steps-panel {
   min-width: 0;
-  background: linear-gradient(180deg, rgba(24, 29, 48, 0.9), rgba(15, 18, 32, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: var(--radius-xl);
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: var(--shadow-card), var(--inner-highlight);
+  box-shadow: var(--shadow-card);
 }
 
 .steps-panel h3 {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
@@ -295,8 +295,8 @@ const resetForm = () => {
   gap: 14px;
   align-items: flex-start;
   min-width: 0;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
   padding: 16px;
 }
@@ -321,20 +321,20 @@ const resetForm = () => {
 
 .step-card h4 {
   font-size: 0.96rem;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
 .step-card p {
   font-size: 0.84rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.5;
 }
 
 .trade-note {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  color: #dbeafe;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
   padding: 13px 15px;
   border-radius: var(--radius-md);
   font-size: 0.84rem;
@@ -343,11 +343,11 @@ const resetForm = () => {
 
 .form-panel {
   min-width: 0;
-  background: linear-gradient(180deg, rgba(24, 29, 48, 0.92), rgba(15, 18, 32, 0.98));
-  border: 1px solid rgba(252, 183, 40, 0.28);
+  background: #ffffff;
+  border: 1.5px solid #fcd34d;
   border-radius: var(--radius-xl);
   padding: 30px;
-  box-shadow: var(--shadow-elevated), var(--inner-highlight);
+  box-shadow: var(--shadow-elevated);
 }
 
 .trade-form {
@@ -359,7 +359,7 @@ const resetForm = () => {
 .trade-form h3 {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
@@ -381,7 +381,7 @@ const resetForm = () => {
 .form-group label {
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #1e293b;
 }
 
 .form-group input[type="text"],
@@ -389,21 +389,22 @@ const resetForm = () => {
 .form-group select,
 .form-group textarea {
   width: 100%;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   border-radius: var(--radius-sm);
   padding: 10px 13px;
-  color: #fff;
+  color: #0f172a;
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .upload-dropzone {
@@ -412,8 +413,8 @@ const resetForm = () => {
   gap: 6px;
   max-width: 100%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1.5px dashed rgba(252, 183, 40, 0.38);
+  background: #fffbeb;
+  border: 1.5px dashed #f59e0b;
   border-radius: var(--radius-md);
   padding: 14px;
   cursor: pointer;
@@ -422,13 +423,13 @@ const resetForm = () => {
 .file-input {
   width: 100%;
   max-width: 100%;
-  color: var(--text-secondary);
+  color: #334155;
   font-size: 0.82rem;
 }
 
 .upload-hint {
   font-size: 0.76rem;
-  color: var(--text-muted);
+  color: #64748b;
 }
 
 .image-preview {
@@ -436,10 +437,10 @@ const resetForm = () => {
   align-items: center;
   gap: 12px;
   margin-top: 8px;
-  background: var(--bg-dark-900);
+  background: #f8fafc;
   padding: 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid #e2e8f0;
 }
 
 .image-preview img {
@@ -450,8 +451,9 @@ const resetForm = () => {
 }
 
 .remove-img-btn {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 0.78rem;
@@ -471,8 +473,8 @@ const resetForm = () => {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4ade80, #22c55e);
-  color: #06130b;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
   font-size: 1.8rem;
   font-weight: 900;
   display: flex;
@@ -493,21 +495,21 @@ const resetForm = () => {
 }
 
 .submit-error {
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.36);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.84rem;
 }
 
 .success-box h3 {
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 10px;
 }
 
 .success-box p {
-  color: var(--text-secondary);
+  color: #334155;
   font-size: 0.9rem;
   margin-bottom: 22px;
 }

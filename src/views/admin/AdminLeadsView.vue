@@ -92,6 +92,12 @@
             />
           </div>
 
+          <div class="adm-date-filter">
+            <label><span>Từ ngày</span><input v-model="fromDate" type="date" aria-label="Ngày bắt đầu lọc khách tư vấn" /></label>
+            <label><span>Đến ngày</span><input v-model="toDate" type="date" aria-label="Ngày kết thúc lọc khách tư vấn" /></label>
+            <button type="button" class="adm-date-clear" :disabled="!isDateActive" @click="clearDates">Xóa ngày</button>
+          </div>
+
           <div class="adm-tabs">
             <button
               v-for="f in filterOptions"
@@ -105,6 +111,9 @@
             </button>
           </div>
         </div>
+        <p v-if="isDateLoading || dateError" :class="['adm-date-status', { error: dateError }]">
+          {{ dateError || 'Đang tải danh sách theo ngày từ máy chủ…' }}
+        </p>
       </div>
 
       <div class="adm-table-wrap">
@@ -121,7 +130,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="lead in adminStore.filteredLeads" :key="lead.id">
+            <tr v-for="lead in visibleLeads" :key="lead.id">
               <td>
                 <strong class="code-text" :title="lead.id">{{ shortCode(lead.id) }}</strong>
                 <span class="sub-line">{{ lead.createdAt }}</span>
@@ -205,7 +214,7 @@
               </td>
             </tr>
 
-            <tr v-if="adminStore.filteredLeads.length === 0">
+            <tr v-if="!isDateLoading && !dateError && visibleLeads.length === 0">
               <td colspan="7" class="adm-empty">
                 Không có hồ sơ khách hàng nào phù hợp với bộ lọc hiện tại.
               </td>
@@ -293,10 +302,24 @@ import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
 import { exportRowsToCsv } from '../../utils/csvExport'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
+import { useApiDateFilter } from '../../composables/useApiDateFilter'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
+const dateFilter = useApiDateFilter('/admin/leads', computed(() => adminStore.leads))
+const { fromDate, toDate, rows: dateRows, isActive: isDateActive, isLoading: isDateLoading, error: dateError, clearDates } = dateFilter
+const visibleLeads = computed(() => {
+  if (isDateActive.value) {
+    const keyword = adminStore.leadSearchKeyword.toLowerCase().trim()
+    return dateRows.value.filter(lead => {
+      if (adminStore.leadFilterStatus !== 'ALL' && lead.status !== adminStore.leadFilterStatus) return false
+      return !keyword || [lead.name, lead.phone, lead.address, lead.interest]
+        .some(value => String(value || '').toLowerCase().includes(keyword))
+    })
+  }
+  return adminStore.filteredLeads
+})
 
 const closedRevenue = computed(() => {
   return adminStore.leads
@@ -359,7 +382,7 @@ const exportLeadsCsv = () => {
       { label: 'Thông tin phòng', value: r => r.roomInfo || '' },
       { label: 'Ghi chú', value: r => r.note || '' }
     ],
-    adminStore.filteredLeads
+    visibleLeads.value
   )
 }
 
@@ -455,7 +478,8 @@ const submitLeadForm = async () => {
   display: block;
   font-family: var(--font-display);
   font-size: 0.8rem;
-  color: #fcb728;
+  font-weight: 800;
+  color: #1d4ed8;
 }
 
 .sub-line {
@@ -467,7 +491,7 @@ const submitLeadForm = async () => {
 
 .cust-name {
   display: block;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.86rem;
 }
 
@@ -475,8 +499,9 @@ const submitLeadForm = async () => {
   display: inline-block;
   margin-top: 3px;
   font-size: 0.72rem;
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   padding: 1px 7px;
   border-radius: 4px;
 }
@@ -484,13 +509,14 @@ const submitLeadForm = async () => {
 .interest-text {
   display: block;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 0.83rem;
 }
 
 .deal-money {
   display: block;
-  color: #fcb728;
+  color: #dc2626;
+  font-weight: 800;
   font-size: 0.8rem;
   margin-top: 2px;
 }
@@ -498,7 +524,7 @@ const submitLeadForm = async () => {
 .note-preview {
   display: block;
   font-size: 0.73rem;
-  color: #94a3b8;
+  color: #64748b;
   margin-top: 2px;
   max-width: 240px;
 }

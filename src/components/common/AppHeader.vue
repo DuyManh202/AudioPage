@@ -160,17 +160,17 @@ const scrollToEbook = () => {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 12, 20, 0.84);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 6px 24px -10px rgba(15, 23, 42, 0.08);
 }
 
 .top-announcement {
-  background: linear-gradient(90deg, #101424 0%, #1d2b8a 52%, #12172a 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
+  background: linear-gradient(90deg, #1E3A8A 0%, #1D4ED8 52%, #1E3A8A 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
   font-size: 0.78rem;
   padding: 7px 0;
 }
@@ -226,13 +226,13 @@ const scrollToEbook = () => {
 }
 
 .top-contact strong {
-  color: var(--color-primary);
+  color: #FDE047;
 }
 
 .admin-entry-link {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
   font-weight: 700;
   padding: 2px 10px;
   border-radius: 999px;
@@ -241,9 +241,9 @@ const scrollToEbook = () => {
 }
 
 .admin-entry-link:hover {
-  background: rgba(252, 183, 40, 0.18);
-  border-color: var(--border-focus);
-  color: var(--color-primary);
+  background: rgba(252, 183, 40, 0.25);
+  border-color: #FDE047;
+  color: #FEF08A;
 }
 
 .main-nav {
@@ -301,7 +301,7 @@ const scrollToEbook = () => {
   font-size: 1.32rem;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #fff;
+  color: #0F172A;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -309,8 +309,8 @@ const scrollToEbook = () => {
 
 .logo-slogan {
   font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-primary);
+  font-weight: 700;
+  color: #B45309;
   letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
@@ -322,21 +322,22 @@ const scrollToEbook = () => {
   max-width: 500px;
   display: flex;
   align-items: center;
-  background: rgba(21, 25, 41, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #F1F5F9;
+  border: 1.5px solid #CBD5E1;
   border-radius: 999px;
   padding: 4px 4px 4px 14px;
-  transition: border-color 0.25s var(--ease-smooth), box-shadow 0.25s var(--ease-smooth);
+  transition: border-color 0.25s var(--ease-smooth), box-shadow 0.25s var(--ease-smooth), background 0.2s;
 }
 
 .search-box:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  background: #FFFFFF;
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .search-icon {
   font-size: 0.88rem;
-  opacity: 0.65;
+  opacity: 0.75;
   margin-right: 8px;
 }
 
@@ -346,13 +347,13 @@ const scrollToEbook = () => {
   background: transparent;
   border: none;
   outline: none;
-  color: #fff;
+  color: #0F172A;
   font-size: 0.86rem;
   padding: 6px 4px;
 }
 
 .search-box input::placeholder {
-  color: #64748b;
+  color: #64748B;
 }
 
 .search-btn {
@@ -395,35 +396,33 @@ const scrollToEbook = () => {
   gap: 6px;
   padding: 9px 15px;
   border-radius: 11px;
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.14), rgba(245, 158, 11, 0.06));
-  border: 1px solid rgba(252, 183, 40, 0.35);
-  color: var(--color-primary);
+  background: linear-gradient(135deg, #FEF3C7, #FFEDD5);
+  border: 1px solid #F59E0B;
+  color: #9A3412;
   font-size: 0.83rem;
   font-weight: 800;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: background 0.24s, border-color 0.24s, transform 0.24s var(--ease-spring), box-shadow 0.24s;
 }
 
 .combo-link:hover {
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.24), rgba(245, 158, 11, 0.12));
-  border-color: var(--color-primary);
+  background: linear-gradient(135deg, #FDE68A, #FED7AA);
+  border-color: #EA580C;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px -6px rgba(252, 183, 40, 0.36);
+  box-shadow: 0 8px 20px -6px rgba(234, 88, 12, 0.28);
 }
 
-  .cart-header-btn {
+.cart-header-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 9px 14px;
   border-radius: 11px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f8fafc;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
   font-size: 0.83rem;
   font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: border-color 0.22s, background 0.22s, transform 0.22s var(--ease-spring);
 }
 
@@ -434,8 +433,9 @@ const scrollToEbook = () => {
 }
 
 .cart-header-btn:hover {
-  border-color: var(--color-primary);
-  background: rgba(252, 183, 40, 0.1);
+  border-color: #D97706;
+  background: #FFFBEB;
+  color: #92400E;
   transform: translateY(-2px);
 }
 
@@ -506,8 +506,8 @@ const scrollToEbook = () => {
 }
 
 .sub-nav {
-  background: rgba(14, 17, 29, 0.75);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
 }
 
 .nav-links {
@@ -523,8 +523,8 @@ const scrollToEbook = () => {
   align-items: center;
   padding: 12px 0;
   font-size: 0.86rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: #334155;
   transition: color 0.2s;
 }
 
@@ -534,9 +534,9 @@ const scrollToEbook = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
+  height: 2.5px;
   border-radius: 2px;
-  background: var(--gradient-gold);
+  background: var(--gradient-blue);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 0.26s var(--ease-spring);
@@ -544,7 +544,7 @@ const scrollToEbook = () => {
 
 .nav-links a:hover,
 .nav-links a.router-link-active {
-  color: var(--color-primary);
+  color: #1D4ED8;
 }
 
 .nav-links a:hover::after,
@@ -663,13 +663,13 @@ const scrollToEbook = () => {
     height: 18px;
     padding: 0 4px;
     font-size: 0.66rem;
-    border: 2px solid #0a0c14;
+    border: 2px solid #FFFFFF;
   }
 
   .mobile-menu-toggle {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #fff;
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    color: #0F172A;
   }
 
   .hamburger-lines {
@@ -685,7 +685,7 @@ const scrollToEbook = () => {
     width: 100%;
     height: 2px;
     border-radius: 2px;
-    background: #fff;
+    background: #0F172A;
     transition: transform 0.25s var(--ease-spring), opacity 0.2s;
   }
 
@@ -703,8 +703,9 @@ const scrollToEbook = () => {
 
   .sub-nav {
     display: none;
-    background: rgba(12, 15, 26, 0.98);
+    background: #FFFFFF;
     border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
   }
 
   .sub-nav.mobile-open {
@@ -736,7 +737,7 @@ const scrollToEbook = () => {
     align-items: center;
     min-height: 44px;
     padding: 8px 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid #EEF2F7;
     font-size: 0.92rem;
   }
 

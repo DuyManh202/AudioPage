@@ -88,6 +88,12 @@
             />
           </div>
 
+          <div class="adm-date-filter">
+            <label><span>Từ ngày</span><input v-model="fromDate" type="date" aria-label="Ngày bắt đầu lọc yêu cầu thu cũ" /></label>
+            <label><span>Đến ngày</span><input v-model="toDate" type="date" aria-label="Ngày kết thúc lọc yêu cầu thu cũ" /></label>
+            <button type="button" class="adm-date-clear" :disabled="!isDateActive" @click="clearDates">Xóa ngày</button>
+          </div>
+
           <div class="adm-tabs">
             <button
               v-for="tab in statusTabs"
@@ -101,6 +107,9 @@
             </button>
           </div>
         </div>
+        <p v-if="isDateLoading || dateError" :class="['adm-date-status', { error: dateError }]">
+          {{ dateError || 'Đang tải yêu cầu theo ngày từ máy chủ…' }}
+        </p>
       </div>
 
       <div class="adm-table-wrap">
@@ -205,7 +214,7 @@
               </td>
             </tr>
 
-            <tr v-if="filteredTradeIns.length === 0">
+            <tr v-if="!isDateLoading && !dateError && filteredTradeIns.length === 0">
               <td :colspan="isSuperAdmin ? 8 : 7" class="adm-empty">
                 Không có yêu cầu Thu Cũ Đổi Mới nào khớp bộ lọc.
               </td>
@@ -234,10 +243,13 @@ import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
 import { exportRowsToCsv } from '../../utils/csvExport'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
+import { useApiDateFilter } from '../../composables/useApiDateFilter'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
+const dateFilter = useApiDateFilter('/admin/trade-ins', computed(() => adminStore.tradeIns))
+const { fromDate, toDate, rows: dateRows, isActive: isDateActive, isLoading: isDateLoading, error: dateError, clearDates } = dateFilter
 
 const searchQuery = ref('')
 const statusFilter = ref('ALL')
@@ -258,7 +270,7 @@ const statusTabs = computed(() => [
 
 const filteredTradeIns = computed(() => {
   const kw = searchQuery.value.toLowerCase().trim()
-  return adminStore.tradeIns.filter(t => {
+  return dateRows.value.filter(t => {
     if (statusFilter.value !== 'ALL' && t.status !== statusFilter.value) return false
     if (!kw) return true
     return (
@@ -318,7 +330,7 @@ const getStatusClass = (status) => ({
 
 .cust-name {
   display: block;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.86rem;
 }
 
@@ -332,7 +344,7 @@ const getStatusClass = (status) => ({
 .cond-text {
   display: block;
   font-size: 0.76rem;
-  color: #94a3b8;
+  color: #475569;
   margin-top: 3px;
   max-width: 240px;
 }
@@ -342,15 +354,15 @@ const getStatusClass = (status) => ({
   height: 58px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #090c15;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
   padding: 0;
   transition: transform 0.16s, border-color 0.16s;
 }
 
 .device-thumb-btn:hover {
   transform: scale(1.05);
-  border-color: #fcb728;
+  border-color: #2563eb;
 }
 
 .device-thumb-btn img {
@@ -369,22 +381,23 @@ const getStatusClass = (status) => ({
   width: 138px;
   height: 34px;
   padding: 0 10px;
-  background: #090c15;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 7px;
-  color: #fcb728;
+  color: #dc2626;
   font-weight: 800;
   font-size: 0.84rem;
   outline: none;
 }
 
 .appraisal-input:focus {
-  border-color: #fcb728;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .appraisal-formatted {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: #475569;
   font-weight: 600;
 }
 
@@ -398,8 +411,8 @@ const getStatusClass = (status) => ({
   max-width: 88vw;
   max-height: 82vh;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85);
+  border: 2px solid #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.45);
 }
 
 .lightbox-close {
@@ -409,9 +422,10 @@ const getStatusClass = (status) => ({
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #141a2e;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;

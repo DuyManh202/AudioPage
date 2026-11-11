@@ -128,8 +128,8 @@ const handleSelectCombo = (combo) => {
 
 <style scoped>
 .combos-section {
-  padding: 76px 0;
-  background: var(--bg-dark-900);
+  padding: 72px 0;
+  background: var(--bg-page);
 }
 
 .text-center {
@@ -144,13 +144,13 @@ const handleSelectCombo = (combo) => {
 .section-title {
   font-size: clamp(1.65rem, 3vw, 2.25rem);
   font-weight: 900;
-  color: #fff;
+  color: #0F172A;
   margin: 12px 0 10px;
   letter-spacing: -0.01em;
 }
 
 .section-desc {
-  color: var(--text-muted);
+  color: #475569;
   font-size: 0.96rem;
   line-height: 1.65;
 }
@@ -167,28 +167,28 @@ const handleSelectCombo = (combo) => {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: linear-gradient(180deg, rgba(25, 30, 48, 0.9) 0%, rgba(16, 20, 34, 0.95) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #FFFFFF;
+  border: 1.5px solid #DCE4F0;
   border-radius: var(--radius-xl);
   padding: 32px 26px 26px;
-  box-shadow: var(--shadow-card), var(--inner-highlight);
+  box-shadow: var(--shadow-card);
   transition: transform 0.32s var(--ease-spring), border-color 0.28s, box-shadow 0.32s;
 }
 
 .combo-card:hover {
   transform: translateY(-6px);
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: #93C5FD;
   box-shadow: var(--shadow-elevated);
 }
 
 .combo-card.featured {
-  border: 1.5px solid rgba(252, 183, 40, 0.65);
-  box-shadow: var(--shadow-elevated), 0 0 38px rgba(252, 183, 40, 0.14), var(--inner-highlight);
+  border: 2px solid #F59E0B;
+  box-shadow: var(--shadow-elevated), 0 0 0 4px rgba(252, 183, 40, 0.12);
 }
 
 .combo-card.featured:hover {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-elevated), 0 0 50px rgba(252, 183, 40, 0.24);
+  border-color: #D97706;
+  box-shadow: var(--shadow-elevated), 0 0 0 6px rgba(252, 183, 40, 0.18);
 }
 
 .combo-badge-top {
@@ -196,14 +196,14 @@ const handleSelectCombo = (combo) => {
   top: -13px;
   left: 24px;
   max-width: calc(100% - 48px);
-  background: var(--gradient-gold);
-  color: #080a10;
+  background: linear-gradient(135deg, #DC2626, #EA580C);
+  color: #FFFFFF;
   font-size: 0.74rem;
   font-weight: 900;
   padding: 5px 14px;
   border-radius: 999px;
   letter-spacing: 0.03em;
-  box-shadow: 0 6px 18px rgba(252, 183, 40, 0.38);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.3);
 }
 
 .combo-header {
@@ -213,13 +213,13 @@ const handleSelectCombo = (combo) => {
 .combo-title {
   font-size: 1.5rem;
   font-weight: 900;
-  color: #fff;
+  color: #0F172A;
   margin-bottom: 6px;
 }
 
 .combo-tagline {
   font-size: 0.88rem;
-  color: var(--text-muted);
+  color: #475569;
   margin-bottom: 12px;
 }
 
@@ -227,17 +227,18 @@ const handleSelectCombo = (combo) => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  color: #bfdbfe;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
   font-size: 0.8rem;
+  font-weight: 700;
   padding: 5px 12px;
   border-radius: 999px;
 }
 
 .combo-video-box {
-  background: #070910;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #F8FAFC;
+  border: 1px solid #DCE4F0;
   border-radius: var(--radius-md);
   overflow: hidden;
   margin-bottom: 20px;
@@ -248,15 +249,15 @@ const handleSelectCombo = (combo) => {
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #F1F5F9;
+  border-bottom: 1px solid #E2E8F0;
 }
 
 .video-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #ef4444;
+  background: #DC2626;
   color: #fff;
   font-size: 0.68rem;
   font-weight: 800;
@@ -267,7 +268,8 @@ const handleSelectCombo = (combo) => {
 
 .video-title-text {
   font-size: 0.78rem;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: #334155;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -291,8 +293,8 @@ const handleSelectCombo = (combo) => {
 }
 
 .combo-pricing-block {
-  background: rgba(0, 0, 0, 0.34);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+  border: 1px solid #FCD34D;
   border-radius: var(--radius-md);
   padding: 16px;
   margin-bottom: 20px;
@@ -310,20 +312,20 @@ const handleSelectCombo = (combo) => {
 .price-big {
   font-family: var(--font-display);
   font-size: 1.85rem;
-  font-weight: 700;
-  color: var(--color-primary);
+  font-weight: 800;
+  color: #DC2626;
 }
 
 .list-price {
   font-size: 0.85rem;
-  color: var(--text-subtle);
+  color: #64748B;
   text-decoration: line-through;
 }
 
 .fast-action-pill {
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.18), rgba(245, 158, 11, 0.08));
-  border: 1px dashed rgba(252, 183, 40, 0.45);
-  color: #fde68a;
+  background: #FFFFFF;
+  border: 1px dashed #D97706;
+  color: #78350F;
   font-size: 0.82rem;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
@@ -331,19 +333,19 @@ const handleSelectCombo = (combo) => {
 }
 
 .fast-action-pill strong {
-  color: var(--color-primary);
+  color: #B45309;
   font-weight: 900;
 }
 
 .save-tag {
   font-size: 0.8rem;
-  color: #4ade80;
-  font-weight: 700;
+  color: #15803D;
+  font-weight: 800;
 }
 
 .save-sub {
-  color: var(--text-muted);
-  font-weight: 500;
+  color: #475569;
+  font-weight: 600;
   font-size: 0.75rem;
 }
 
@@ -355,7 +357,7 @@ const handleSelectCombo = (combo) => {
 .combo-gifts h4 {
   font-size: 0.9rem;
   font-weight: 800;
-  color: #fff;
+  color: #0F172A;
   margin-bottom: 10px;
 }
 
@@ -372,29 +374,29 @@ const handleSelectCombo = (combo) => {
   gap: 9px;
   font-size: 0.85rem;
   line-height: 1.45;
-  color: var(--text-secondary);
+  color: #334155;
 }
 
 .check-icon {
-  color: var(--color-primary);
+  color: #16A34A;
   font-weight: 900;
   flex-shrink: 0;
 }
 
 .combo-equipments strong {
-  color: #fff;
+  color: #0F172A;
   display: block;
 }
 
 .item-role {
   display: block;
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: #64748B;
 }
 
 .combo-gifts {
-  background: rgba(34, 197, 94, 0.06);
-  border: 1px solid rgba(34, 197, 94, 0.22);
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 22px;
@@ -406,7 +408,8 @@ const handleSelectCombo = (combo) => {
   flex-direction: column;
   gap: 6px;
   font-size: 0.82rem;
-  color: #bbf7d0;
+  color: #166534;
+  font-weight: 600;
 }
 
 .combo-footer {

@@ -149,9 +149,9 @@ const handleLogin = async () => {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 18% 20%, rgba(40, 55, 252, 0.2), transparent 45%),
-    radial-gradient(circle at 82% 80%, rgba(252, 183, 40, 0.12), transparent 42%),
-    #070911;
+    radial-gradient(circle at 18% 20%, rgba(37, 99, 235, 0.1), transparent 48%),
+    radial-gradient(circle at 82% 80%, rgba(245, 158, 11, 0.1), transparent 45%),
+    #eef3fa;
 }
 
 .login-container {
@@ -159,19 +159,17 @@ const handleLogin = async () => {
   max-width: 920px;
   display: grid;
   grid-template-columns: 1.1fr 1fr;
-  background: linear-gradient(180deg, #13182a 0%, #0d111e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: 22px;
   overflow: hidden;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 28px 65px -16px rgba(15, 23, 42, 0.16);
 }
 
 .login-showcase {
   padding: 42px 38px;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(252, 183, 40, 0.14), transparent 55%),
-    linear-gradient(160deg, rgba(22, 29, 52, 0.95) 0%, rgba(12, 16, 30, 0.98) 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(155deg, #eff6ff 0%, #f8fafc 100%);
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -197,6 +195,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
 }
 
 .brand-name {
@@ -204,7 +203,7 @@ const handleLogin = async () => {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 800;
-  color: #fcb728;
+  color: #0f172a;
   letter-spacing: 0.04em;
 }
 
@@ -212,7 +211,7 @@ const handleLogin = async () => {
   display: block;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #64748b;
+  color: #1d4ed8;
   letter-spacing: 0.08em;
 }
 
@@ -220,14 +219,14 @@ const handleLogin = async () => {
   font-family: var(--font-display);
   font-size: 1.52rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: #0f172a;
   line-height: 1.3;
   margin-bottom: 12px;
 }
 
 .showcase-desc {
   font-size: 0.86rem;
-  color: #94a3b8;
+  color: #475569;
   line-height: 1.6;
 }
 
@@ -243,16 +242,18 @@ const handleLogin = async () => {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid #dbe6f5;
+  box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.06);
 }
 
 .feat-ico {
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: rgba(252, 183, 40, 0.14);
-  color: #fcb728;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #d97706;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -262,14 +263,14 @@ const handleLogin = async () => {
 .feat-item strong {
   display: block;
   font-size: 0.82rem;
-  color: #f1f5f9;
+  color: #0f172a;
   margin-bottom: 2px;
 }
 
 .feat-item span {
   display: block;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: #64748b;
   line-height: 1.45;
 }
 
@@ -278,6 +279,7 @@ const handleLogin = async () => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  background: #ffffff;
 }
 
 .panel-head {
@@ -288,13 +290,13 @@ const handleLogin = async () => {
   font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
 .panel-head p {
   font-size: 0.83rem;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .login-alert {
@@ -303,9 +305,9 @@ const handleLogin = async () => {
   gap: 9px;
   padding: 11px 14px;
   border-radius: 10px;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   font-size: 0.83rem;
   font-weight: 600;
   margin-bottom: 18px;
@@ -326,22 +328,23 @@ const handleLogin = async () => {
 .field-block label {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #cbd5e1;
+  color: #334155;
 }
 
 .field-input-box {
   display: flex;
   align-items: center;
-  background: #080b14;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 0 12px;
-  transition: border-color 0.18s, box-shadow 0.18s;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
 }
 
 .field-input-box:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .field-ico {
@@ -355,20 +358,20 @@ const handleLogin = async () => {
   height: 44px;
   background: transparent;
   border: none;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.9rem;
   outline: none;
 }
 
 .pwd-toggle {
   background: transparent;
-  color: #94a3b8;
+  color: #64748b;
   padding: 6px;
   display: flex;
 }
 
 .pwd-toggle:hover {
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .remember-row {
@@ -376,7 +379,7 @@ const handleLogin = async () => {
   align-items: center;
   gap: 8px;
   font-size: 0.81rem;
-  color: #94a3b8;
+  color: #475569;
   cursor: pointer;
 }
 
@@ -390,7 +393,7 @@ const handleLogin = async () => {
 .panel-foot {
   margin-top: 24px;
   padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: center;
 }
@@ -401,12 +404,12 @@ const handleLogin = async () => {
   gap: 7px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   transition: color 0.16s;
 }
 
 .store-back-link:hover {
-  color: #fcb728;
+  color: #1d4ed8;
 }
 
 @media (max-width: 820px) {

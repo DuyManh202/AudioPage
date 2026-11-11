@@ -157,9 +157,9 @@ const handleSubmit = async () => {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(4, 6, 12, 0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 999;
   display: flex;
   align-items: center;
@@ -168,9 +168,9 @@ const handleSubmit = async () => {
 }
 
 .modal-window {
-  background: linear-gradient(180deg, #161b2d 0%, #101422 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
   border-radius: var(--radius-lg);
   max-width: 560px;
   max-height: 92vh;
@@ -199,8 +199,8 @@ const handleSubmit = async () => {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
   font-size: 1.4rem;
   display: flex;
   align-items: center;
@@ -209,8 +209,8 @@ const handleSubmit = async () => {
 }
 
 .close-x:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .modal-header {
@@ -220,7 +220,7 @@ const handleSubmit = async () => {
 .modal-title {
   font-size: 1.32rem;
   font-weight: 800;
-  color: #fff;
+  color: #0f172a;
   margin: 12px 0 6px;
   padding-right: 32px;
 }
@@ -231,7 +231,7 @@ const handleSubmit = async () => {
 }
 
 .highlight {
-  color: var(--color-primary);
+  color: #dc2626;
 }
 
 .modal-form {
@@ -241,9 +241,9 @@ const handleSubmit = async () => {
 }
 
 .submit-error {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.84rem;
@@ -258,32 +258,33 @@ const handleSubmit = async () => {
 .form-group label {
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #1e293b;
 }
 
 .form-group input,
 .form-group textarea {
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
-  color: #fff;
+  color: #0f172a;
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .form-guarantee {
   font-size: 0.78rem;
-  color: var(--text-secondary);
-  background: rgba(252, 183, 40, 0.06);
-  border: 1px solid rgba(252, 183, 40, 0.18);
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
 }
@@ -306,8 +307,8 @@ const handleSubmit = async () => {
 .success-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #4ade80, #22c55e);
-  color: #06130b;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -315,18 +316,18 @@ const handleSubmit = async () => {
   font-size: 1.8rem;
   font-weight: 900;
   margin: 0 auto 16px;
-  box-shadow: 0 0 26px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 8px 22px rgba(22, 163, 74, 0.28);
 }
 
 .success-box h4 {
   font-size: 1.3rem;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 8px;
 }
 
 .success-box p {
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.5;
   margin-bottom: 24px;
 }

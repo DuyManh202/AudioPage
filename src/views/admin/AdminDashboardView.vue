@@ -486,21 +486,21 @@ const getOrderStatusLabel = (st) => ({
 }
 
 .op-red {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.32);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
 }
 
 .op-gold {
-  background: rgba(252, 183, 40, 0.12);
-  border: 1px solid rgba(252, 183, 40, 0.32);
-  color: #fde047;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
 }
 
 .op-amber {
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.32);
-  color: #fcd34d;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
 }
 
 .dash-mid-grid {
@@ -541,7 +541,7 @@ const getOrderStatusLabel = (st) => ({
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #cbd5e1;
+  color: #334155;
   font-weight: 600;
 }
 
@@ -552,24 +552,24 @@ const getOrderStatusLabel = (st) => ({
 }
 
 .dot-red { background: #ef4444; }
-.dot-gold { background: #fcb728; }
+.dot-gold { background: #f59e0b; }
 .dot-blue { background: #3b82f6; }
 .dot-green { background: #22c55e; }
 .dot-slate { background: #64748b; }
 
 .stage-stat {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.78rem;
 }
 
 .stage-stat strong {
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .bar-track {
   width: 100%;
   height: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f1f5f9;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -581,10 +581,10 @@ const getOrderStatusLabel = (st) => ({
 }
 
 .bar-red { background: linear-gradient(90deg, #ef4444, #f87171); }
-.bar-gold { background: linear-gradient(90deg, #f59e0b, #fcb728); }
+.bar-gold { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .bar-blue { background: linear-gradient(90deg, #2563eb, #60a5fa); }
 .bar-green { background: linear-gradient(90deg, #16a34a, #4ade80); }
-.bar-slate { background: #475569; }
+.bar-slate { background: #94a3b8; }
 
 .quick-stat-list {
   display: flex;
@@ -599,14 +599,14 @@ const getOrderStatusLabel = (st) => ({
   gap: 12px;
   padding: 11px 13px;
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   transition: border-color 0.16s, background 0.16s;
 }
 
 .q-stat-row:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(252, 183, 40, 0.3);
+  background: #eff6ff;
+  border-color: #93c5fd;
 }
 
 .q-left {
@@ -625,7 +625,7 @@ const getOrderStatusLabel = (st) => ({
 .q-left strong {
   display: block;
   font-size: 0.83rem;
-  color: #f1f5f9;
+  color: #0f172a;
 }
 
 .q-left span {
@@ -636,7 +636,7 @@ const getOrderStatusLabel = (st) => ({
 
 .row-primary {
   display: block;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.85rem;
 }
 
@@ -650,13 +650,13 @@ const getOrderStatusLabel = (st) => ({
 .row-interest {
   display: block;
   font-size: 0.8rem;
-  color: #cbd5e1;
+  color: #334155;
   font-weight: 600;
 }
 
 .row-price,
 .gold-num {
-  color: #fcb728;
+  color: #dc2626;
   font-weight: 800;
   font-size: 0.82rem;
 }

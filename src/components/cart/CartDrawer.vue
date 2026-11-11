@@ -206,9 +206,9 @@ const resetAndClose = () => {
 .cart-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(4, 6, 12, 0.76);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
@@ -218,9 +218,9 @@ const resetAndClose = () => {
   width: 100%;
   max-width: 450px;
   height: 100%;
-  background: linear-gradient(180deg, #131727 0%, #0d101c 100%);
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.65);
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  box-shadow: -20px 0 50px rgba(15, 23, 42, 0.16);
   display: flex;
   flex-direction: column;
   padding: 24px;
@@ -231,7 +231,7 @@ const resetAndClose = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 16px;
   margin-bottom: 18px;
 }
@@ -239,22 +239,22 @@ const resetAndClose = () => {
 .cart-header h3 {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #fff;
+  color: #0f172a;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .header-count {
-  color: var(--color-primary);
+  color: #dc2626;
 }
 
 .close-btn {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
   font-size: 1.5rem;
   line-height: 1;
   display: flex;
@@ -264,8 +264,8 @@ const resetAndClose = () => {
 }
 
 .close-btn:hover {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .empty-cart,
@@ -287,8 +287,8 @@ const resetAndClose = () => {
 .success-icon {
   width: 58px;
   height: 58px;
-  background: linear-gradient(135deg, #4ade80, #22c55e);
-  color: #06130b;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -296,12 +296,12 @@ const resetAndClose = () => {
   font-size: 1.8rem;
   font-weight: 900;
   margin: 0 auto 16px;
-  box-shadow: 0 0 26px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 8px 22px rgba(22, 163, 74, 0.28);
 }
 
 .order-success-box h4 {
   font-size: 1.25rem;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 8px;
 }
 
@@ -312,8 +312,8 @@ const resetAndClose = () => {
 }
 
 .vietqr-box {
-  background: rgba(15, 20, 35, 0.9);
-  border: 1px solid rgba(252, 183, 40, 0.35);
+  background: #f8fafc;
+  border: 1px solid #fcd34d;
   border-radius: var(--radius-md);
   padding: 16px;
   margin-bottom: 18px;
@@ -337,6 +337,7 @@ const resetAndClose = () => {
   max-width: 100%;
   border-radius: 10px;
   background: #fff;
+  border: 1px solid #e2e8f0;
   padding: 6px;
   margin: 0 auto 12px;
   display: block;
@@ -345,7 +346,7 @@ const resetAndClose = () => {
 .qr-details {
   text-align: left;
   font-size: 0.82rem;
-  color: #e2e8f0;
+  color: #1e293b;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -359,9 +360,9 @@ const resetAndClose = () => {
 }
 
 .copy-stk-btn {
-  background: rgba(252, 183, 40, 0.16);
-  border: 1px solid rgba(252, 183, 40, 0.45);
-  color: var(--color-primary);
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  color: #b45309;
   padding: 3px 9px;
   border-radius: 6px;
   font-size: 0.75rem;
@@ -369,7 +370,8 @@ const resetAndClose = () => {
 }
 
 .gold-text {
-  color: var(--color-primary);
+  color: #dc2626;
+  font-weight: 800;
 }
 
 .success-actions {
@@ -379,9 +381,9 @@ const resetAndClose = () => {
 }
 
 .bank-preview-note {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #bfdbfe;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
@@ -389,9 +391,9 @@ const resetAndClose = () => {
 }
 
 .submit-error {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.84rem;
@@ -415,8 +417,8 @@ const resetAndClose = () => {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
 }
 
@@ -426,7 +428,8 @@ const resetAndClose = () => {
   border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
-  background: #0d101c;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 .item-info {
@@ -437,14 +440,14 @@ const resetAndClose = () => {
 .item-name {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 3px;
 }
 
 .item-price {
   font-size: 0.86rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: #dc2626;
   margin-bottom: 8px;
 }
 
@@ -452,8 +455,8 @@ const resetAndClose = () => {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 2px 6px;
 }
@@ -462,21 +465,23 @@ const resetAndClose = () => {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: #f1f5f9;
+  color: #0f172a;
   font-weight: 800;
 }
 
 .qty-controls span {
   font-size: 0.84rem;
   font-weight: 800;
+  color: #0f172a;
   min-width: 18px;
   text-align: center;
 }
 
 .remove-btn {
-  background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
   width: 34px;
   height: 34px;
   border-radius: 8px;
@@ -487,10 +492,10 @@ const resetAndClose = () => {
 }
 
 .cart-summary {
-  background: rgba(252, 183, 40, 0.06);
+  background: #fffbeb;
   padding: 15px;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(252, 183, 40, 0.22);
+  border: 1px solid #fde68a;
 }
 
 .total-row {
@@ -498,17 +503,19 @@ const resetAndClose = () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 6px;
+  color: #0f172a;
 }
 
 .total-val {
   font-family: var(--font-display);
   font-size: 1.38rem;
-  color: var(--color-primary);
+  color: #dc2626;
 }
 
 .ship-note {
   font-size: 0.78rem;
-  color: #4ade80;
+  color: #15803d;
+  font-weight: 600;
 }
 
 .checkout-form {
@@ -520,7 +527,7 @@ const resetAndClose = () => {
 
 .checkout-form h4 {
   font-size: 0.95rem;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 2px;
 }
 
@@ -529,20 +536,21 @@ const resetAndClose = () => {
 .checkout-form textarea {
   width: 100%;
   padding: 10px 12px;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   border-radius: var(--radius-sm);
-  color: #fff;
+  color: #0f172a;
   font-size: 0.88rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .checkout-form input:focus,
 .checkout-form select:focus,
 .checkout-form textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .full-width {

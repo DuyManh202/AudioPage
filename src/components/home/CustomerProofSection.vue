@@ -128,9 +128,9 @@ const openQuickConsult = () => {
 <style scoped>
 .customer-proof-section {
   padding: 68px 0;
-  background: linear-gradient(180deg, rgba(12, 16, 28, 0.96) 0%, rgba(8, 11, 20, 1) 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #EEF3FA;
+  border-top: 1px solid #DCE4F0;
+  border-bottom: 1px solid #DCE4F0;
 }
 
 .proof-header {
@@ -145,18 +145,18 @@ const openQuickConsult = () => {
 .section-title {
   font-size: clamp(1.55rem, 2.8vw, 2.15rem);
   font-weight: 900;
-  color: #fff;
+  color: #0F172A;
   margin: 12px 0 10px;
 }
 
 .section-desc {
-  color: var(--text-secondary);
+  color: #334155;
   font-size: 0.95rem;
   line-height: 1.65;
 }
 
 .section-desc strong {
-  color: var(--color-primary);
+  color: #1D4ED8;
 }
 
 .proof-layout {
@@ -167,8 +167,8 @@ const openQuickConsult = () => {
 }
 
 .proof-player-card {
-  background: rgba(19, 24, 40, 0.92);
-  border: 1px solid rgba(252, 183, 40, 0.25);
+  background: #FFFFFF;
+  border: 1px solid #DCE4F0;
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-elevated);
@@ -177,7 +177,7 @@ const openQuickConsult = () => {
 .video-frame {
   position: relative;
   aspect-ratio: 16 / 9;
-  background: #05070c;
+  background: #0F172A;
 }
 
 .video-frame iframe {
@@ -205,28 +205,28 @@ const openQuickConsult = () => {
 }
 
 .case-location {
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  color: #93c5fd;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
 }
 
 .case-config {
-  background: rgba(252, 183, 40, 0.14);
-  border: 1px solid rgba(252, 183, 40, 0.35);
-  color: var(--color-primary);
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
 }
 
 .active-case-info h3 {
   font-size: 1.12rem;
   font-weight: 800;
-  color: #fff;
+  color: #0F172A;
   line-height: 1.38;
   margin-bottom: 8px;
 }
 
 .active-case-info p {
   font-size: 0.88rem;
-  color: var(--text-muted);
+  color: #475569;
   line-height: 1.6;
 }
 
@@ -239,7 +239,7 @@ const openQuickConsult = () => {
 .playlist-title {
   font-size: 0.84rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #475569;
   margin-bottom: 2px;
 }
 
@@ -251,29 +251,30 @@ const openQuickConsult = () => {
   text-align: left;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: #e2e8f0;
+  background: #FFFFFF;
+  border: 1px solid #DCE4F0;
+  color: #0F172A;
+  box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.06);
   transition: border-color 0.2s, background 0.2s, transform 0.2s;
 }
 
 .case-item-btn:hover {
-  border-color: rgba(252, 183, 40, 0.4);
-  background: rgba(252, 183, 40, 0.06);
+  border-color: #93C5FD;
+  background: #F8FAFC;
   transform: translateX(2px);
 }
 
 .case-item-btn.active {
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.16), rgba(20, 26, 44, 0.95));
-  border-color: var(--color-primary);
-  box-shadow: 0 8px 22px -10px rgba(252, 183, 40, 0.4);
+  background: linear-gradient(135deg, #FFFBEB, #FFFFFF);
+  border: 1.5px solid #F59E0B;
+  box-shadow: 0 8px 22px -10px rgba(245, 158, 11, 0.3);
 }
 
 .case-num {
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: #D97706;
   flex-shrink: 0;
 }
 
@@ -287,13 +288,13 @@ const openQuickConsult = () => {
 
 .case-copy strong {
   font-size: 0.88rem;
-  color: #fff;
+  color: #0F172A;
   line-height: 1.35;
 }
 
 .case-copy span {
   font-size: 0.76rem;
-  color: var(--text-muted);
+  color: #64748B;
 }
 
 .play-pill {
@@ -301,8 +302,8 @@ const openQuickConsult = () => {
   font-weight: 800;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #cbd5e1;
+  background: #F1F5F9;
+  color: #334155;
   flex-shrink: 0;
 }
 
@@ -315,8 +316,8 @@ const openQuickConsult = () => {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: rgba(34, 197, 94, 0.08);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-top: 4px;
@@ -331,13 +332,13 @@ const openQuickConsult = () => {
 .g-text strong {
   display: block;
   font-size: 0.88rem;
-  color: #86efac;
+  color: #15803D;
   margin-bottom: 4px;
 }
 
 .g-text p {
   font-size: 0.8rem;
-  color: #dcfce7;
+  color: #166534;
   line-height: 1.5;
 }
 

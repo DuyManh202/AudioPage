@@ -94,6 +94,12 @@
             <option value="BANK">Chuyển khoản VietQR</option>
           </select>
 
+          <div class="adm-date-filter">
+            <label><span>Từ ngày</span><input v-model="fromDate" type="date" aria-label="Ngày bắt đầu lọc đơn hàng" /></label>
+            <label><span>Đến ngày</span><input v-model="toDate" type="date" aria-label="Ngày kết thúc lọc đơn hàng" /></label>
+            <button type="button" class="adm-date-clear" :disabled="!isDateActive" @click="clearDates">Xóa ngày</button>
+          </div>
+
           <div class="adm-tabs">
             <button
               v-for="tab in statusTabs"
@@ -107,6 +113,9 @@
             </button>
           </div>
         </div>
+        <p v-if="isDateLoading || dateError" :class="['adm-date-status', { error: dateError }]">
+          {{ dateError || 'Đang tải đơn hàng theo ngày từ máy chủ…' }}
+        </p>
       </div>
 
       <div class="adm-table-wrap">
@@ -206,7 +215,7 @@
               </td>
             </tr>
 
-            <tr v-if="filteredOrders.length === 0">
+            <tr v-if="!isDateLoading && !dateError && filteredOrders.length === 0">
               <td colspan="7" class="adm-empty">
                 Không tìm thấy đơn đặt mua lẻ nào phù hợp với bộ lọc.
               </td>
@@ -300,10 +309,13 @@ import { formatCurrency } from '../../utils/formatters'
 import { exportRowsToCsv } from '../../utils/csvExport'
 import { CONTACT_INFO } from '../../config/contact'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
+import { useApiDateFilter } from '../../composables/useApiDateFilter'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
+const dateFilter = useApiDateFilter('/admin/orders', computed(() => adminStore.orders))
+const { fromDate, toDate, rows: dateRows, isActive: isDateActive, isLoading: isDateLoading, error: dateError, clearDates } = dateFilter
 
 const searchQuery = ref('')
 const statusFilter = ref('ALL')
@@ -344,7 +356,7 @@ const statusTabs = computed(() => [
 
 const filteredOrders = computed(() => {
   const kw = searchQuery.value.toLowerCase().trim()
-  return adminStore.orders.filter(o => {
+  return dateRows.value.filter(o => {
     if (statusFilter.value !== 'ALL' && o.status !== statusFilter.value) return false
     if (paymentFilter.value !== 'ALL') {
       const pm = o.paymentMethod === 'COD' ? 'COD' : 'BANK'
@@ -413,7 +425,8 @@ const getStatusClass = (status) => ({
   display: block;
   font-family: var(--font-display);
   font-size: 0.82rem;
-  color: #fcb728;
+  font-weight: 800;
+  color: #1d4ed8;
 }
 
 .sub-line {
@@ -426,13 +439,13 @@ const getStatusClass = (status) => ({
 .cust-name {
   display: block;
   font-size: 0.86rem;
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .addr-text {
   display: block;
   font-size: 0.76rem;
-  color: #94a3b8;
+  color: #475569;
   margin-top: 4px;
   max-width: 280px;
 }
@@ -441,8 +454,9 @@ const getStatusClass = (status) => ({
   display: inline-block;
   margin-top: 4px;
   font-size: 0.72rem;
-  color: #fde047;
-  background: rgba(234, 179, 8, 0.12);
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
   padding: 2px 7px;
   border-radius: 4px;
 }
@@ -453,7 +467,7 @@ const getStatusClass = (status) => ({
   flex-direction: column;
   gap: 5px;
   font-size: 0.82rem;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .item-lines li {
@@ -467,15 +481,16 @@ const getStatusClass = (status) => ({
   font-weight: 800;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(252, 183, 40, 0.15);
-  color: #fcb728;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
 }
 
 .ord-total {
   font-family: var(--font-display);
   font-size: 0.96rem;
   font-weight: 800;
-  color: #fcb728;
+  color: #dc2626;
   white-space: nowrap;
 }
 
@@ -494,20 +509,20 @@ const getStatusClass = (status) => ({
   align-items: flex-start;
   gap: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  border-bottom: 1px dashed #cbd5e1;
 }
 
 .slip-brand {
   display: block;
   font-size: 0.92rem;
-  color: #fcb728;
+  color: #0f172a;
   margin-bottom: 3px;
 }
 
 .slip-header span {
   display: block;
   font-size: 0.76rem;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .slip-meta {
@@ -517,19 +532,19 @@ const getStatusClass = (status) => ({
 .slip-meta strong {
   display: block;
   font-size: 0.86rem;
-  color: #f8fafc;
+  color: #1d4ed8;
 }
 
 .slip-customer {
   padding: 12px 14px;
   border-radius: 10px;
-  background: rgba(9, 12, 21, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 5px;
   font-size: 0.83rem;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .slip-table {
@@ -541,12 +556,14 @@ const getStatusClass = (status) => ({
 .slip-table th,
 .slip-table td {
   padding: 9px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #e2e8f0;
   text-align: left;
+  color: #1e293b;
 }
 
 .slip-table th {
-  color: #94a3b8;
+  color: #475569;
+  background: #f8fafc;
   font-size: 0.72rem;
   text-transform: uppercase;
 }
@@ -557,12 +574,13 @@ const getStatusClass = (status) => ({
   align-items: center;
   padding-top: 10px;
   font-size: 0.95rem;
+  color: #0f172a;
 }
 
 .slip-total-row strong {
   font-family: var(--font-display);
   font-size: 1.2rem;
-  color: #fcb728;
+  color: #dc2626;
 }
 
 @media print {

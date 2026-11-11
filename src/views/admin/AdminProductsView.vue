@@ -877,8 +877,8 @@ const handleDelete = async (id) => {
   height: 48px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #090c15;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   flex-shrink: 0;
 }
 
@@ -897,7 +897,7 @@ const handleDelete = async (id) => {
 
 .prod-title {
   font-size: 0.86rem;
-  color: #f8fafc;
+  color: #0f172a;
   line-height: 1.25;
 }
 
@@ -925,9 +925,9 @@ const handleDelete = async (id) => {
   gap: 4px;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #6ee7b7;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
   padding: 1px 7px;
   border-radius: 4px;
 }
@@ -935,8 +935,9 @@ const handleDelete = async (id) => {
 .mini-campaign-tag {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   padding: 1px 7px;
   border-radius: 4px;
 }
@@ -946,12 +947,12 @@ const handleDelete = async (id) => {
   flex-direction: column;
   gap: 2px;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: #475569;
   white-space: nowrap;
 }
 
 .acoustic-col strong {
-  color: #e2e8f0;
+  color: #0f172a;
 }
 
 .room-line {
@@ -971,7 +972,7 @@ const handleDelete = async (id) => {
   font-family: var(--font-display);
   font-size: 0.96rem;
   font-weight: 800;
-  color: #fcb728;
+  color: #dc2626;
 }
 
 .sale-sub-line {
@@ -982,7 +983,7 @@ const handleDelete = async (id) => {
 
 .orig-strike {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #94a3b8;
   text-decoration: line-through;
 }
 
@@ -1010,19 +1011,19 @@ const handleDelete = async (id) => {
 }
 
 .stock-toggle-btn.in-stock {
-  background: rgba(34, 197, 94, 0.13);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #86efac;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
 }
 
 .stock-toggle-btn.in-stock .dot {
-  background: #22c55e;
+  background: #16a34a;
 }
 
 .stock-toggle-btn.out-stock {
-  background: rgba(239, 68, 68, 0.13);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
 }
 
 .stock-toggle-btn.out-stock .dot {
@@ -1056,16 +1057,16 @@ const handleDelete = async (id) => {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #fcb728;
+  color: #1d4ed8;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .sale-config-panel {
   padding: 14px;
   border-radius: 12px;
-  background: rgba(234, 88, 12, 0.07);
-  border: 1px solid rgba(249, 115, 22, 0.28);
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
   display: flex;
   flex-direction: column;
   gap: 11px;
@@ -1085,7 +1086,7 @@ const handleDelete = async (id) => {
   gap: 6px;
   font-size: 0.82rem;
   font-weight: 800;
-  color: #fb923c;
+  color: #c2410c;
 }
 
 .chip-bar {
@@ -1097,7 +1098,7 @@ const handleDelete = async (id) => {
 
 .chip-bar-label {
   font-size: 0.73rem;
-  color: #94a3b8;
+  color: #475569;
   font-weight: 600;
 }
 
@@ -1106,30 +1107,30 @@ const handleDelete = async (id) => {
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 700;
-  background: rgba(9, 12, 21, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e2e8f0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
   transition: all 0.15s;
 }
 
 .preset-pill:hover,
 .preset-pill.active {
-  background: rgba(252, 183, 40, 0.18);
-  border-color: #fcb728;
-  color: #fcb728;
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #b45309;
 }
 
 .preset-pill.danger:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: #fef2f2;
   border-color: #ef4444;
-  color: #fca5a5;
+  color: #dc2626;
 }
 
 .sale-warn-msg {
   font-size: 0.75rem;
-  color: #fde047;
-  background: rgba(234, 179, 8, 0.12);
-  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
   padding: 8px 10px;
   border-radius: 8px;
 }
@@ -1137,8 +1138,8 @@ const handleDelete = async (id) => {
 .specs-panel {
   padding: 12px;
   border-radius: 10px;
-  background: rgba(9, 12, 21, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1150,7 +1151,7 @@ const handleDelete = async (id) => {
   align-items: center;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #cbd5e1;
+  color: #334155;
 }
 
 .specs-list {
@@ -1167,10 +1168,10 @@ const handleDelete = async (id) => {
 
 .spec-line input {
   padding: 7px 10px;
-  background: #090c15;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 7px;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.8rem;
 }
 
@@ -1178,8 +1179,9 @@ const handleDelete = async (id) => {
   width: 32px;
   height: 32px;
   border-radius: 7px;
-  background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1188,8 +1190,8 @@ const handleDelete = async (id) => {
 .media-card {
   padding: 14px;
   border-radius: 12px;
-  background: rgba(9, 12, 21, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1212,8 +1214,8 @@ const handleDelete = async (id) => {
   height: 200px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #06080f;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 
 .img-preview-frame img {
@@ -1227,8 +1229,8 @@ const handleDelete = async (id) => {
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
-  background: #06080f;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 .vid-preview-frame iframe,

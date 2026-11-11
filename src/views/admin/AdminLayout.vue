@@ -223,19 +223,25 @@
         </div>
       </header>
 
-      <!-- Thanh Thông Báo Toast -->
-      <Transition name="fade-slide">
+      <!-- Thông báo nổi phong cách iOS -->
+      <Transition name="ios-toast">
         <div
           v-if="adminStore.adminNotice"
           :class="['admin-toast', `toast-${adminStore.adminNotice.type}`]"
           role="status"
+          aria-live="polite"
         >
-          <div class="toast-msg">
+          <span class="toast-symbol" aria-hidden="true">
             <AdminIcon
-              :name="adminStore.adminNotice.type === 'error' ? 'alert' : 'check'"
-              :size="17"
+              :name="['error', 'warning'].includes(adminStore.adminNotice.type) ? 'alert' : 'check'"
+              :size="18"
             />
-            <span>{{ adminStore.adminNotice.text || adminStore.adminNotice.message }}</span>
+          </span>
+          <div class="toast-copy">
+            <strong class="toast-title">
+              {{ adminStore.adminNotice.type === 'error' ? 'Có lỗi xảy ra' : adminStore.adminNotice.type === 'warning' ? 'Lưu ý' : 'Thành công' }}
+            </strong>
+            <span class="toast-text">{{ adminStore.adminNotice.text || adminStore.adminNotice.message }}</span>
           </div>
           <button
             type="button"
@@ -321,18 +327,16 @@ const handleLogout = () => {
 .admin-shell {
   display: flex;
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse 70% 45% at 75% -10%, rgba(40, 55, 252, 0.1), transparent),
-    #080b14;
-  color: #f8fafc;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 /* Sidebar */
 .admin-sidebar {
   width: 264px;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #0d111e 0%, #090c16 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -347,7 +351,7 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .brand-logo {
@@ -362,7 +366,7 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 20px rgba(252, 183, 40, 0.25);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
   flex-shrink: 0;
 }
 
@@ -376,7 +380,7 @@ const handleLogout = () => {
   font-family: var(--font-display);
   font-size: 1.02rem;
   font-weight: 800;
-  color: #fcb728;
+  color: #0f172a;
   letter-spacing: 0.04em;
   line-height: 1.15;
 }
@@ -393,8 +397,8 @@ const handleLogout = () => {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #94a3b8;
+  background: #f1f5f9;
+  color: #475569;
   align-items: center;
   justify-content: center;
 }
@@ -413,7 +417,7 @@ const handleLogout = () => {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #475569;
+  color: #94a3b8;
   padding: 14px 10px 6px;
 }
 
@@ -423,7 +427,7 @@ const handleLogout = () => {
   gap: 11px;
   padding: 9px 12px;
   border-radius: 9px;
-  color: #94a3b8;
+  color: #475569;
   font-size: 0.85rem;
   font-weight: 600;
   border: 1px solid transparent;
@@ -431,15 +435,15 @@ const handleLogout = () => {
 }
 
 .nav-item:hover {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.04);
+  color: #0f172a;
+  background: #f8fafc;
 }
 
 .nav-item.router-link-active {
-  color: #fcb728;
+  color: #1d4ed8;
   font-weight: 700;
-  background: linear-gradient(90deg, rgba(252, 183, 40, 0.14) 0%, rgba(252, 183, 40, 0.03) 100%);
-  border-color: rgba(252, 183, 40, 0.28);
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .nav-text {
@@ -455,8 +459,8 @@ const handleLogout = () => {
   font-weight: 800;
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .nav-pill.alert {
@@ -465,9 +469,9 @@ const handleLogout = () => {
 }
 
 .nav-pill.warn {
-  background: rgba(245, 158, 11, 0.22);
-  color: #fcd34d;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
 }
 
 .storefront-link {
@@ -476,7 +480,7 @@ const handleLogout = () => {
 
 .sidebar-footer {
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid #e2e8f0;
 }
 
 .profile-box {
@@ -485,8 +489,8 @@ const handleLogout = () => {
   gap: 10px;
   padding: 9px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
 .profile-avatar {
@@ -512,7 +516,7 @@ const handleLogout = () => {
   display: block;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -532,7 +536,7 @@ const handleLogout = () => {
   height: 32px;
   border-radius: 8px;
   background: transparent;
-  color: #94a3b8;
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -540,8 +544,8 @@ const handleLogout = () => {
 }
 
 .profile-logout:hover {
-  background: rgba(239, 68, 68, 0.16);
-  color: #fca5a5;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* Main Content Area */
@@ -555,9 +559,9 @@ const handleLogout = () => {
 .admin-topbar {
   height: 64px;
   padding: 0 24px;
-  background: rgba(11, 15, 26, 0.88);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -579,9 +583,9 @@ const handleLogout = () => {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
@@ -602,14 +606,14 @@ const handleLogout = () => {
 }
 
 .bc-sep {
-  color: #334155;
+  color: #cbd5e1;
   font-size: 0.85rem;
 }
 
 .bc-current {
   font-size: 0.92rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: #0f172a;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -635,15 +639,15 @@ const handleLogout = () => {
 }
 
 .topbar-alert-pill {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
 }
 
 .topbar-order-pill {
-  background: rgba(252, 183, 40, 0.14);
-  border: 1px solid rgba(252, 183, 40, 0.35);
-  color: #fcd34d;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
 }
 
 .db-indicator {
@@ -655,8 +659,8 @@ const handleLogout = () => {
   border-radius: 999px;
   font-size: 0.74rem;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   white-space: nowrap;
 }
 
@@ -667,24 +671,24 @@ const handleLogout = () => {
 }
 
 .db-indicator.online {
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.26);
-  background: rgba(34, 197, 94, 0.08);
+  color: #15803d;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
 }
 
 .db-indicator.online .status-dot {
-  background: #22c55e;
-  box-shadow: 0 0 8px #22c55e;
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(22, 163, 74, 0.45);
 }
 
 .db-indicator.offline {
-  color: #fde047;
-  border-color: rgba(234, 179, 8, 0.28);
-  background: rgba(234, 179, 8, 0.08);
+  color: #b45309;
+  border-color: #fde68a;
+  background: #fffbeb;
 }
 
 .db-indicator.offline .status-dot {
-  background: #eab308;
+  background: #d97706;
 }
 
 .db-time {
@@ -708,31 +712,31 @@ const handleLogout = () => {
 }
 
 .topbar-sync-btn {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #93c5fd;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
 }
 
 .topbar-sync-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.22);
-  color: #fff;
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 .topbar-store-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
 }
 
 .topbar-store-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: #fff;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .topbar-logout {
-  background: rgba(239, 68, 68, 0.11);
-  border: 1px solid rgba(239, 68, 68, 0.28);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
 }
 
 .topbar-logout:hover {
@@ -749,49 +753,112 @@ const handleLogout = () => {
   to { transform: rotate(360deg); }
 }
 
-/* Toast Notification */
+/* iOS-style notification */
 .admin-toast {
-  margin: 14px 24px 0;
-  padding: 11px 16px;
-  border-radius: 10px;
+  position: fixed;
+  top: max(84px, calc(env(safe-area-inset-top) + 72px));
+  right: 22px;
+  z-index: 300;
+  width: min(390px, calc(100vw - 28px));
+  padding: 14px 14px 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #172033;
   font-size: 0.84rem;
-  font-weight: 700;
-  display: flex;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 28px;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 11px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.07);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
 }
 
-.toast-msg {
+.toast-symbol {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-content: center;
+}
+
+.toast-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast-title {
+  color: #151b27;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.toast-text {
+  color: #586174;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .toast-success {
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  color: #6ee7b7;
+  border-color: rgba(34, 197, 94, 0.16);
+}
+
+.toast-success .toast-symbol {
+  background: #e8f9ef;
+  color: #159447;
 }
 
 .toast-warning {
-  background: rgba(245, 158, 11, 0.14);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.toast-warning .toast-symbol {
+  background: #fff4d8;
+  color: #c47700;
 }
 
 .toast-error {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.38);
-  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.toast-error .toast-symbol {
+  background: #feecec;
+  color: #d83232;
 }
 
 .toast-dismiss {
-  background: transparent;
-  color: inherit;
-  padding: 4px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  background: rgba(15, 23, 42, 0.055);
+  color: #788193;
+  padding: 0;
+  border-radius: 50%;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.toast-dismiss:hover {
+  background: rgba(15, 23, 42, 0.11);
+  color: #273246;
+}
+
+.ios-toast-enter-active,
+.ios-toast-leave-active {
+  transition: opacity 0.24s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ios-toast-enter-from,
+.ios-toast-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -12px, 0) scale(0.97);
 }
 
 .admin-viewport {
@@ -816,7 +883,7 @@ const handleLogout = () => {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(4, 7, 15, 0.72);
+    background: rgba(15, 23, 42, 0.45);
     backdrop-filter: blur(4px);
     z-index: 85;
   }
@@ -828,7 +895,7 @@ const handleLogout = () => {
     bottom: 0;
     transform: translateX(-100%);
     transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.75);
+    box-shadow: 20px 0 50px rgba(15, 23, 42, 0.2);
   }
 
   .admin-sidebar.is-open {
@@ -867,7 +934,16 @@ const handleLogout = () => {
   }
 
   .admin-toast {
-    margin: 12px 14px 0;
+    top: max(68px, calc(env(safe-area-inset-top) + 62px));
+    right: 12px;
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-toast-enter-active,
+  .ios-toast-leave-active {
+    transition: none;
   }
 }
 </style>

@@ -136,19 +136,19 @@ const downloadEbookSummary = () => {
 <style scoped>
 .ebook-section {
   padding: 68px 0;
-  background: var(--bg-dark-900);
+  background: var(--bg-page);
 }
 
 .ebook-box {
-  background: linear-gradient(135deg, rgba(25, 31, 52, 0.94), rgba(14, 17, 29, 0.98));
-  border: 1px solid rgba(252, 183, 40, 0.36);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1.5px solid #fcd34d;
   border-radius: var(--radius-xl);
   padding: 44px;
   display: grid;
   grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.45fr);
   gap: 44px;
   align-items: center;
-  box-shadow: var(--shadow-elevated), var(--inner-highlight);
+  box-shadow: var(--shadow-elevated);
 }
 
 .book-stage {
@@ -161,7 +161,7 @@ const downloadEbookSummary = () => {
 .book-glow {
   position: absolute;
   inset: 10%;
-  background: radial-gradient(circle, rgba(40, 55, 252, 0.45), rgba(252, 183, 40, 0.16), transparent 72%);
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.22), rgba(245, 158, 11, 0.14), transparent 72%);
   filter: blur(28px);
 }
 
@@ -169,12 +169,12 @@ const downloadEbookSummary = () => {
   position: relative;
   width: 100%;
   max-width: 270px;
-  background: linear-gradient(155deg, #2b3bff 0%, #161d56 58%, #0d1130 100%);
-  border: 2px solid var(--color-primary);
+  background: linear-gradient(155deg, #2563eb 0%, #1e3a8a 62%, #172554 100%);
+  border: 2px solid #f59e0b;
   border-radius: 8px 18px 18px 8px;
   padding: 40px 26px 34px 32px;
   text-align: center;
-  box-shadow: -16px 20px 36px rgba(0, 0, 0, 0.72), 0 0 28px rgba(40, 55, 252, 0.3);
+  box-shadow: -14px 18px 34px rgba(15, 23, 42, 0.24), 0 0 24px rgba(37, 99, 235, 0.16);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -184,7 +184,7 @@ const downloadEbookSummary = () => {
 
 .ebook-box:hover .book-cover {
   transform: rotateY(-2deg) rotateX(0deg) translateY(-4px);
-  box-shadow: -8px 24px 44px rgba(0, 0, 0, 0.8), 0 0 38px rgba(252, 183, 40, 0.25);
+  box-shadow: -8px 22px 40px rgba(15, 23, 42, 0.28), 0 0 30px rgba(245, 158, 11, 0.2);
 }
 
 .book-spine {
@@ -193,7 +193,7 @@ const downloadEbookSummary = () => {
   bottom: 0;
   left: 10px;
   width: 2px;
-  background: linear-gradient(180deg, rgba(252, 183, 40, 0.8), rgba(255, 255, 255, 0.25), rgba(252, 183, 40, 0.8));
+  background: linear-gradient(180deg, rgba(252, 211, 77, 0.85), rgba(255, 255, 255, 0.35), rgba(252, 211, 77, 0.85));
 }
 
 .book-brand {
@@ -201,7 +201,7 @@ const downloadEbookSummary = () => {
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: var(--color-primary);
+  color: #fde047;
 }
 
 .book-cover h3 {
@@ -231,12 +231,12 @@ const downloadEbookSummary = () => {
 .ebook-content h2 {
   font-size: clamp(1.5rem, 2.8vw, 2rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin: 12px 0 10px;
 }
 
 .ebook-desc {
-  color: var(--text-secondary);
+  color: #334155;
   font-size: 0.94rem;
   line-height: 1.65;
   margin-bottom: 18px;
@@ -249,7 +249,7 @@ const downloadEbookSummary = () => {
   gap: 9px;
   margin-bottom: 24px;
   font-size: 0.88rem;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .ebook-lessons li {
@@ -259,7 +259,7 @@ const downloadEbookSummary = () => {
 }
 
 .ebook-lessons .check {
-  color: var(--color-primary);
+  color: #16a34a;
   font-weight: 900;
 }
 
@@ -270,9 +270,9 @@ const downloadEbookSummary = () => {
 }
 
 .ebook-error {
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.36);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.83rem;
@@ -293,35 +293,36 @@ const downloadEbookSummary = () => {
 .ebook-form input {
   min-width: 0;
   padding: 12px 14px;
-  background: var(--bg-dark-900);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   border-radius: var(--radius-md);
-  color: #fff;
+  color: #0f172a;
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .ebook-form input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(252, 183, 40, 0.14);
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .ebook-success {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: #f0fdf4;
+  border: 1px solid #86efac;
   border-radius: var(--radius-md);
   padding: 18px;
 }
 
 .ebook-success h4 {
-  color: #4ade80;
+  color: #15803d;
   margin-bottom: 6px;
 }
 
 .ebook-success p {
   font-size: 0.88rem;
-  color: #cbd5e1;
+  color: #166534;
   margin-bottom: 14px;
 }
 

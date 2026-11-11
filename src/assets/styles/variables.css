@@ -1,55 +1,59 @@
 :root {
-  /* Brand Identity Colors */
-  --color-primary: #FCB728;       /* Gold / Amber nghệ thuật Tú Audio */
-  --color-primary-hover: #f5a30a;
-  --color-primary-soft: rgba(252, 183, 40, 0.14);
-  --color-secondary: #2837FC;     /* Electric Blue */
-  --color-secondary-hover: #1e2bcc;
-  --color-secondary-soft: rgba(40, 55, 252, 0.16);
-  --color-accent: #52557D;        /* Slate acoustic tone */
+  /* Brand Identity Colors — Bright Showroom Edition */
+  --color-primary: #D97706;       /* Rich Amber Gold đọc sắc nét trên nền sáng */
+  --color-primary-bright: #FCB728;/* Vàng thương hiệu cho nền nút / biểu tượng */
+  --color-primary-hover: #B45309;
+  --color-primary-soft: rgba(245, 158, 11, 0.12);
+  --color-price: #DC2626;         /* Đỏ TMĐT nổi bật cho giá bán trên nền trắng */
+  --color-secondary: #1D4ED8;     /* Electric Royal Blue Tú Audio */
+  --color-secondary-hover: #1E40AF;
+  --color-secondary-soft: rgba(37, 99, 235, 0.1);
+  --color-accent: #475569;
 
-  /* Luxury Studio Surfaces */
-  --bg-dark-950: #06080f;
-  --bg-dark-900: #0a0c14;
-  --bg-dark-800: #111524;
-  --bg-dark-700: #191f33;
-  --bg-card: rgba(21, 25, 41, 0.9);
-  --bg-card-solid: #151929;
-  --bg-glass: rgba(15, 19, 32, 0.78);
-  --bg-glass-strong: rgba(12, 15, 26, 0.92);
+  /* Bright Showroom Surfaces (giữ tên biến tương thích toàn hệ thống) */
+  --bg-dark-950: #EAF0F8;
+  --bg-dark-900: #F4F7FB;
+  --bg-dark-800: #FFFFFF;
+  --bg-dark-700: #EDF2F9;
+  --bg-page: #F4F7FB;
+  --bg-section-alt: #EEF3FA;
+  --bg-card: #FFFFFF;
+  --bg-card-solid: #FFFFFF;
+  --bg-glass: rgba(255, 255, 255, 0.9);
+  --bg-glass-strong: rgba(255, 255, 255, 0.97);
 
-  /* Hairlines & Rim Lights */
-  --border-color: rgba(255, 255, 255, 0.09);
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-focus: rgba(252, 183, 40, 0.45);
-  --border-blue: rgba(59, 130, 246, 0.4);
-  --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  /* Crisp Hairlines & Borders */
+  --border-color: #DCE4F0;
+  --border-subtle: #E8EEF6;
+  --border-focus: rgba(217, 119, 6, 0.5);
+  --border-blue: rgba(37, 99, 235, 0.32);
+  --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95);
 
-  /* Text Hierarchy */
-  --text-main: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --text-subtle: #64748b;
-  --text-highlight: #FCB728;
+  /* High-Contrast Light-Mode Text Hierarchy */
+  --text-main: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-subtle: #94A3B8;
+  --text-highlight: #B45309;
 
   /* Gradients */
-  --gradient-gold: linear-gradient(135deg, #ffd15c 0%, #FCB728 45%, #f59e0b 100%);
-  --gradient-blue: linear-gradient(135deg, #3b5bff 0%, #2837FC 55%, #1d27c9 100%);
-  --gradient-surface: linear-gradient(180deg, rgba(25, 31, 51, 0.72) 0%, rgba(16, 20, 34, 0.92) 100%);
+  --gradient-gold: linear-gradient(135deg, #FFD45E 0%, #FCB728 50%, #F59E0B 100%);
+  --gradient-blue: linear-gradient(135deg, #2563EB 0%, #1D4ED8 55%, #1E3A8A 100%);
+  --gradient-surface: linear-gradient(180deg, #FFFFFF 0%, #F8FAFD 100%);
 
   /* Typography */
   --font-family: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Space Grotesk', 'Be Vietnam Pro', system-ui, sans-serif;
 
-  /* Radius & Elevation */
+  /* Radius & Airy Elevation */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
-  --shadow-card: 0 14px 36px -8px rgba(0, 0, 0, 0.65);
-  --shadow-elevated: 0 24px 60px -12px rgba(0, 0, 0, 0.8);
-  --shadow-glow: 0 0 28px rgba(252, 183, 40, 0.28);
-  --shadow-blue-glow: 0 0 28px rgba(40, 55, 252, 0.3);
+  --shadow-card: 0 10px 28px -10px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-elevated: 0 20px 46px -12px rgba(15, 23, 42, 0.14), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --shadow-glow: 0 8px 24px rgba(245, 158, 11, 0.24);
+  --shadow-blue-glow: 0 8px 24px rgba(37, 99, 235, 0.22);
 
   /* Motion */
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);

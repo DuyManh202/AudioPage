@@ -135,15 +135,15 @@ const isMobileOpen = ref(false)
   height: 44px;
   padding: 5px 14px 5px 7px;
   border-radius: 999px;
-  background: rgba(13, 17, 30, 0.88);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
   transition: transform 0.28s var(--ease-spring), border-color 0.25s, box-shadow 0.28s, background 0.25s;
 }
 

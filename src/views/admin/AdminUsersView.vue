@@ -482,15 +482,15 @@ onMounted(loadUsers)
 }
 
 .feedback-banner.error {
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
 }
 
 .feedback-banner.success {
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  color: #6ee7b7;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #15803d;
 }
 
 .create-user-card {
@@ -519,13 +519,13 @@ onMounted(loadUsers)
   position: absolute;
   right: 8px;
   background: transparent;
-  color: #94a3b8;
+  color: #64748b;
   padding: 4px;
   display: flex;
 }
 
 .pwd-eye:hover {
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .create-foot {
@@ -543,9 +543,9 @@ onMounted(loadUsers)
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: rgba(59, 130, 246, 0.18);
-  border: 1px solid rgba(59, 130, 246, 0.32);
-  color: #93c5fd;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
   font-size: 0.76rem;
   font-weight: 800;
   display: flex;
@@ -556,7 +556,7 @@ onMounted(loadUsers)
 
 .u-login {
   display: block;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.86rem;
 }
 
@@ -564,7 +564,7 @@ onMounted(loadUsers)
   display: inline-block;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #fcb728;
+  color: #1d4ed8;
 }
 
 .action-group {

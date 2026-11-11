@@ -249,11 +249,11 @@ const handleAddToCart = () => {
 }
 
 .breadcrumb a:hover {
-  color: var(--color-primary);
+  color: #1d4ed8;
 }
 
 .breadcrumb .current {
-  color: var(--text-secondary);
+  color: #0f172a;
   font-weight: 600;
 }
 
@@ -272,9 +272,9 @@ const handleAddToCart = () => {
 }
 
 .media-tab-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
   padding: 10px 12px;
   border-radius: var(--radius-md);
   font-size: 0.84rem;
@@ -282,9 +282,14 @@ const handleAddToCart = () => {
   transition: all 0.2s;
 }
 
+.media-tab-btn:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
 .media-tab-btn.active {
   background: var(--gradient-gold);
-  border-color: transparent;
+  border-color: #f59e0b;
   color: #080a10;
   font-weight: 800;
 }
@@ -293,8 +298,8 @@ const handleAddToCart = () => {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: radial-gradient(circle at 50% 50%, #1b223a, #0b0e18);
+  border: 1px solid #dce4f0;
+  background: #ffffff;
   aspect-ratio: 4 / 3;
   box-shadow: var(--shadow-card);
 }
@@ -328,20 +333,20 @@ const handleAddToCart = () => {
   gap: 10px;
   padding: 12px 16px;
   border-radius: var(--radius-md);
-  background: rgba(10, 13, 24, 0.88);
+  background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(252, 183, 40, 0.55);
+  border: 1px solid rgba(252, 211, 77, 0.65);
   color: #fff;
   font-size: 0.86rem;
   font-weight: 800;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.35);
   transition: background 0.22s, transform 0.24s var(--ease-spring), box-shadow 0.24s;
 }
 
 .watch-video-btn-overlay:hover {
-  background: rgba(18, 23, 40, 0.96);
+  background: rgba(15, 23, 42, 0.96);
   transform: translateY(-3px);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.65), 0 0 22px rgba(252, 183, 40, 0.28);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.45);
 }
 
 .play-icon {
@@ -361,9 +366,9 @@ const handleAddToCart = () => {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid #dce4f0;
   aspect-ratio: 16 / 9;
-  background: #070910;
+  background: #0f172a;
 }
 
 .main-video-wrap iframe,
@@ -379,9 +384,9 @@ const handleAddToCart = () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #93c5fd;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
   font-size: 0.8rem;
   font-weight: 700;
   padding: 5px 12px;
@@ -392,7 +397,7 @@ const handleAddToCart = () => {
 .product-name {
   font-size: clamp(1.55rem, 2.8vw, 2.15rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   line-height: 1.25;
   margin-bottom: 10px;
 }
@@ -407,7 +412,7 @@ const handleAddToCart = () => {
 }
 
 .score {
-  color: var(--color-primary);
+  color: #d97706;
   font-weight: 800;
 }
 
@@ -416,8 +421,8 @@ const handleAddToCart = () => {
 }
 
 .pricing-card {
-  background: linear-gradient(135deg, rgba(252, 183, 40, 0.09), rgba(20, 25, 42, 0.9));
-  border: 1px solid rgba(252, 183, 40, 0.3);
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fcd34d;
   border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 18px;
@@ -434,32 +439,32 @@ const handleAddToCart = () => {
   font-family: var(--font-display);
   font-size: 1.95rem;
   font-weight: 700;
-  color: var(--color-primary);
+  color: #dc2626;
 }
 
 .original-price {
   font-size: 1rem;
-  color: var(--text-subtle);
+  color: #64748b;
   text-decoration: line-through;
 }
 
 .saving-notice {
   font-size: 0.83rem;
-  color: #4ade80;
+  color: #15803d;
   font-weight: 700;
   margin-top: 6px;
 }
 
 .summary-desc {
   font-size: 0.94rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.65;
   margin-bottom: 18px;
 }
 
 .gifts-box {
-  background: rgba(34, 197, 94, 0.06);
-  border: 1px solid rgba(34, 197, 94, 0.25);
+  background: #f0fdf4;
+  border: 1px solid #86efac;
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -467,7 +472,7 @@ const handleAddToCart = () => {
 
 .gifts-box h4 {
   font-size: 0.9rem;
-  color: #86efac;
+  color: #15803d;
   margin-bottom: 8px;
 }
 
@@ -477,18 +482,18 @@ const handleAddToCart = () => {
   flex-direction: column;
   gap: 6px;
   font-size: 0.85rem;
-  color: #dcfce7;
+  color: #166534;
 }
 
 .gifts-box .check {
-  color: #4ade80;
+  color: #16a34a;
   font-weight: 900;
   margin-right: 4px;
 }
 
 .matching-box {
-  background: rgba(40, 55, 252, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.28);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 22px;
@@ -498,13 +503,13 @@ const handleAddToCart = () => {
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  color: #93c5fd;
+  color: #1d4ed8;
   margin-bottom: 4px;
 }
 
 .matching-box p {
   font-size: 0.88rem;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .actions-row {
@@ -529,19 +534,20 @@ const handleAddToCart = () => {
 }
 
 .g-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: var(--radius-sm);
   padding: 10px;
   text-align: center;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #334155;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
 .video-showcase-section {
-  background: linear-gradient(180deg, rgba(22, 27, 45, 0.9), rgba(14, 18, 30, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: var(--radius-xl);
   padding: 36px;
   margin-bottom: 48px;
@@ -556,7 +562,7 @@ const handleAddToCart = () => {
 .video-section-header h2 {
   font-size: clamp(1.4rem, 2.6vw, 1.9rem);
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin: 12px 0 6px;
 }
 
@@ -577,8 +583,8 @@ const handleAddToCart = () => {
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #070910;
+  border: 1px solid #dce4f0;
+  background: #0f172a;
 }
 
 .video-responsive-box iframe {
@@ -588,7 +594,7 @@ const handleAddToCart = () => {
 
 .video-side-notes h4 {
   font-size: 1.05rem;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 12px;
 }
 
@@ -599,12 +605,12 @@ const handleAddToCart = () => {
   gap: 10px;
   margin-bottom: 20px;
   font-size: 0.88rem;
-  color: var(--text-secondary);
+  color: #334155;
   line-height: 1.5;
 }
 
 .video-side-notes strong {
-  color: var(--color-primary);
+  color: #b45309;
 }
 
 .full-width {
@@ -612,16 +618,17 @@ const handleAddToCart = () => {
 }
 
 .specs-section {
-  background: rgba(20, 24, 40, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #ffffff;
+  border: 1px solid #dce4f0;
   border-radius: var(--radius-xl);
   padding: 32px;
+  box-shadow: var(--shadow-card);
 }
 
 .specs-title {
   font-size: 1.45rem;
   font-weight: 900;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 20px;
 }
 
@@ -631,11 +638,11 @@ const handleAddToCart = () => {
 }
 
 .specs-table tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid #eef2f7;
 }
 
 .specs-table tr:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.02);
+  background: #f8fafc;
 }
 
 .specs-table td {
@@ -645,12 +652,12 @@ const handleAddToCart = () => {
 
 .spec-label {
   width: 36%;
-  color: var(--text-muted);
+  color: #475569;
   font-weight: 700;
 }
 
 .spec-value {
-  color: #fff;
+  color: #0f172a;
   font-weight: 600;
 }
 
