@@ -7,26 +7,27 @@
     <!-- Bằng Chứng Thực Tế Khách Hàng Lắp Đặt -->
     <CustomerProofSection />
 
-    <!-- Danh Sách Loa Nổi Bật -->
+    <!-- Khung Showcase Top Thiết Bị & Loa Bán Chạy (Chuẩn 2 cột trên Mobile) -->
     <section class="speakers-section">
       <div class="container">
-        <div class="section-head-row" v-reveal>
-          <div>
-            <span class="badge-gold">TUYỂN CHỌN CHẤT LƯỢNG CAO</span>
-            <h2 class="section-title">Loa Full &amp; Loa Subwoofer Rời Bán Chạy</h2>
+        <div class="hot-showcase-frame" v-reveal>
+          <div class="hot-showcase-header">
+            <div class="hot-header-titles">
+              <span class="hot-kicker">🔥 TUYỂN CHỌN BÁN CHẠY NHẤT TÚ AUDIO</span>
+              <h2 class="hot-title">TOP THIẾT BỊ &amp; LOA KARAOKE BÁN CHẠY</h2>
+            </div>
+            <router-link to="/san-pham" class="view-all-link">
+              Xem Kho Thiết Bị &rarr;
+            </router-link>
           </div>
-          <router-link to="/san-pham" class="view-all-link">
-            Xem Tất Cả Thiết Bị &rarr;
-          </router-link>
-        </div>
 
-        <div class="products-grid">
-          <ProductCard
-            v-for="(item, idx) in featuredSpeakers"
-            :key="item.id"
-            v-reveal="idx * 70"
-            :product="item"
-          />
+          <div class="products-grid">
+            <ProductCard
+              v-for="item in featuredProducts"
+              :key="item.id"
+              :product="item"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -123,54 +124,81 @@ import ProductCard from '../components/product/ProductCard.vue'
 
 const productStore = useProductStore()
 
-const featuredSpeakers = computed(() => productStore.featuredSpeakers)
+const featuredProducts = computed(() => productStore.products.slice(0, 6))
 </script>
 
 <style scoped>
 .speakers-section {
-  padding: 64px 0 74px;
+  padding: 56px 0 68px;
   background: var(--bg-dark-900);
 }
 
-.section-head-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 34px;
+.hot-showcase-frame {
+  position: relative;
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.24) 0%, rgba(28, 22, 34, 0.96) 22%, rgba(13, 17, 30, 0.98) 100%);
+  border: 1.5px solid rgba(252, 183, 40, 0.42);
+  border-radius: 22px;
+  padding: 24px 22px 26px;
+  box-shadow: 0 22px 48px -16px rgba(0, 0, 0, 0.78), 0 0 32px rgba(252, 183, 40, 0.08);
 }
 
-.section-title {
-  font-size: clamp(1.55rem, 2.8vw, 2.15rem);
+.hot-showcase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(252, 183, 40, 0.22);
+}
+
+.hot-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hot-kicker {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fde68a;
+  text-transform: uppercase;
+}
+
+.hot-title {
+  font-size: clamp(1.32rem, 2.5vw, 1.95rem);
   font-weight: 900;
   color: #fff;
-  margin-top: 10px;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 14px rgba(252, 183, 40, 0.22);
 }
 
 .view-all-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--color-primary);
+  color: #080a10;
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   padding: 9px 16px;
   border-radius: 999px;
-  background: rgba(252, 183, 40, 0.08);
-  border: 1px solid rgba(252, 183, 40, 0.25);
+  background: var(--gradient-gold);
+  border: 1px solid rgba(255, 232, 163, 0.55);
   white-space: nowrap;
-  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 6px 16px -4px rgba(252, 183, 40, 0.45);
+  transition: filter 0.2s, transform 0.2s;
 }
 
 .view-all-link:hover {
-  background: rgba(252, 183, 40, 0.16);
+  filter: brightness(1.06);
   transform: translateX(3px);
 }
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .trade-in-section {
@@ -339,9 +367,10 @@ const featuredSpeakers = computed(() => productStore.featuredSpeakers)
   line-height: 1.65;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1100px) {
   .products-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 
@@ -357,15 +386,41 @@ const featuredSpeakers = computed(() => productStore.featuredSpeakers)
 
 @media (max-width: 768px) {
   .speakers-section {
-    padding: 44px 0;
+    padding: 36px 0 44px;
   }
 
-  .section-head-row {
+  .speakers-section .container {
+    padding: 0 10px;
+  }
+
+  .hot-showcase-frame {
+    padding: 16px 10px 16px;
+    border-radius: 16px;
+  }
+
+  .hot-showcase-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
   }
 
-  .products-grid,
+  .hot-title {
+    font-size: 1.18rem;
+  }
+
+  .view-all-link {
+    font-size: 0.78rem;
+    padding: 7px 14px;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .pain-grid {
     grid-template-columns: 1fr;
   }

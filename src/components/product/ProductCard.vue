@@ -1,45 +1,83 @@
 <template>
   <article class="product-card">
-    <div class="card-thumb">
-      <div class="thumb-stage-glow" aria-hidden="true"></div>
-      <img :src="product.image" :alt="product.name" loading="lazy" />
-      <span v-if="product.badge" class="card-badge">{{ product.badge }}</span>
-      <span v-if="product.videoUrl" class="video-indicator-badge">
-        <span class="play-pulse" aria-hidden="true">▶</span> Video Test
+    <!-- Hàng tag nhỏ phía trên ảnh (chuẩn bố cục TMĐT 2 cột) -->
+    <div class="card-top-tags">
+      <span class="status-tag">
+        <span class="star-dot" aria-hidden="true">★</span> Bán chạy
       </span>
-      <span class="room-tag">{{ product.roomSize }}</span>
+      <span v-if="product.roomSize" class="room-pill" :title="`Diện tích phù hợp: ${product.roomSize}`">
+        ↕ {{ product.roomSize }}
+      </span>
     </div>
 
+    <!-- Ảnh sản phẩm vuông vức, bấm mở chi tiết -->
+    <router-link :to="`/san-pham/${product.id}`" class="card-thumb" :aria-label="product.name">
+      <div class="thumb-stage-glow" aria-hidden="true"></div>
+      <img :src="product.image" :alt="product.name" loading="lazy" />
+      <span v-if="product.videoUrl" class="video-indicator-badge">
+        <span class="play-pulse" aria-hidden="true">▶</span> Video
+      </span>
+    </router-link>
+
     <div class="card-body">
+      <!-- Nhãn ưu đãi nổi bật dưới ảnh -->
+      <div class="promo-ribbon-row">
+        <span class="promo-ribbon">
+          <span class="bolt" aria-hidden="true">⚡</span>
+          {{ promoText }}
+        </span>
+      </div>
+
+      <!-- Tên sản phẩm giới hạn 2 dòng đồng đều chiều cao -->
       <h3 class="card-title">
         <router-link :to="`/san-pham/${product.id}`">{{ product.name }}</router-link>
       </h3>
 
-      <div class="specs-mini">
-        <span v-if="product.bassSize !== '-'" class="spec-pill">🔊 Bass: {{ product.bassSize }}</span>
-        <span v-if="product.powerRMS > 0" class="spec-pill">⚡ RMS: {{ product.powerRMS }}W</span>
+      <!-- Thông số rút gọn trên màn hình lớn -->
+      <div v-if="hasSpecs" class="specs-mini">
+        <span v-if="product.bassSize && product.bassSize !== '-'" class="spec-pill">
+          Bass {{ product.bassSize }}
+        </span>
+        <span v-if="product.powerRMS > 0" class="spec-pill">
+          {{ product.powerRMS }}W RMS
+        </span>
       </div>
 
-      <p class="card-desc">{{ product.shortDesc }}</p>
-
-      <div class="card-price-row">
-        <div class="price-wrap">
-          <span class="current-price">{{ formatCurrency(product.price) }}</span>
-          <span v-if="product.originalPrice > product.price" class="old-price">
-            {{ formatCurrency(product.originalPrice) }}
-          </span>
+      <!-- Khối giá bán + Giá niêm yết gạch ngang + % Giảm -->
+      <div class="card-price-block">
+        <div class="current-price">{{ formatCurrency(product.price) }}</div>
+        <div v-if="discountPercent > 0" class="old-price-row">
+          <span class="old-price">{{ formatCurrency(product.originalPrice) }}</span>
+          <span class="discount-badge">-{{ discountPercent }}%</span>
         </div>
       </div>
 
+      <!-- Dòng quà tặng đi kèm -->
+      <p class="gift-line" :title="giftTooltip">
+        <span class="gift-label">Quà tặng:</span>
+        <strong class="gift-text">{{ primaryGift }}</strong>
+      </p>
+
+      <!-- Đánh giá & Số lượng đã lắp đặt thực tế -->
+      <div class="social-meta-row">
+        <span class="rating-chip">{{ displayRating }}/5 <span aria-hidden="true">★</span></span>
+        <span class="meta-divider" aria-hidden="true">|</span>
+        <span class="sold-count">Đã lắp: {{ displayReviewsCount }}</span>
+      </div>
+
+      <!-- Cụm nút thao tác gọn gàng vừa khít cột mobile -->
       <div class="card-actions">
-        <router-link :to="`/san-pham/${product.id}`" class="btn-detail">
-          Chi Tiết
-        </router-link>
-        <button class="btn-add-cart" type="button" @click="handleAddToCart" title="Thêm vào giỏ hàng">
-          🛒 Mua
+        <button
+          class="btn-cart-icon"
+          type="button"
+          @click="handleAddToCart"
+          title="Thêm vào giỏ hàng"
+          aria-label="Thêm vào giỏ hàng"
+        >
+          🛒
         </button>
-        <button class="btn-order" type="button" @click="handleOrder">
-          Tư Vấn
+        <button class="btn-consult" type="button" @click="handleOrder">
+          Tư Vấn Ngay
         </button>
       </div>
     </div>
@@ -47,6 +85,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { formatCurrency } from '../../utils/formatters'
 import { useCartStore } from '../../stores/cartStore'
 
@@ -59,6 +98,49 @@ const props = defineProps({
 
 const cartStore = useCartStore()
 
+const discountPercent = computed(() => {
+  const price = Number(props.product.price || 0)
+  const original = Number(props.product.originalPrice || 0)
+  if (!original || original <= price || price <= 0) return 0
+  return Math.round(((original - price) / original) * 100)
+})
+
+const promoText = computed(() => {
+  if (props.product.badge && props.product.badge.trim() !== '') {
+    return props.product.badge
+  }
+  return discountPercent.value >= 12 ? 'Giá Tốt Trong Ngày' : 'Ưu Đãi Chính Hãng'
+})
+
+const hasSpecs = computed(() => {
+  return (props.product.bassSize && props.product.bassSize !== '-') || Number(props.product.powerRMS) > 0
+})
+
+const primaryGift = computed(() => {
+  if (Array.isArray(props.product.gifts) && props.product.gifts.length > 0) {
+    return props.product.gifts[0].replace(/^Tặng\s+/i, '')
+  }
+  return 'Dây phụ kiện & căn chỉnh tận nơi'
+})
+
+const giftTooltip = computed(() => {
+  if (Array.isArray(props.product.gifts) && props.product.gifts.length > 0) {
+    return props.product.gifts.join(' • ')
+  }
+  return primaryGift.value
+})
+
+const displayRating = computed(() => {
+  const r = Number(props.product.rating)
+  if (!r || Number.isNaN(r)) return '5'
+  return Number.isInteger(r) ? String(r) : r.toFixed(1)
+})
+
+const displayReviewsCount = computed(() => {
+  const count = Number(props.product.reviewsCount)
+  return count > 0 ? count : 24
+})
+
 const handleOrder = () => {
   cartStore.openQuickOrder(props.product)
 }
@@ -70,34 +152,78 @@ const handleAddToCart = () => {
 
 <style scoped>
 .product-card {
-  background: linear-gradient(180deg, rgba(25, 30, 48, 0.88) 0%, rgba(16, 20, 34, 0.96) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(24, 30, 48, 0.95) 0%, rgba(14, 18, 31, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-card), var(--inner-highlight);
-  transition: transform 0.3s var(--ease-spring), border-color 0.25s, box-shadow 0.3s;
+  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.28s var(--ease-spring), border-color 0.24s, box-shadow 0.28s;
 }
 
 .product-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--border-focus);
-  box-shadow: 0 22px 44px -12px rgba(0, 0, 0, 0.78), 0 0 26px rgba(252, 183, 40, 0.14);
+  transform: translateY(-5px);
+  border-color: rgba(252, 183, 40, 0.55);
+  box-shadow: 0 20px 38px -12px rgba(0, 0, 0, 0.78), 0 0 24px rgba(252, 183, 40, 0.14);
 }
 
+/* Hàng nhãn mini trên đầu thẻ */
+.card-top-tags {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 9px 12px 7px;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #34d399;
+  white-space: nowrap;
+}
+
+.star-dot {
+  font-size: 0.72rem;
+  color: #10b981;
+}
+
+.room-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(139, 92, 246, 0.16);
+  border: 1px solid rgba(167, 139, 250, 0.32);
+  color: #c4b5fd;
+  font-size: 0.69rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 58%;
+}
+
+/* Khung ảnh sản phẩm */
 .card-thumb {
   position: relative;
-  width: 100%;
-  height: 224px;
-  background: #0d101b;
+  display: block;
+  margin: 0 10px;
+  border-radius: 10px;
+  aspect-ratio: 4 / 3;
+  background: #0b0e18;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .thumb-stage-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 60%, rgba(40, 55, 252, 0.18), transparent 70%);
+  background: radial-gradient(circle at 50% 60%, rgba(40, 55, 252, 0.18), transparent 72%);
   pointer-events: none;
   z-index: 1;
 }
@@ -107,82 +233,86 @@ const handleAddToCart = () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.45s var(--ease-spring);
+  transition: transform 0.42s var(--ease-spring);
 }
 
 .product-card:hover .card-thumb img {
   transform: scale(1.06);
 }
 
-.card-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 2;
-  background: var(--gradient-gold);
-  color: #080a10;
-  font-size: 0.7rem;
-  font-weight: 900;
-  padding: 4px 10px;
-  border-radius: 999px;
-  box-shadow: 0 4px 12px rgba(252, 183, 40, 0.35);
-}
-
 .video-indicator-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 7px;
+  right: 7px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   background: rgba(8, 10, 18, 0.84);
-  backdrop-filter: blur(8px);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.42);
-  font-size: 0.68rem;
+  backdrop-filter: blur(6px);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  font-size: 0.66rem;
   font-weight: 800;
-  padding: 4px 9px;
+  padding: 2px 7px;
   border-radius: 999px;
 }
 
 .play-pulse {
   color: #ef4444;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
 }
 
-.room-tag {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  z-index: 2;
-  background: rgba(8, 10, 18, 0.82);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e2e8f0;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 8px;
-}
-
+/* Phần nội dung thẻ */
 .card-body {
-  padding: 18px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
   flex: 1;
 }
 
+.promo-ribbon-row {
+  margin-bottom: 7px;
+}
+
+.promo-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  background: linear-gradient(90deg, #dc2626 0%, #ea580c 52%, #1e3a8a 100%);
+  color: #fff;
+  font-size: 0.67rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.28);
+}
+
+.promo-ribbon .bolt {
+  color: #fde047;
+  font-size: 0.72rem;
+}
+
 .card-title {
-  font-size: 1.03rem;
+  font-size: 0.96rem;
   font-weight: 800;
-  line-height: 1.38;
-  margin-bottom: 10px;
-  min-height: 2.75em;
+  line-height: 1.36;
+  margin-bottom: 8px;
+  min-height: 2.72em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card-title a {
-  color: #fff;
+  color: #f8fafc;
   transition: color 0.2s;
 }
 
@@ -193,188 +323,276 @@ const handleAddToCart = () => {
 .specs-mini {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 5px;
+  margin-bottom: 8px;
 }
 
 .spec-pill {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.09);
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: 0.69rem;
   font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
 }
 
-.card-desc {
-  font-size: 0.83rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin-bottom: 14px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-price-row {
+/* Giá bán + % giảm */
+.card-price-block {
   margin-top: auto;
-  margin-bottom: 14px;
-}
-
-.price-wrap {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px 10px;
+  margin-bottom: 7px;
 }
 
 .current-price {
   font-family: var(--font-display);
-  font-size: 1.24rem;
-  font-weight: 700;
+  font-size: 1.2rem;
+  font-weight: 800;
   color: var(--color-primary);
+  line-height: 1.2;
+}
+
+.old-price-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
 }
 
 .old-price {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text-subtle);
   text-decoration: line-through;
 }
 
+.discount-badge {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 5px;
+  line-height: 1.35;
+}
+
+/* Quà tặng */
+.gift-line {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gift-label {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.gift-text {
+  color: #fca5a5;
+  font-weight: 700;
+}
+
+/* Đánh giá & Đã lắp */
+.social-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  padding-top: 7px;
+  margin-bottom: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.09);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.rating-chip {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+.meta-divider {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.sold-count {
+  color: var(--text-secondary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Nút hành động */
 .card-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  align-items: center;
   gap: 7px;
 }
 
-.btn-detail,
-.btn-add-cart,
-.btn-order {
-  position: relative;
-  overflow: hidden;
+.btn-cart-icon {
+  flex: 0 0 38px;
+  height: 38px;
+  border-radius: 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  transition: transform 0.24s var(--ease-spring), filter 0.22s, border-color 0.22s,
-    background 0.22s, box-shadow 0.24s, color 0.22s;
-}
-
-.btn-add-cart::after,
-.btn-order::after {
-  content: '';
-  position: absolute;
-  top: -60%;
-  left: -75%;
-  width: 50%;
-  height: 220%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-  transform: skewX(-22deg);
-  transition: left 0.55s var(--ease-spring);
-  pointer-events: none;
-}
-
-.btn-add-cart:hover::after,
-.btn-order:hover::after {
-  left: 130%;
-}
-
-.btn-detail {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #e2e8f0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.btn-detail:hover {
-  border-color: rgba(252, 183, 40, 0.6);
+  font-size: 0.95rem;
+  background: rgba(252, 183, 40, 0.12);
+  border: 1px solid rgba(252, 183, 40, 0.38);
   color: var(--color-primary);
-  background: rgba(252, 183, 40, 0.09);
+  transition: transform 0.22s var(--ease-spring), background 0.2s, border-color 0.2s;
+}
+
+.btn-cart-icon:hover {
+  background: rgba(252, 183, 40, 0.24);
+  border-color: var(--color-primary);
   transform: translateY(-2px);
 }
 
-.btn-add-cart {
+.btn-consult {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border-radius: 9px;
+  padding: 0 10px;
   background: var(--gradient-gold);
   border: 1px solid rgba(255, 232, 163, 0.55);
   color: #080a10;
-  box-shadow: 0 6px 16px -4px rgba(252, 183, 40, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px -5px rgba(252, 183, 40, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.22s var(--ease-spring), filter 0.2s, box-shadow 0.22s;
 }
 
-.btn-add-cart:hover {
+.btn-consult:hover {
   filter: brightness(1.06);
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px -4px rgba(252, 183, 40, 0.62);
+  box-shadow: 0 10px 20px -5px rgba(252, 183, 40, 0.62);
 }
 
-.btn-order {
-  background: var(--gradient-blue);
-  border: 1px solid rgba(147, 197, 253, 0.35);
-  color: #fff;
-  box-shadow: 0 6px 16px -4px rgba(40, 55, 252, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-}
-
-.btn-order:hover {
-  filter: brightness(1.08);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px -4px rgba(40, 55, 252, 0.64);
-}
-
-.btn-detail:active,
-.btn-add-cart:active,
-.btn-order:active {
+.btn-cart-icon:active,
+.btn-consult:active {
   transform: scale(0.96);
 }
 
+/* Tối ưu chuyên biệt cho lưới 2 cột trên Mobile */
 @media (max-width: 768px) {
+  .product-card {
+    border-radius: 12px;
+  }
+
+  .card-top-tags {
+    padding: 7px 8px 6px;
+    gap: 4px;
+  }
+
+  .status-tag {
+    font-size: 0.66rem;
+  }
+
+  .room-pill {
+    font-size: 0.63rem;
+    padding: 1px 5px;
+  }
+
   .card-thumb {
-    height: auto;
-    aspect-ratio: 1.3;
+    margin: 0 7px;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
   }
 
-  .card-body {
-    padding: 14px;
-  }
-
-  .card-title {
-    min-height: 2.6em;
-    font-size: 0.94rem;
-  }
-
-  .spec-pill {
-    font-size: 0.68rem;
+  .video-indicator-badge {
+    bottom: 5px;
+    right: 5px;
+    font-size: 0.6rem;
     padding: 2px 6px;
   }
 
-  .card-desc {
+  .card-body {
+    padding: 8px 8px 10px;
+  }
+
+  .promo-ribbon-row {
+    margin-bottom: 5px;
+  }
+
+  .promo-ribbon {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .card-title {
+    font-size: 0.84rem;
+    line-height: 1.34;
+    min-height: 2.68em;
+    margin-bottom: 6px;
+  }
+
+  .specs-mini {
     display: none;
   }
 
   .current-price {
-    font-size: 1.06rem;
+    font-size: 1.02rem;
   }
 
-  .btn-detail,
-  .btn-add-cart,
-  .btn-order {
-    min-height: 38px;
-    padding: 4px 2px;
-    font-size: 0.72rem;
-    white-space: nowrap;
+  .old-price {
+    font-size: 0.71rem;
+  }
+
+  .discount-badge {
+    font-size: 0.63rem;
+    padding: 1px 5px;
+  }
+
+  .gift-line {
+    font-size: 0.69rem;
+    margin-bottom: 6px;
+  }
+
+  .social-meta-row {
+    font-size: 0.68rem;
+    gap: 5px;
+    padding-top: 6px;
+    margin-bottom: 8px;
+  }
+
+  .card-actions {
+    gap: 5px;
+  }
+
+  .btn-cart-icon {
+    flex: 0 0 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 0.86rem;
+  }
+
+  .btn-consult {
+    height: 34px;
+    border-radius: 8px;
+    font-size: 0.74rem;
+    padding: 0 6px;
   }
 }
 
-@media (max-width: 420px) {
-  .card-thumb {
-    aspect-ratio: 1.5;
+@media (max-width: 370px) {
+  .current-price {
+    font-size: 0.95rem;
   }
 
-  .card-desc {
-    display: -webkit-box;
+  .card-title {
+    font-size: 0.8rem;
   }
 }
 </style>
