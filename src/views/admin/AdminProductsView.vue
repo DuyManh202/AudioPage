@@ -1,17 +1,48 @@
 <template>
   <div class="products-admin-view">
     <div class="admin-toolbar">
-      <div class="search-wrap">
-        <input 
-          type="text" 
-          v-model="searchQuery" 
-          placeholder="Tìm theo tên loa, bass, mã thiết bị..."
-        />
+      <div class="toolbar-left-group">
+        <div class="search-wrap">
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            placeholder="Tìm theo tên loa, bass, nhãn sale..."
+          />
+        </div>
+
+        <div class="sale-filter-tabs">
+          <button
+            type="button"
+            :class="['sale-tab-btn', { active: saleFilter === 'ALL' }]"
+            @click="saleFilter = 'ALL'"
+          >
+            Tất Cả ({{ adminStore.products.length }})
+          </button>
+          <button
+            type="button"
+            :class="['sale-tab-btn sale-hot', { active: saleFilter === 'ON_SALE' }]"
+            @click="saleFilter = 'ON_SALE'"
+          >
+            🔥 Đang Chạy Sale ({{ saleProductsCount }})
+          </button>
+          <button
+            type="button"
+            :class="['sale-tab-btn', { active: saleFilter === 'NO_SALE' }]"
+            @click="saleFilter = 'NO_SALE'"
+          >
+            ⚪ Không Sale ({{ adminStore.products.length - saleProductsCount }})
+          </button>
+        </div>
       </div>
 
-      <button class="btn-primary" @click="openAddModal">
-        ➕ Thêm Thiết Bị Mới
-      </button>
+      <div class="toolbar-actions">
+        <button type="button" class="btn-sale-add" @click="openAddSaleModal">
+          🔥 + Thêm Sản Phẩm Sale
+        </button>
+        <button type="button" class="btn-primary" @click="openAddModal">
+          ➕ Thêm Thiết Bị Mới
+        </button>
+      </div>
     </div>
 
     <!-- Bảng Danh Sách Sản Phẩm -->
@@ -25,7 +56,7 @@
               <th>Danh Mục</th>
               <th>Cấu Hình Âm Học</th>
               <th>Video Mô Tả</th>
-              <th>Giá Bán</th>
+              <th>Giá Bán &amp; Trạng Thái Sale</th>
               <th>Phù Hợp Phòng</th>
               <th>Thao Tác</th>
             </tr>
@@ -59,20 +90,45 @@
                 </span>
               </td>
               <td>
-                <span class="price-val">{{ formatCurrency(product.price) }}</span>
-                <span v-if="product.originalPrice > product.price" class="old-price">
-                  {{ formatCurrency(product.originalPrice) }}
-                </span>
+                <div class="price-sale-cell">
+                  <span class="price-val">{{ formatCurrency(product.price) }}</span>
+                  <template v-if="getProductDiscount(product) > 0">
+                    <span class="old-price">{{ formatCurrency(product.originalPrice) }}</span>
+                    <span class="sale-active-pill">
+                      🔥 ĐANG SALE -{{ getProductDiscount(product) }}%
+                    </span>
+                  </template>
+                  <span
+                    v-else-if="product.originalPrice > 0 && product.originalPrice < product.price"
+                    class="sale-warn-pill"
+                    title="Giá gốc đang nhỏ hơn giá bán nên chưa hiện nhãn giảm giá"
+                  >
+                    ⚠️ Giá gốc &lt; Giá bán
+                  </span>
+                  <span v-else class="sale-off-pill">
+                    ⚪ Giá niêm yết
+                  </span>
+                  <span v-if="product.badge" class="badge-mini-note">⚡ {{ product.badge }}</span>
+                </div>
               </td>
               <td>
                 <span class="room-pill">{{ product.roomSize }}</span>
               </td>
               <td>
                 <div class="row-actions">
-                  <button class="btn-icon" @click="openEditModal(product)" title="Chỉnh sửa">
-                    ✏️ Sửa
+                  <button class="btn-icon" type="button" @click="openEditModal(product)" title="Chỉnh sửa sản phẩm & cài đặt Sale">
+                    ✏️ Sửa / Sale
                   </button>
-                  <button class="btn-icon text-red" @click="handleDelete(product.id)" title="Xóa">
+                  <button
+                    v-if="getProductDiscount(product) > 0"
+                    class="btn-icon text-amber"
+                    type="button"
+                    @click="turnOffSale(product)"
+                    title="Tắt khuyến mãi, đưa về giá niêm yết"
+                  >
+                    ⏹ Tắt Sale
+                  </button>
+                  <button class="btn-icon text-red" type="button" @click="handleDelete(product.id)" title="Xóa">
                     🗑️
                   </button>
                 </div>
@@ -120,28 +176,56 @@
                   </select>
                 </div>
                 <div class="form-group flex-1">
-                  <label>Huy Hiệu (Badge):</label>
-                  <input type="text" v-model="formData.badge" placeholder="Bán Chạy / Bass Uy Lực..." />
+                  <label>Nhãn Chiến Dịch (⚡ Hiện trên thẻ):</label>
+                  <input type="text" v-model="formData.badge" placeholder="Sale Sốc Trong Ngày / Bán Chạy..." />
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group flex-1">
-                  <label>Giá Bán Khuyến Mại (VNĐ):</label>
-                  <input type="number" min="0" v-model.number="formData.price" required />
-                </div>
-                <div class="form-group flex-1">
-                  <label>
-                    Giá Gốc Niêm Yết (VNĐ):
-                    <span v-if="previewDiscountPercent > 0" class="discount-live-chip">
-                      Hiển thị -{{ previewDiscountPercent }}%
-                    </span>
-                  </label>
-                  <input type="number" min="0" v-model.number="formData.originalPrice" />
-                  <span v-if="formData.originalPrice > 0 && formData.originalPrice < formData.price" class="price-warn-hint">
-                    ⚠️ Giá gốc đang thấp hơn giá bán (sẽ ẩn nhãn % giảm giá)
+              <div class="sale-helper-box">
+                <div class="sale-helper-title">
+                  <span>🔥 Cài Đặt Chạy Sale Nhanh</span>
+                  <span v-if="previewDiscountPercent > 0" class="discount-live-chip">
+                    Đang giảm -{{ previewDiscountPercent }}% (Tiết kiệm {{ formatCurrency(formData.originalPrice - formData.price) }})
                   </span>
+                  <span v-else class="sale-status-muted">Chưa bật giảm giá</span>
                 </div>
+
+                <div class="preset-chips-row">
+                  <span class="preset-label">Nhãn nhanh:</span>
+                  <button
+                    v-for="preset in badgePresets"
+                    :key="preset"
+                    type="button"
+                    :class="['mini-preset-btn', { active: formData.badge === preset }]"
+                    @click="formData.badge = preset"
+                  >
+                    ⚡ {{ preset }}
+                  </button>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label>Giá Gốc Niêm Yết (VNĐ — Để gạch ngang):</label>
+                    <input type="number" min="0" v-model.number="formData.originalPrice" placeholder="Ví dụ: 11500000" />
+                  </div>
+                  <div class="form-group flex-1">
+                    <label>Giá Bán Thực Tế (VNĐ — Khách trả):</label>
+                    <input type="number" min="0" v-model.number="formData.price" required placeholder="Ví dụ: 9800000" />
+                  </div>
+                </div>
+
+                <div class="preset-chips-row">
+                  <span class="preset-label">Tính nhanh % Sale từ Giá gốc:</span>
+                  <button type="button" class="mini-preset-btn" @click="applyQuickDiscount(10)">-10%</button>
+                  <button type="button" class="mini-preset-btn" @click="applyQuickDiscount(15)">-15%</button>
+                  <button type="button" class="mini-preset-btn" @click="applyQuickDiscount(20)">-20%</button>
+                  <button type="button" class="mini-preset-btn" @click="applyQuickDiscount(25)">-25%</button>
+                  <button type="button" class="mini-preset-btn clear-sale" @click="formData.originalPrice = 0">Tắt Sale (0%)</button>
+                </div>
+
+                <span v-if="formData.originalPrice > 0 && formData.originalPrice < formData.price" class="price-warn-hint">
+                  ⚠️ Giá gốc đang thấp hơn giá bán nên web sẽ không hiện nhãn % giảm giá. Anh hãy đặt Giá gốc cao hơn Giá bán hoặc bấm "Tắt Sale (0%)".
+                </span>
               </div>
 
               <div class="form-row">
@@ -313,11 +397,40 @@ import { getEmbedVideoUrl, isDirectVideo } from '../../utils/videoHelper'
 const adminStore = useAdminStore()
 const productStore = useProductStore()
 const searchQuery = ref('')
+const saleFilter = ref('ALL')
+
+const badgePresets = [
+  'Sale Sốc Trong Ngày',
+  'Giá Tốt Hôm Nay',
+  'Xả Kho Giá Gốc',
+  'Bán Chạy Nhất',
+  'Trị Hú Rít 100%'
+]
+
+const getProductDiscount = (p) => {
+  const price = Number(p?.price || 0)
+  const original = Number(p?.originalPrice || 0)
+  if (!original || original <= price || price <= 0) return 0
+  return Math.round(((original - price) / original) * 100)
+}
+
+const saleProductsCount = computed(() => {
+  return adminStore.products.filter(p => getProductDiscount(p) > 0).length
+})
 
 const filteredProducts = computed(() => {
   return adminStore.products.filter(p => {
     const q = searchQuery.value.toLowerCase()
-    return !q || p.name.toLowerCase().includes(q) || p.shortDesc?.toLowerCase().includes(q)
+    const matchSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.shortDesc?.toLowerCase().includes(q) ||
+      p.badge?.toLowerCase().includes(q)
+
+    const isSale = getProductDiscount(p) > 0
+    if (saleFilter.value === 'ON_SALE' && !isSale) return false
+    if (saleFilter.value === 'NO_SALE' && isSale) return false
+    return matchSearch
   })
 })
 
@@ -416,6 +529,37 @@ const addSpecRow = () => {
 
 const removeSpecRow = (idx) => {
   specsRows.value.splice(idx, 1)
+}
+
+const applyQuickDiscount = (percent) => {
+  const currentOriginal = Number(formData.value.originalPrice || 0)
+  const currentPrice = Number(formData.value.price || 0)
+  if (currentOriginal > 0) {
+    // Có sẵn giá gốc -> tính ra giá bán khuyến mại (làm tròn đến 10.000đ)
+    const rawSale = currentOriginal * (1 - percent / 100)
+    formData.value.price = Math.round(rawSale / 10000) * 10000
+  } else if (currentPrice > 0) {
+    // Chưa nhập giá gốc mà đã có giá bán -> suy ngược giá gốc niêm yết
+    const rawOriginal = currentPrice / (1 - percent / 100)
+    formData.value.originalPrice = Math.round(rawOriginal / 10000) * 10000
+  }
+}
+
+const turnOffSale = async (product) => {
+  if (!confirm(`Tắt khuyến mãi cho "${product.name}" (giữ nguyên giá bán ${formatCurrency(product.price)})?`)) return
+  try {
+    await adminStore.updateProduct(product.id, { ...product, originalPrice: 0 })
+    await productStore.refreshProducts()
+  } catch {
+    // Notice already displayed by adminStore
+  }
+}
+
+const openAddSaleModal = () => {
+  openAddModal()
+  formData.value.badge = 'Sale Sốc Trong Ngày'
+  formData.value.originalPrice = 10500000
+  formData.value.price = 8900000
 }
 
 const openAddModal = () => {
@@ -972,6 +1116,194 @@ const saveProduct = async () => {
     grid-template-columns: 1fr;
     gap: 20px;
   }
+}
+
+.toolbar-left-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.sale-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sale-tab-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.2s;
+}
+
+.sale-tab-btn:hover {
+  border-color: rgba(252, 183, 40, 0.5);
+  color: #fff;
+}
+
+.sale-tab-btn.active {
+  background: var(--gradient-gold);
+  border-color: transparent;
+  color: #080a10;
+  font-weight: 800;
+}
+
+.sale-tab-btn.sale-hot.active {
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-sale-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  border: 1px solid rgba(254, 215, 170, 0.45);
+  box-shadow: 0 8px 20px -6px rgba(234, 88, 12, 0.55);
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.btn-sale-add:hover {
+  filter: brightness(1.07);
+  transform: translateY(-2px);
+}
+
+.price-sale-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.sale-active-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  white-space: nowrap;
+}
+
+.sale-warn-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  white-space: nowrap;
+}
+
+.sale-off-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.badge-mini-note {
+  font-size: 0.69rem;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+.text-amber {
+  color: #fbbf24;
+}
+
+.sale-helper-box {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.08), rgba(15, 20, 35, 0.6));
+  border: 1px solid rgba(249, 115, 22, 0.32);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sale-helper-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #fed7aa;
+}
+
+.sale-status-muted {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.preset-chips-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset-label {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  margin-right: 2px;
+}
+
+.mini-preset-btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.18s;
+}
+
+.mini-preset-btn:hover,
+.mini-preset-btn.active {
+  background: rgba(252, 183, 40, 0.2);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.mini-preset-btn.clear-sale:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #f87171;
+  color: #fca5a5;
 }
 
 .discount-live-chip {
