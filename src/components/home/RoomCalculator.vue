@@ -165,8 +165,10 @@ const recommendation = computed(() => {
 })
 
 const handleConsult = () => {
+  const sizeLabel = roomSizes.find(s => s.value === selectedSize.value)?.label || selectedSize.value
+  const typeLabel = roomTypes.find(t => t.value === selectedType.value)?.label || selectedType.value
   cartStore.openQuickOrder({
-    name: `Tư vấn cấu hình phòng ${selectedSize.value} - ${selectedType.value} (${recommendation.value.bestPackage})`
+    name: `Tư vấn cấu hình phòng ${sizeLabel} — ${typeLabel} (${recommendation.value.bestPackage})`
   })
 }
 </script>

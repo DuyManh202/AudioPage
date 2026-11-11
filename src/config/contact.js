@@ -13,7 +13,13 @@ export const CONTACT_INFO = {
   bankCode: 'ICB',
   bankName: 'VietinBank',
   bankAccount: '109004908801',
-  bankOwner: 'PHUNG VAN TU'
+  bankOwner: 'PHUNG VAN TU',
+  bank: {
+    bankCode: 'ICB',
+    bankName: 'VietinBank',
+    accountNo: '109004908801',
+    accountName: 'PHUNG VAN TU'
+  }
 }
 
 export function buildVietQrUrl(amount = 0, addInfo = '') {
