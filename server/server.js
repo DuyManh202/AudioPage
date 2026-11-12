@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { query } from './db.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -25,7 +26,7 @@ app.use(cors({
     callback(new Error('Origin chưa được cho phép bởi cấu hình CORS.'))
   }
 }))
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '10mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer) } }))
 
 // Helper map Product row to Frontend format
 const mapProductRow = (row) => ({
@@ -110,6 +111,43 @@ const validMoney = (value) => (typeof value === 'number' || typeof value === 'st
 const validOptionalText = (value, maxLength) => value === undefined || value === null || typeof value === 'string' && value.length <= maxLength
 const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
+
+// Facebook Messenger webhook verification and inbound message ingestion.
+app.get('/api/v1/facebook/webhook', (req, res) => {
+  const mode = req.query['hub.mode']
+  const token = req.query['hub.verify_token']
+  const challenge = req.query['hub.challenge']
+  if (mode === 'subscribe' && process.env.META_VERIFY_TOKEN && token === process.env.META_VERIFY_TOKEN) return res.status(200).type('text/plain').send(String(challenge || ''))
+  return res.sendStatus(403)
+})
+
+app.post('/api/v1/facebook/webhook', async (req, res) => {
+  const appSecret = process.env.META_APP_SECRET
+  const signature = req.get('x-hub-signature-256') || ''
+  if (!appSecret || !req.rawBody || !signature.startsWith('sha256=')) return res.sendStatus(401)
+  const expected = Buffer.from(`sha256=${createHmac('sha256', appSecret).update(req.rawBody).digest('hex')}`)
+  const actual = Buffer.from(signature)
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return res.sendStatus(401)
+  if (req.body?.object !== 'page') return res.sendStatus(404)
+  try {
+    for (const entry of req.body.entry || []) {
+      for (const event of entry.messaging || []) {
+        const psid = event.sender?.id
+        const text = event.message?.text
+        if (!psid || event.message?.is_echo || !text) continue
+        const customer = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, status, last_message)
+          VALUES ($1,$2,$3,'MOI',$4)
+          ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET last_message=EXCLUDED.last_message, updated_at=CURRENT_TIMESTAMP
+          RETURNING id`, [`FB-${randomUUID()}`, `Khách Facebook ${psid.slice(-6)}`, psid, text])
+        await query('INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by) VALUES ($1,$2,$3,\'IN\',\'Facebook Page\')', [randomUUID(), customer.rows[0].id, text])
+      }
+    }
+    return res.sendStatus(200)
+  } catch (err) {
+    console.error('[Facebook webhook] Database error:', err.message)
+    return res.sendStatus(500)
+  }
+})
 
 const parseDateRange = (req, res) => {
   const from = typeof req.query.from === 'string' ? req.query.from : ''
@@ -1015,11 +1053,102 @@ app.delete('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_
   }
 })
 
+// Facebook Page care CRM: stores customers and a staff-maintained conversation log.
+const mapFbCare = row => ({
+  id: row.id, customerName: row.customer_name, facebookId: row.facebook_id || '', phone: row.phone || '',
+  interest: row.interest || '', status: row.status, assignedTo: row.assigned_to || '',
+  followUpAt: row.follow_up_at ? new Date(row.follow_up_at).toISOString().slice(0, 16) : '',
+  notes: row.notes || '', lastMessage: row.last_message || '', updatedAt: row.updated_at,
+  createdAt: row.created_at, messages: row.messages || []
+})
+
+app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
+      FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
+      GROUP BY c.id ORDER BY c.updated_at DESC`)
+    const connected = Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
+    res.json({ success: true, data: result.rows.map(mapFbCare), connected })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+app.post('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { customerName, facebookId, phone, interest, notes, followUpAt } = req.body
+    if (!String(customerName || '').trim()) return res.status(400).json({ success: false, message: 'Vui lòng nhập tên khách hàng.' })
+    const id = `FB-${randomUUID()}`
+    const result = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, phone, interest, notes, follow_up_at, assigned_to)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [id, String(customerName).trim(), facebookId || null, phone || null, interest || null, notes || null, followUpAt || null, req.admin.name])
+    res.status(201).json({ success: true, data: mapFbCare({ ...result.rows[0], messages: [] }) })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { status, notes, phone, interest, assignedTo, followUpAt, customerName } = req.body
+    const validStatuses = ['MOI', 'DANG_TU_VAN', 'CHO_PHAN_HOI', 'DA_CHOT', 'DA_HUY']
+    if (status !== undefined && !validStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Trạng thái chăm sóc không hợp lệ.' })
+    const result = await query(`UPDATE facebook_care_customers SET
+      customer_name=COALESCE($1,customer_name), phone=COALESCE($2,phone), interest=COALESCE($3,interest), notes=COALESCE($4,notes),
+      status=COALESCE($5,status), assigned_to=COALESCE($6,assigned_to), follow_up_at=$7, updated_at=CURRENT_TIMESTAMP
+      WHERE id=$8 RETURNING *`, [customerName ?? null, phone ?? null, interest ?? null, notes ?? null, status ?? null, assignedTo ?? null, followUpAt || null, req.params.id])
+    if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách Facebook.' })
+    res.json({ success: true, data: mapFbCare({ ...result.rows[0], messages: [] }) })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+app.post('/api/v1/admin/facebook-care/:id/messages', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const body = String(req.body.body || '').trim()
+    const direction = req.body.direction === 'OUT' ? 'OUT' : 'IN'
+    if (!body) return res.status(400).json({ success: false, message: 'Nội dung ghi nhận không được để trống.' })
+    const id = randomUUID()
+    const result = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING *`, [id, req.params.id, body, direction, req.admin.name])
+    await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [body, req.params.id])
+    res.status(201).json({ success: true, data: { id, body, direction, createdAt: result.rows[0].created_at } })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const text = String(req.body.body || '').trim()
+    if (!text || text.length > 2000) return res.status(400).json({ success: false, message: 'Tin nhắn phải có nội dung và không quá 2.000 ký tự.' })
+    const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    if (!pageId || !pageToken || !/^v\d+\.\d+$/.test(graphVersion || '')) return res.status(503).json({ success: false, message: 'Chưa cấu hình đầy đủ Meta Page ID, Page Access Token và Graph API version trên backend.' })
+    const customerResult = await query('SELECT id, facebook_id FROM facebook_care_customers WHERE id=$1', [req.params.id])
+    const customer = customerResult.rows[0]
+    if (!customer?.facebook_id) return res.status(400).json({ success: false, message: 'Hồ sơ này chưa có Facebook PSID nên chưa thể gửi Messenger.' })
+    const lastInbound = await query("SELECT created_at FROM facebook_care_messages WHERE customer_id=$1 AND direction='IN' ORDER BY created_at DESC LIMIT 1", [customer.id])
+    if (!lastInbound.rows[0] || Date.now() - new Date(lastInbound.rows[0].created_at).getTime() > 24 * 60 * 60 * 1000) {
+      return res.status(409).json({ success: false, message: 'Đã quá 24 giờ kể từ tin nhắn gần nhất của khách. Messenger không cho gửi tin nhắn tự do trong trường hợp này.' })
+    }
+    const response = await fetch(`https://graph.facebook.com/${graphVersion}/${pageId}/messages`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pageToken}` },
+      body: JSON.stringify({ recipient: { id: customer.facebook_id }, messaging_type: 'RESPONSE', message: { text } })
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) return res.status(502).json({ success: false, message: result.error?.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' })
+    const saved = await query("INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by) VALUES ($1,$2,$3,'OUT',$4) RETURNING id, body, direction, created_at", [randomUUID(), customer.id, text, req.admin.name])
+    await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [text, customer.id])
+    res.status(201).json({ success: true, data: { id: saved.rows[0].id, body: text, direction: 'OUT', createdAt: saved.rows[0].created_at } })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
 // Tự động đảm bảo cột bảo mật cần thiết tồn tại trên CSDL khi khởi động
 const ensureDatabaseSchema = async () => {
   try {
     await query('ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_username_lower ON admins (LOWER(username))')
+    await query(`CREATE TABLE IF NOT EXISTS facebook_care_customers (
+      id VARCHAR(50) PRIMARY KEY, customer_name VARCHAR(150) NOT NULL, facebook_id VARCHAR(100), phone VARCHAR(30),
+      interest TEXT, status VARCHAR(30) NOT NULL DEFAULT 'MOI', assigned_to VARCHAR(100), follow_up_at TIMESTAMP NULL,
+      notes TEXT, last_message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`)
+    await query(`CREATE TABLE IF NOT EXISTS facebook_care_messages (
+      id VARCHAR(50) PRIMARY KEY, customer_id VARCHAR(50) NOT NULL REFERENCES facebook_care_customers(id) ON DELETE CASCADE,
+      body TEXT NOT NULL, direction VARCHAR(3) NOT NULL DEFAULT 'IN', created_by VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`)
+    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL')
   } catch (err) {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
   }

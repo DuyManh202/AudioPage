@@ -57,6 +57,16 @@
         </router-link>
 
         <router-link
+          v-if="can('facebook-care')"
+          to="/admin/facebook-care"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="message" :size="18" />
+          <span class="nav-text">Chăm Sóc Facebook</span>
+        </router-link>
+
+        <router-link
           v-if="can('orders')"
           to="/admin/orders"
           class="nav-item"
@@ -297,6 +307,7 @@ onMounted(() => {
 })
 
 const currentRouteTitle = computed(() => {
+  if (route.path.includes('facebook-care')) return 'Chăm Sóc Facebook Page'
   if (route.path.includes('leads')) return 'Khách Tư Vấn & Lịch Thử Dàn'
   if (route.path.includes('orders')) return 'Quản Lý Đơn Đặt Mua Lẻ'
   if (route.path.includes('trade-ins')) return 'Thẩm Định Thu Cũ Đổi Mới'

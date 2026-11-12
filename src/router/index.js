@@ -61,6 +61,12 @@ const routes = [
         meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
       },
       {
+        path: 'facebook-care',
+        name: 'AdminFacebookCare',
+        component: () => import('../views/admin/AdminFacebookCareView.vue'),
+        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+      },
+      {
         path: 'orders',
         name: 'AdminOrders',
         component: () => import('../views/admin/AdminOrdersView.vue'),

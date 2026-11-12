@@ -1,6 +1,6 @@
 export const rolePermissions = {
-  SUPER_ADMIN: ['dashboard', 'leads', 'orders', 'trade-ins', 'products', 'combos', 'users'],
-  SALES: ['dashboard', 'leads', 'orders', 'trade-ins'],
+  SUPER_ADMIN: ['dashboard', 'leads', 'facebook-care', 'orders', 'trade-ins', 'products', 'combos', 'users'],
+  SALES: ['dashboard', 'leads', 'facebook-care', 'orders', 'trade-ins'],
   INVENTORY: ['products', 'combos']
 }
 

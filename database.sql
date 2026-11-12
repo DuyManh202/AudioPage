@@ -158,6 +158,34 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 10. CRM CHĂM SÓC KHÁCH HÀNG TỪ FACEBOOK PAGE
+CREATE TABLE IF NOT EXISTS facebook_care_customers (
+    id VARCHAR(50) PRIMARY KEY,
+    customer_name VARCHAR(150) NOT NULL,
+    facebook_id VARCHAR(100),
+    phone VARCHAR(30),
+    interest TEXT,
+    status VARCHAR(30) NOT NULL DEFAULT 'MOI',
+    assigned_to VARCHAR(100),
+    follow_up_at TIMESTAMP NULL,
+    notes TEXT,
+    last_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS facebook_care_messages (
+    id VARCHAR(50) PRIMARY KEY,
+    customer_id VARCHAR(50) NOT NULL REFERENCES facebook_care_customers(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    direction VARCHAR(3) NOT NULL DEFAULT 'IN',
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_fb_care_status ON facebook_care_customers(status);
+CREATE INDEX IF NOT EXISTS idx_fb_care_followup ON facebook_care_customers(follow_up_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL;
+
 -- Mã lead/order chứa UUID (LD-/ORD- + 36 ký tự), cần đủ chỗ trên DB cũ.
 -- Giữ trade-ins nếu lead bị xóa, đúng với chính sách của schema.
 ALTER TABLE trade_ins DROP CONSTRAINT IF EXISTS trade_ins_lead_id_fkey;
