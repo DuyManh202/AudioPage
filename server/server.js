@@ -1,4 +1,4 @@
-import express from 'express'
+﻿import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
@@ -112,6 +112,63 @@ const validOptionalText = (value, maxLength) => value === undefined || value ===
 const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
 
+const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
+const isFacebookAiEnabled = () => process.env.META_AI_ENABLED === 'true' && Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL)
+
+const sendFacebookText = async (psid, text) => {
+  const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  const response = await fetch(`https://graph.facebook.com/${graphVersion}/${pageId}/messages`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pageToken}` },
+    body: JSON.stringify({ recipient: { id: psid }, messaging_type: 'RESPONSE', message: { text } }),
+    signal: AbortSignal.timeout(20000)
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(payload.error?.message || `Meta Send API error (${response.status})`)
+}
+
+const autoReplyToFacebookCustomer = async (customerId, psid) => {
+  if (!isFacebookAiEnabled() || !isFacebookMessengerConfigured()) return
+  try {
+    const [customerResult, historyResult, productsResult, combosResult] = await Promise.all([
+      query('SELECT customer_name, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
+      query(`SELECT direction, body FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 12`, [customerId]),
+      query(`SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs
+        FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24`),
+      query(`SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC`)
+    ])
+    const customer = customerResult.rows[0]
+    if (!customer || customer.status === 'CHO_PHAN_HOI') return
+    const productContext = {
+      products: productsResult.rows.map(p => ({ ...p, price: Number(p.price), original_price: Number(p.original_price) })),
+      combos: combosResult.rows.map(c => ({ ...c, price: Number(c.price), fast_action_price: Number(c.fast_action_price) }))
+    }
+    const history = historyResult.rows.reverse().map(m => ({ role: m.direction === 'IN' ? 'user' : 'assistant', content: m.body }))
+    const instructions = `Bạn là trợ lý tư vấn khách hàng của Tú Audio, chuyên loa và dàn karaoke gia đình tại Việt Nam. Trả lời bằng tiếng Việt tự nhiên, lịch sự, ngắn gọn như nhân viên tư vấn.\n\nDỮ LIỆU SẢN PHẨM ĐANG CÓ (nguồn duy nhất để báo tên, giá, tồn kho, cấu hình): ${JSON.stringify(productContext)}\n\nQuy tắc:\n- Chỉ tư vấn sản phẩm có trong dữ liệu trên; không tự tạo giá, khuyến mại, tồn kho, bảo hành, thông số hoặc chính sách. Nếu thiếu dữ liệu, nói rõ và mời nhân viên xác nhận.\n- Hỏi từng ý cần thiết: diện tích phòng, phòng kín/thông tầng, ngân sách và thiết bị đang có. Dùng thông tin khách đã nói trong lịch sử, đừng hỏi lại.\n- Ưu tiên các gói karaoke phù hợp trong dữ liệu; nếu ngân sách chưa phù hợp, hỏi ngân sách hoặc gợi ý thiết bị có trong danh mục. Không bịa chính sách thu cũ đổi mới.\n- Ưu tiên gợi ý phù hợp phòng; giải thích ngắn gọn. Không ép mua. Giá gói lấy đúng trường price; chỉ nêu fast_action_price nếu khách hỏi ưu đãi và nói rõ điều kiện cần nhân viên xác nhận.\n- Không yêu cầu khách gửi mật khẩu, mã OTP, số thẻ hoặc dữ liệu nhạy cảm.\n- Nếu khách yêu cầu người thật, hỏi bảo hành/sửa chữa/đổi trả/đơn hàng cụ thể, khiếu nại, hoặc câu trả lời cần xác nhận chính sách, dòng đầu tiên phải là [[HANDOFF]]. Sau đó viết một câu ngắn cho khách rằng Tú Audio sẽ chuyển nhân viên hỗ trợ.\n- Nếu không biết, không đoán: hỏi lại hoặc chuyển nhân viên bằng [[HANDOFF]].`
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL, instructions, input: history, max_output_tokens: 260, store: false }),
+      signal: AbortSignal.timeout(25000)
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload.error?.message || `OpenAI API error (${response.status})`)
+    const answer = (payload.output || []).flatMap(item => item.content || []).filter(part => part.type === 'output_text').map(part => part.text).join('\n').trim()
+    if (!answer) throw new Error('AI không trả về nội dung')
+    const handoff = answer.startsWith('[[HANDOFF]]')
+    const reply = answer.replace(/^\[\[HANDOFF\]\]\s*/, '').slice(0, 1900)
+    if (!reply) throw new Error('AI trả nội dung trống')
+    await sendFacebookText(psid, reply)
+    await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by)
+      VALUES ($1,$2,$3,'OUT','AI Tú Audio')`, [randomUUID(), customerId, reply])
+    await query(`UPDATE facebook_care_customers SET last_message=$1,
+      status=CASE WHEN $2 THEN 'CHO_PHAN_HOI' ELSE status END, updated_at=CURRENT_TIMESTAMP WHERE id=$3`, [reply, handoff, customerId])
+  } catch (err) {
+    console.error('[Facebook AI] Auto reply failed:', err.message)
+    await query(`UPDATE facebook_care_customers SET status='CHO_PHAN_HOI',
+      notes=CONCAT(COALESCE(notes,''), CASE WHEN COALESCE(notes,'')='' THEN '' ELSE E'\\n' END, '[AI chưa trả lời được; cần nhân viên xử lý]'), updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [customerId]).catch(dbErr => console.error('[Facebook AI] Handoff update failed:', dbErr.message))
+  }
+}
+
 // Facebook Messenger webhook verification and inbound message ingestion.
 app.get('/api/v1/facebook/webhook', (req, res) => {
   const mode = req.query['hub.mode']
@@ -133,13 +190,15 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
     for (const entry of req.body.entry || []) {
       for (const event of entry.messaging || []) {
         const psid = event.sender?.id
-        const text = event.message?.text
+        const text = event.message?.text || (event.message?.attachments?.length ? '[Khách gửi tệp đính kèm hoặc hình ảnh qua Messenger]' : '')
         if (!psid || event.message?.is_echo || !text) continue
         const customer = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, status, last_message)
           VALUES ($1,$2,$3,'MOI',$4)
           ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET last_message=EXCLUDED.last_message, updated_at=CURRENT_TIMESTAMP
           RETURNING id`, [`FB-${randomUUID()}`, `Khách Facebook ${psid.slice(-6)}`, psid, text])
-        await query('INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by) VALUES ($1,$2,$3,\'IN\',\'Facebook Page\')', [randomUUID(), customer.rows[0].id, text])
+        const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
+          VALUES ($1,$2,$3,'IN','Facebook Page',$4) ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`, [randomUUID(), customer.rows[0].id, text, event.message?.mid || `event-${randomUUID()}`])
+        if (inserted.rows[0] && isFacebookAiEnabled()) setImmediate(() => autoReplyToFacebookCustomer(customer.rows[0].id, psid))
       }
     }
     return res.sendStatus(200)
@@ -1067,8 +1126,8 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
     const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
       FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
       GROUP BY c.id ORDER BY c.updated_at DESC`)
-    const connected = Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
-    res.json({ success: true, data: result.rows.map(mapFbCare), connected })
+    const connected = isFacebookMessengerConfigured()
+    res.json({ success: true, data: result.rows.map(mapFbCare), connected, aiEnabled: isFacebookAiEnabled() })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
@@ -1122,12 +1181,7 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
     if (!lastInbound.rows[0] || Date.now() - new Date(lastInbound.rows[0].created_at).getTime() > 24 * 60 * 60 * 1000) {
       return res.status(409).json({ success: false, message: 'Đã quá 24 giờ kể từ tin nhắn gần nhất của khách. Messenger không cho gửi tin nhắn tự do trong trường hợp này.' })
     }
-    const response = await fetch(`https://graph.facebook.com/${graphVersion}/${pageId}/messages`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pageToken}` },
-      body: JSON.stringify({ recipient: { id: customer.facebook_id }, messaging_type: 'RESPONSE', message: { text } })
-    })
-    const result = await response.json().catch(() => ({}))
-    if (!response.ok) return res.status(502).json({ success: false, message: result.error?.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' })
+    try { await sendFacebookText(customer.facebook_id, text) } catch (err) { return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' }) }
     const saved = await query("INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by) VALUES ($1,$2,$3,'OUT',$4) RETURNING id, body, direction, created_at", [randomUUID(), customer.id, text, req.admin.name])
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [text, customer.id])
     res.status(201).json({ success: true, data: { id: saved.rows[0].id, body: text, direction: 'OUT', createdAt: saved.rows[0].created_at } })
@@ -1146,8 +1200,10 @@ const ensureDatabaseSchema = async () => {
     )`)
     await query(`CREATE TABLE IF NOT EXISTS facebook_care_messages (
       id VARCHAR(50) PRIMARY KEY, customer_id VARCHAR(50) NOT NULL REFERENCES facebook_care_customers(id) ON DELETE CASCADE,
-      body TEXT NOT NULL, direction VARCHAR(3) NOT NULL DEFAULT 'IN', created_by VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      body TEXT NOT NULL, direction VARCHAR(3) NOT NULL DEFAULT 'IN', created_by VARCHAR(100), platform_message_id TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`)
+    await query('ALTER TABLE facebook_care_messages ADD COLUMN IF NOT EXISTS platform_message_id TEXT')
+    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_platform_message_id ON facebook_care_messages(platform_message_id)')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL')
   } catch (err) {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
@@ -1160,3 +1216,4 @@ ensureDatabaseSchema().finally(() => {
     console.log(`📡 Backend API Server đang chạy tại: http://localhost:${PORT}`)
   })
 })
+

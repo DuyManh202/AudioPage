@@ -180,11 +180,13 @@ CREATE TABLE IF NOT EXISTS facebook_care_messages (
     body TEXT NOT NULL,
     direction VARCHAR(3) NOT NULL DEFAULT 'IN',
     created_by VARCHAR(100),
+    platform_message_id TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_fb_care_status ON facebook_care_customers(status);
 CREATE INDEX IF NOT EXISTS idx_fb_care_followup ON facebook_care_customers(follow_up_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_platform_message_id ON facebook_care_messages(platform_message_id);
 
 -- Mã lead/order chứa UUID (LD-/ORD- + 36 ký tự), cần đủ chỗ trên DB cũ.
 -- Giữ trade-ins nếu lead bị xóa, đúng với chính sách của schema.
