@@ -170,6 +170,11 @@ CREATE TABLE IF NOT EXISTS facebook_care_customers (
     follow_up_at TIMESTAMP NULL,
     notes TEXT,
     last_message TEXT,
+    source_type VARCHAR(50),
+    source_ad_id VARCHAR(100),
+    source_ad_name VARCHAR(255),
+    source_campaign_id VARCHAR(100),
+    source_campaign_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -187,6 +192,11 @@ CREATE INDEX IF NOT EXISTS idx_fb_care_status ON facebook_care_customers(status)
 CREATE INDEX IF NOT EXISTS idx_fb_care_followup ON facebook_care_customers(follow_up_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_platform_message_id ON facebook_care_messages(platform_message_id);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_type VARCHAR(50);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_id VARCHAR(100);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_name VARCHAR(255);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_campaign_id VARCHAR(100);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_campaign_name VARCHAR(255);
 
 -- Mã lead/order chứa UUID (LD-/ORD- + 36 ký tự), cần đủ chỗ trên DB cũ.
 -- Giữ trade-ins nếu lead bị xóa, đúng với chính sách của schema.

@@ -114,6 +114,24 @@ const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micr
 
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
 const isFacebookAiEnabled = () => process.env.META_AI_ENABLED === 'true' && Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL)
+const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && process.env.META_ADS_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+
+const fetchMetaAdDetails = async (adId) => {
+  const token = process.env.META_ADS_ACCESS_TOKEN || process.env.META_PAGE_ACCESS_TOKEN
+  const version = process.env.META_GRAPH_VERSION
+  if (!adId || !token || !version) return {}
+  try {
+    const url = new URL(`https://graph.facebook.com/${version}/${encodeURIComponent(adId)}`)
+    url.searchParams.set('fields', 'id,name,campaign{id,name}')
+    const response = await fetch(url, { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(8000) })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.error?.message || `Meta Graph API (${response.status})`)
+    return { adId: data.id || adId, adName: data.name || '', campaignId: data.campaign?.id || '', campaignName: data.campaign?.name || '' }
+  } catch (err) {
+    console.warn('[Meta ads] Could not resolve referral ad:', err.message)
+    return { adId }
+  }
+}
 
 const sendFacebookText = async (psid, text) => {
   const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
@@ -190,14 +208,29 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
     for (const entry of req.body.entry || []) {
       for (const event of entry.messaging || []) {
         const psid = event.sender?.id
-        const text = event.message?.text || (event.message?.attachments?.length ? '[Khách gửi tệp đính kèm hoặc hình ảnh qua Messenger]' : '')
-        if (!psid || event.message?.is_echo || !text) continue
-        const customer = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, status, last_message)
-          VALUES ($1,$2,$3,'MOI',$4)
-          ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET last_message=EXCLUDED.last_message, updated_at=CURRENT_TIMESTAMP
-          RETURNING id`, [`FB-${randomUUID()}`, `Khách Facebook ${psid.slice(-6)}`, psid, text])
+        const text = event.message?.text || event.postback?.title || (event.message?.attachments?.length ? '[Khách gửi tệp đính kèm hoặc hình ảnh qua Messenger]' : '')
+        if (!psid || event.message?.is_echo) continue
+        const referral = event.referral || event.message?.referral || event.postback?.referral || {}
+        const referralAdId = referral.ad_id || referral.adId || null
+        if (!text && !referralAdId && !referral.source && !referral.type) continue
+        const adDetails = referralAdId ? await fetchMetaAdDetails(String(referralAdId)) : {}
+        const sourceType = referral.source || (referralAdId ? 'AD' : null)
+        const customer = await query(`INSERT INTO facebook_care_customers
+          (id, customer_name, facebook_id, status, last_message, source_type, source_ad_id, source_ad_name, source_campaign_id, source_campaign_name)
+          VALUES ($1,$2,$3,'MOI',$4,$5,$6,$7,$8,$9)
+          ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET last_message=COALESCE(EXCLUDED.last_message,facebook_care_customers.last_message),
+            source_type=COALESCE(EXCLUDED.source_type,facebook_care_customers.source_type),
+            source_ad_id=COALESCE(EXCLUDED.source_ad_id,facebook_care_customers.source_ad_id),
+            source_ad_name=COALESCE(EXCLUDED.source_ad_name,facebook_care_customers.source_ad_name),
+            source_campaign_id=COALESCE(EXCLUDED.source_campaign_id,facebook_care_customers.source_campaign_id),
+            source_campaign_name=COALESCE(EXCLUDED.source_campaign_name,facebook_care_customers.source_campaign_name),
+            updated_at=CURRENT_TIMESTAMP
+          RETURNING id`, [`FB-${randomUUID()}`, `Khách Facebook ${psid.slice(-6)}`, psid, text || null, sourceType,
+          adDetails.adId || referralAdId, adDetails.adName || null, adDetails.campaignId || null, adDetails.campaignName || null])
+        if (!text) continue
+        const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
         const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
-          VALUES ($1,$2,$3,'IN','Facebook Page',$4) ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`, [randomUUID(), customer.rows[0].id, text, event.message?.mid || `event-${randomUUID()}`])
+          VALUES ($1,$2,$3,'IN','Facebook Page',$4) ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`, [randomUUID(), customer.rows[0].id, text, platformMessageId])
         if (inserted.rows[0] && isFacebookAiEnabled()) setImmediate(() => autoReplyToFacebookCustomer(customer.rows[0].id, psid))
       }
     }
@@ -1117,8 +1150,30 @@ const mapFbCare = row => ({
   id: row.id, customerName: row.customer_name, facebookId: row.facebook_id || '', phone: row.phone || '',
   interest: row.interest || '', status: row.status, assignedTo: row.assigned_to || '',
   followUpAt: row.follow_up_at ? new Date(row.follow_up_at).toISOString().slice(0, 16) : '',
+  sourceType: row.source_type || '', sourceAdId: row.source_ad_id || '', sourceAdName: row.source_ad_name || '',
+  sourceCampaignId: row.source_campaign_id || '', sourceCampaignName: row.source_campaign_name || '',
   notes: row.notes || '', lastMessage: row.last_message || '', updatedAt: row.updated_at,
   createdAt: row.created_at, messages: row.messages || []
+})
+
+app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  if (!isFacebookAdsConfigured()) return res.status(503).json({ success: false, configured: false, message: 'Chưa cấu hình META_AD_ACCOUNT_ID và META_ADS_ACCESS_TOKEN trên backend.' })
+  try {
+    const version = process.env.META_GRAPH_VERSION
+    const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
+    const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
+    url.searchParams.set('fields', 'id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(last_30d){impressions,reach,clicks,spend}')
+    url.searchParams.set('filtering', JSON.stringify([{ field: 'effective_status', operator: 'IN', value: ['ACTIVE'] }]))
+    url.searchParams.set('limit', '100')
+    const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) return res.status(502).json({ success: false, configured: true, message: payload.error?.message || `Meta Marketing API (${response.status})` })
+    const ads = (payload.data || []).map(ad => {
+      const insight = ad.insights?.data?.[0] || {}
+      return { id: ad.id, name: ad.name, status: ad.effective_status, campaignId: ad.campaign?.id || '', campaignName: ad.campaign?.name || '', adsetName: ad.adset?.name || '', impressions: Number(insight.impressions || 0), reach: Number(insight.reach || 0), clicks: Number(insight.clicks || 0), spend: Number(insight.spend || 0) }
+    })
+    res.json({ success: true, configured: true, data: ads, period: 'last_30d' })
+  } catch (err) { res.status(502).json({ success: false, configured: true, message: err.message || 'Không lấy được dữ liệu quảng cáo từ Meta.' }) }
 })
 
 app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
@@ -1196,8 +1251,15 @@ const ensureDatabaseSchema = async () => {
     await query(`CREATE TABLE IF NOT EXISTS facebook_care_customers (
       id VARCHAR(50) PRIMARY KEY, customer_name VARCHAR(150) NOT NULL, facebook_id VARCHAR(100), phone VARCHAR(30),
       interest TEXT, status VARCHAR(30) NOT NULL DEFAULT 'MOI', assigned_to VARCHAR(100), follow_up_at TIMESTAMP NULL,
-      notes TEXT, last_message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      notes TEXT, last_message TEXT, source_type VARCHAR(50), source_ad_id VARCHAR(100), source_ad_name VARCHAR(255),
+      source_campaign_id VARCHAR(100), source_campaign_name VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`)
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_type VARCHAR(50)')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_id VARCHAR(100)')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_name VARCHAR(255)')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_campaign_id VARCHAR(100)')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_campaign_name VARCHAR(255)')
     await query(`CREATE TABLE IF NOT EXISTS facebook_care_messages (
       id VARCHAR(50) PRIMARY KEY, customer_id VARCHAR(50) NOT NULL REFERENCES facebook_care_customers(id) ON DELETE CASCADE,
       body TEXT NOT NULL, direction VARCHAR(3) NOT NULL DEFAULT 'IN', created_by VARCHAR(100), platform_message_id TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
