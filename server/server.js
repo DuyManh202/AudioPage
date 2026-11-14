@@ -113,8 +113,145 @@ const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
 
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
+const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 const isFacebookAiEnabled = () => process.env.META_AI_ENABLED === 'true' && Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL)
 const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && process.env.META_ADS_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+
+const fetchFacebookProfileName = async (psid) => {
+  const { META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  if (!psid || !pageToken || !graphVersion) return ''
+  try {
+    const url = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(psid)}`)
+    url.searchParams.set('fields', 'name,first_name,last_name')
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(5000) })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) return ''
+    return String(data.name || `${data.first_name || ''} ${data.last_name || ''}`).trim()
+  } catch {
+    return ''
+  }
+}
+
+const FB_SYNC_INTERVAL_MS = 25000
+let fbSyncInFlight = null
+let fbLastSyncMs = 0
+let fbLastSyncedAt = null
+let fbLastSyncError = ''
+
+const syncFacebookConversations = async ({ force = false } = {}) => {
+  if (!canReadFacebookPageInbox()) return { synced: false, configured: false }
+  if (!force && fbLastSyncMs > 0 && Date.now() - fbLastSyncMs < FB_SYNC_INTERVAL_MS) {
+    return { synced: false, cached: true, lastSyncedAt: fbLastSyncedAt, error: fbLastSyncError }
+  }
+  if (fbSyncInFlight) return fbSyncInFlight
+
+  fbSyncInFlight = (async () => {
+    const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    try {
+      const fetchConversations = async (fields) => {
+        const url = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(pageId)}/conversations`)
+        url.searchParams.set('platform', 'messenger')
+        url.searchParams.set('fields', fields)
+        url.searchParams.set('limit', '50')
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(15000) })
+        const body = await res.json().catch(() => ({}))
+        return { ok: res.ok, status: res.status, body }
+      }
+
+      let resp = await fetchConversations('id,updated_time,participants,messages.limit(25){id,message,created_time,from,attachments,sticker}')
+      if (!resp.ok && resp.body?.error?.code === 100) {
+        resp = await fetchConversations('id,updated_time,participants,messages.limit(25){id,message,created_time,from}')
+      }
+      if (!resp.ok) {
+        throw new Error(resp.body?.error?.message || `Meta Conversations API (${resp.status})`)
+      }
+
+      let syncedCustomers = 0
+      let syncedMessages = 0
+      for (const conv of resp.body?.data || []) {
+        const participants = Array.isArray(conv.participants?.data) ? conv.participants.data : []
+        const rawMessages = Array.isArray(conv.messages?.data) ? conv.messages.data : []
+        let participant = participants.find(p => p?.id && String(p.id) !== String(pageId))
+        if (!participant) {
+          const senderMsg = rawMessages.find(m => m?.from?.id && String(m.from.id) !== String(pageId))
+          if (senderMsg?.from) participant = senderMsg.from
+        }
+        if (!participant?.id) continue
+
+        const psid = String(participant.id)
+        const resolvedName = String(participant.name || '').trim() || `Khách Facebook ${psid.slice(-6)}`
+        const normalizedMessages = rawMessages
+          .map(m => {
+            const fromPage = String(m.from?.id || '') === String(pageId)
+            const hasMedia = Boolean(m.attachments?.data?.length || m.sticker)
+            const text = String(m.message || '').trim() || (hasMedia ? (fromPage ? '[Trang gửi hình ảnh / tệp đính kèm]' : '[Khách gửi hình ảnh / tệp đính kèm]') : '')
+            const createdAt = m.created_time && !Number.isNaN(Date.parse(m.created_time)) ? new Date(m.created_time).toISOString() : new Date().toISOString()
+            return {
+              platformMessageId: m.id ? String(m.id) : null,
+              body: text,
+              direction: fromPage ? 'OUT' : 'IN',
+              createdBy: fromPage ? (m.from?.name || 'Tú Audio Page') : (m.from?.name || resolvedName),
+              createdAt
+            }
+          })
+          .filter(m => m.body && m.platformMessageId)
+          .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+
+        const latestMsg = normalizedMessages[normalizedMessages.length - 1] || null
+        const convUpdatedIso = conv.updated_time && !Number.isNaN(Date.parse(conv.updated_time))
+          ? new Date(conv.updated_time).toISOString()
+          : (latestMsg?.createdAt || new Date().toISOString())
+
+        const customerRes = await query(`INSERT INTO facebook_care_customers
+          (id, customer_name, facebook_id, status, last_message, created_at, updated_at)
+          VALUES ($1, $2, $3, 'MOI', $4, $5::timestamptz, $5::timestamptz)
+          ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
+            customer_name = CASE
+              WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
+              THEN EXCLUDED.customer_name
+              ELSE facebook_care_customers.customer_name
+            END,
+            last_message = COALESCE(EXCLUDED.last_message, facebook_care_customers.last_message),
+            updated_at = GREATEST(facebook_care_customers.updated_at, EXCLUDED.updated_at)
+          RETURNING id`, [`FB-${randomUUID()}`, resolvedName, psid, latestMsg?.body || null, convUpdatedIso])
+        const customerId = customerRes.rows[0]?.id
+        if (!customerId) continue
+        syncedCustomers += 1
+
+        for (const msg of normalizedMessages) {
+          await query(`UPDATE facebook_care_messages
+            SET platform_message_id = $1
+            WHERE id = (
+              SELECT id FROM facebook_care_messages
+              WHERE customer_id = $2 AND platform_message_id IS NULL AND direction = $3 AND body = $4
+                AND ABS(EXTRACT(EPOCH FROM (created_at - $5::timestamptz))) <= 180
+              LIMIT 1
+            )`, [msg.platformMessageId, customerId, msg.direction, msg.body, msg.createdAt])
+          const inserted = await query(`INSERT INTO facebook_care_messages
+            (id, customer_id, body, direction, created_by, platform_message_id, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)
+            ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`,
+            [randomUUID(), customerId, msg.body, msg.direction, msg.createdBy, msg.platformMessageId, msg.createdAt])
+          if (inserted.rows[0]) syncedMessages += 1
+        }
+      }
+
+      fbLastSyncMs = Date.now()
+      fbLastSyncedAt = new Date(fbLastSyncMs).toISOString()
+      fbLastSyncError = ''
+      return { synced: true, syncedCustomers, syncedMessages, lastSyncedAt: fbLastSyncedAt, error: '' }
+    } catch (err) {
+      fbLastSyncMs = Date.now()
+      fbLastSyncError = err.message || 'Không đồng bộ được hội thoại từ Fanpage.'
+      console.warn('[Facebook Sync] Failed:', fbLastSyncError)
+      return { synced: false, lastSyncedAt: fbLastSyncedAt, error: fbLastSyncError }
+    } finally {
+      fbSyncInFlight = null
+    }
+  })()
+
+  return fbSyncInFlight
+}
 
 const fetchMetaAdDetails = async (adId) => {
   const token = process.env.META_ADS_ACCESS_TOKEN || process.env.META_PAGE_ACCESS_TOKEN
@@ -142,6 +279,7 @@ const sendFacebookText = async (psid, text) => {
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(payload.error?.message || `Meta Send API error (${response.status})`)
+  return payload
 }
 
 const autoReplyToFacebookCustomer = async (customerId, psid) => {
@@ -175,9 +313,9 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
     const handoff = answer.startsWith('[[HANDOFF]]')
     const reply = answer.replace(/^\[\[HANDOFF\]\]\s*/, '').slice(0, 1900)
     if (!reply) throw new Error('AI trả nội dung trống')
-    await sendFacebookText(psid, reply)
-    await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by)
-      VALUES ($1,$2,$3,'OUT','AI Tú Audio')`, [randomUUID(), customerId, reply])
+    const sentPayload = await sendFacebookText(psid, reply)
+    await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
+      VALUES ($1,$2,$3,'OUT','AI Tú Audio',$4) ON CONFLICT (platform_message_id) DO NOTHING`, [randomUUID(), customerId, reply, sentPayload?.message_id || null])
     await query(`UPDATE facebook_care_customers SET last_message=$1,
       status=CASE WHEN $2 THEN 'CHO_PHAN_HOI' ELSE status END, updated_at=CURRENT_TIMESTAMP WHERE id=$3`, [reply, handoff, customerId])
   } catch (err) {
@@ -213,19 +351,29 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         const referral = event.referral || event.message?.referral || event.postback?.referral || {}
         const referralAdId = referral.ad_id || referral.adId || null
         if (!text && !referralAdId && !referral.source && !referral.type) continue
-        const adDetails = referralAdId ? await fetchMetaAdDetails(String(referralAdId)) : {}
+        const [adDetails, profileName] = await Promise.all([
+          referralAdId ? fetchMetaAdDetails(String(referralAdId)) : Promise.resolve({}),
+          fetchFacebookProfileName(String(psid))
+        ])
+        const resolvedName = profileName || `Khách Facebook ${psid.slice(-6)}`
         const sourceType = referral.source || (referralAdId ? 'AD' : null)
         const customer = await query(`INSERT INTO facebook_care_customers
           (id, customer_name, facebook_id, status, last_message, source_type, source_ad_id, source_ad_name, source_campaign_id, source_campaign_name)
           VALUES ($1,$2,$3,'MOI',$4,$5,$6,$7,$8,$9)
-          ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET last_message=COALESCE(EXCLUDED.last_message,facebook_care_customers.last_message),
+          ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
+            customer_name=CASE
+              WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
+              THEN EXCLUDED.customer_name
+              ELSE facebook_care_customers.customer_name
+            END,
+            last_message=COALESCE(EXCLUDED.last_message,facebook_care_customers.last_message),
             source_type=COALESCE(EXCLUDED.source_type,facebook_care_customers.source_type),
             source_ad_id=COALESCE(EXCLUDED.source_ad_id,facebook_care_customers.source_ad_id),
             source_ad_name=COALESCE(EXCLUDED.source_ad_name,facebook_care_customers.source_ad_name),
             source_campaign_id=COALESCE(EXCLUDED.source_campaign_id,facebook_care_customers.source_campaign_id),
             source_campaign_name=COALESCE(EXCLUDED.source_campaign_name,facebook_care_customers.source_campaign_name),
             updated_at=CURRENT_TIMESTAMP
-          RETURNING id`, [`FB-${randomUUID()}`, `Khách Facebook ${psid.slice(-6)}`, psid, text || null, sourceType,
+          RETURNING id`, [`FB-${randomUUID()}`, resolvedName, psid, text || null, sourceType,
           adDetails.adId || referralAdId, adDetails.adName || null, adDetails.campaignId || null, adDetails.campaignName || null])
         if (!text) continue
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
@@ -1178,11 +1326,38 @@ app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_A
 
 app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
+    const forceSync = req.query.sync === 'force'
+    if (canReadFacebookPageInbox() && (forceSync || Date.now() - fbLastSyncMs >= FB_SYNC_INTERVAL_MS)) {
+      await Promise.race([
+        syncFacebookConversations({ force: forceSync }),
+        new Promise(resolve => setTimeout(resolve, 10000))
+      ])
+    }
     const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
       FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
       GROUP BY c.id ORDER BY c.updated_at DESC`)
     const connected = isFacebookMessengerConfigured()
-    res.json({ success: true, data: result.rows.map(mapFbCare), connected, aiEnabled: isFacebookAiEnabled() })
+    res.json({
+      success: true,
+      data: result.rows.map(mapFbCare),
+      connected,
+      aiEnabled: isFacebookAiEnabled(),
+      lastSyncedAt: fbLastSyncedAt,
+      syncError: fbLastSyncError || ''
+    })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+app.post('/api/v1/admin/facebook-care/sync', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const syncInfo = await syncFacebookConversations({ force: true })
+    if (!syncInfo.configured && syncInfo.configured !== undefined) {
+      return res.status(503).json({ success: false, message: 'Chưa cấu hình META_PAGE_ID và META_PAGE_ACCESS_TOKEN trên backend.' })
+    }
+    if (syncInfo.error) {
+      return res.status(502).json({ success: false, message: syncInfo.error, lastSyncedAt: syncInfo.lastSyncedAt })
+    }
+    res.json({ success: true, ...syncInfo })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
@@ -1236,8 +1411,9 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
     if (!lastInbound.rows[0] || Date.now() - new Date(lastInbound.rows[0].created_at).getTime() > 24 * 60 * 60 * 1000) {
       return res.status(409).json({ success: false, message: 'Đã quá 24 giờ kể từ tin nhắn gần nhất của khách. Messenger không cho gửi tin nhắn tự do trong trường hợp này.' })
     }
-    try { await sendFacebookText(customer.facebook_id, text) } catch (err) { return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' }) }
-    const saved = await query("INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by) VALUES ($1,$2,$3,'OUT',$4) RETURNING id, body, direction, created_at", [randomUUID(), customer.id, text, req.admin.name])
+    let sentPayload
+    try { sentPayload = await sendFacebookText(customer.facebook_id, text) } catch (err) { return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' }) }
+    const saved = await query("INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id) VALUES ($1,$2,$3,'OUT',$4,$5) ON CONFLICT (platform_message_id) DO UPDATE SET created_by=EXCLUDED.created_by RETURNING id, body, direction, created_at", [randomUUID(), customer.id, text, req.admin.name, sentPayload?.message_id || null])
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [text, customer.id])
     res.status(201).json({ success: true, data: { id: saved.rows[0].id, body: text, direction: 'OUT', createdAt: saved.rows[0].created_at } })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
@@ -1276,6 +1452,12 @@ const ensureDatabaseSchema = async () => {
 ensureDatabaseSchema().finally(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`📡 Backend API Server đang chạy tại: http://localhost:${PORT}`)
+    if (canReadFacebookPageInbox()) {
+      syncFacebookConversations({ force: true }).catch(() => {})
+    }
+    setInterval(() => {
+      if (canReadFacebookPageInbox()) syncFacebookConversations().catch(() => {})
+    }, 45000).unref()
   })
 })
 
