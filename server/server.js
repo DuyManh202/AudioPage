@@ -28,6 +28,40 @@ const phoneFromMessage = (value) => {
   return /^0\d{9,10}$/.test(normalized) ? normalized : null
 }
 
+const normalizePhoneForSync = value => {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (!digits) return ''
+  return digits.startsWith('84') ? `0${digits.slice(2)}` : digits
+}
+
+const phoneLookupKeys = value => {
+  const digits = String(value || '').replace(/\D/g, '')
+  const local = normalizePhoneForSync(value)
+  return [...new Set([digits, local, local.startsWith('0') ? `84${local.slice(1)}` : ''].filter(Boolean))]
+}
+
+const syncOpenOrdersForCustomer = async ({ customerName, phone, previousPhone, address }) => {
+  const oldPhone = normalizePhoneForSync(previousPhone)
+  const newPhone = normalizePhoneForSync(phone)
+  // On a number change, the old number is the reliable link to the customer's existing orders.
+  const matchPhone = oldPhone && newPhone && oldPhone !== newPhone ? previousPhone : phone || previousPhone
+  const keys = phoneLookupKeys(matchPhone)
+  if (!keys.length) return 0
+  const cleanName = typeof customerName === 'string' && customerName.trim() ? customerName.trim().slice(0, 100) : null
+  const cleanPhone = typeof phone === 'string' && phone.trim() ? phone.trim().slice(0, 20) : null
+  const cleanAddress = typeof address === 'string' && address.trim() ? address.trim().slice(0, 500) : null
+  if (!cleanName && !cleanPhone && !cleanAddress) return 0
+  const result = await query(`UPDATE orders
+    SET customer_name=COALESCE($1,customer_name), customer_phone=COALESCE($2,customer_phone), shipping_address=COALESCE($3,shipping_address)
+    WHERE status IN ('MOI','DA_XAC_NHAN')
+      AND regexp_replace(customer_phone,'[^0-9]','','g')=ANY($4::text[])
+      AND (customer_name IS DISTINCT FROM COALESCE($1,customer_name)
+        OR customer_phone IS DISTINCT FROM COALESCE($2,customer_phone)
+        OR shipping_address IS DISTINCT FROM COALESCE($3,shipping_address))
+    RETURNING id`, [cleanName, cleanPhone, cleanAddress, keys])
+  return result.rowCount || 0
+}
+
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',').map(origin => origin.trim()).filter(Boolean)
 app.use(cors({
   origin(origin, callback) {
@@ -229,12 +263,16 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             location_lat=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lat ELSE COALESCE(EXCLUDED.location_lat,facebook_care_customers.location_lat) END,
             location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
             updated_at = GREATEST(facebook_care_customers.updated_at, EXCLUDED.updated_at)
-          RETURNING id`, [
+          RETURNING id,customer_name,phone,address`, [
           `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, latestMsg?.body || null,
           inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, convUpdatedIso
         ])
-        const customerId = customerRes.rows[0]?.id
+        const syncedCustomer = customerRes.rows[0]
+        const customerId = syncedCustomer?.id
         if (!customerId) continue
+        if (inferredPhone || inferredProvince) {
+          await syncOpenOrdersForCustomer({ customerName: syncedCustomer.customer_name, phone: syncedCustomer.phone, address: syncedCustomer.address })
+        }
         syncedCustomers += 1
 
         for (const msg of normalizedMessages) {
@@ -398,11 +436,15 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
             source_campaign_id=COALESCE(EXCLUDED.source_campaign_id,facebook_care_customers.source_campaign_id),
             source_campaign_name=COALESCE(EXCLUDED.source_campaign_name,facebook_care_customers.source_campaign_name),
             updated_at=CURRENT_TIMESTAMP
-          RETURNING id`, [
+          RETURNING id,customer_name,phone,address`, [
           `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, text || null, sourceType,
           adDetails.adId || referralAdId, adDetails.adName || null, adDetails.campaignId || null, adDetails.campaignName || null,
           inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null
         ])
+        const syncedCustomer = customer.rows[0]
+        if (syncedCustomer?.phone) {
+          await syncOpenOrdersForCustomer({ customerName: syncedCustomer.customer_name, phone: syncedCustomer.phone, address: syncedCustomer.address })
+        }
         if (!text) continue
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
         const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
@@ -914,6 +956,9 @@ app.patch('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     if (status !== undefined && !['MOI', 'DA_GOI', 'HEN_THU_TAI_NHA', 'DA_CHOT', 'HUY'].includes(status)) return res.status(400).json({ success: false, message: 'Trạng thái lead không hợp lệ.' })
     if (dealValue !== undefined && !validMoney(dealValue)) return res.status(400).json({ success: false, message: 'Giá trị chốt không hợp lệ.' })
 
+    const existingResult = await query('SELECT name,phone,address FROM leads WHERE id=$1', [id])
+    const existingLead = existingResult.rows[0]
+
     const sql = `
       UPDATE leads
       SET 
@@ -944,7 +989,18 @@ app.patch('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy khách hàng' })
     }
-    res.json({ success: true, data: mapLeadRow(result.rows[0]) })
+    const updatedLead = result.rows[0]
+    const nameChanged = name !== undefined && name !== existingLead?.name
+    const phoneChanged = phone !== undefined && phone !== existingLead?.phone
+    const addressChanged = address !== undefined && address !== existingLead?.address
+    const customerFieldsChanged = nameChanged || phoneChanged || addressChanged
+    const syncedOrders = customerFieldsChanged ? await syncOpenOrdersForCustomer({
+      customerName: nameChanged ? updatedLead.name : null,
+      phone: updatedLead.phone,
+      previousPhone: phoneChanged ? existingLead?.phone : null,
+      address: addressChanged ? updatedLead.address : null
+    }) : 0
+    res.json({ success: true, data: mapLeadRow(updatedLead), syncedOrders })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -1477,7 +1533,9 @@ app.post('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER
     const detectedProvince = findProvince(province || address)
     const result = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, phone, interest, notes, follow_up_at, assigned_to, address, province, location_lat, location_lng, location_manually_set)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`, [id, String(customerName).trim(), facebookId || null, phone || null, interest || null, notes || null, followUpAt || null, req.admin.name, address || null, detectedProvince?.displayName || null, detectedProvince?.lat ?? null, detectedProvince?.lng ?? null, Boolean(detectedProvince)])
-    res.status(201).json({ success: true, data: mapFbCare({ ...result.rows[0], messages: [] }) })
+    const customer = result.rows[0]
+    const syncedOrders = await syncOpenOrdersForCustomer({ customerName: customer.customer_name, phone: customer.phone, address: customer.address })
+    res.status(201).json({ success: true, data: mapFbCare({ ...customer, messages: [] }), syncedOrders })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
@@ -1489,6 +1547,9 @@ app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('
     if (!validOptionalText(address, 500) || !validOptionalText(province, 100)) return res.status(400).json({ success: false, message: 'Địa chỉ hoặc tỉnh/thành không hợp lệ.' })
     const locationChanged = address !== undefined || province !== undefined
     const detectedProvince = locationChanged ? findProvince(province || address) : null
+    const existingResult = await query('SELECT customer_name,phone,address FROM facebook_care_customers WHERE id=$1', [req.params.id])
+    const existingCustomer = existingResult.rows[0]
+    if (!existingCustomer) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách Facebook.' })
     const result = await query(`UPDATE facebook_care_customers SET
       customer_name=COALESCE($1,customer_name), phone=COALESCE($2,phone), interest=COALESCE($3,interest), notes=COALESCE($4,notes),
       status=COALESCE($5,status), assigned_to=COALESCE($6,assigned_to), follow_up_at=$7,
@@ -1496,7 +1557,17 @@ app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('
       location_manually_set=CASE WHEN $12 THEN TRUE ELSE location_manually_set END, updated_at=CURRENT_TIMESTAMP
       WHERE id=$13 RETURNING *`, [customerName ?? null, phone ?? null, interest ?? null, notes ?? null, status ?? null, assignedTo ?? null, followUpAt || null, address ?? null, detectedProvince?.displayName || null, detectedProvince?.lat ?? null, detectedProvince?.lng ?? null, locationChanged && Boolean(detectedProvince), req.params.id])
     if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách Facebook.' })
-    res.json({ success: true, data: mapFbCare({ ...result.rows[0], messages: [] }) })
+    const updatedCustomer = result.rows[0]
+    const nameChanged = updatedCustomer.customer_name !== existingCustomer.customer_name
+    const phoneChanged = updatedCustomer.phone !== existingCustomer.phone
+    const addressChanged = updatedCustomer.address !== existingCustomer.address
+    const syncedOrders = nameChanged || phoneChanged || addressChanged ? await syncOpenOrdersForCustomer({
+      customerName: nameChanged ? updatedCustomer.customer_name : null,
+      phone: updatedCustomer.phone,
+      previousPhone: phoneChanged ? existingCustomer.phone : null,
+      address: addressChanged ? updatedCustomer.address : null
+    }) : 0
+    res.json({ success: true, data: mapFbCare({ ...updatedCustomer, messages: [] }), syncedOrders })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 

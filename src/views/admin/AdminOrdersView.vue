@@ -9,6 +9,9 @@
         </p>
       </div>
       <div class="adm-head-actions">
+        <button type="button" class="adm-btn" :disabled="ordersRefreshing" @click="refreshOrders(false)">
+          {{ ordersRefreshing ? 'Đang cập nhật…' : '↻ Cập nhật đơn' }}
+        </button>
         <button type="button" class="adm-btn adm-btn-export" @click="exportOrdersCsv">
           <AdminIcon name="download" :size="15" />
           <span>Xuất Excel (CSV)</span>
@@ -302,7 +305,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
@@ -315,12 +318,23 @@ const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
 const dateFilter = useApiDateFilter('/admin/orders', computed(() => adminStore.orders))
-const { fromDate, toDate, rows: dateRows, isActive: isDateActive, isLoading: isDateLoading, error: dateError, clearDates } = dateFilter
+const { fromDate, toDate, rows: dateRows, isActive: isDateActive, isLoading: isDateLoading, error: dateError, clearDates, refresh: refreshDateRows } = dateFilter
 
 const searchQuery = ref('')
 const statusFilter = ref('ALL')
 const paymentFilter = ref('ALL')
 const selectedOrder = ref(null)
+const ordersRefreshing = ref(false)
+let ordersRefreshTimer = null
+
+async function refreshOrders(silent = true) {
+  if (ordersRefreshing.value) return
+  ordersRefreshing.value = true
+  try {
+    const refreshed = isDateActive.value ? await refreshDateRows() : await adminStore.refreshOrders(silent)
+    if (!refreshed && !silent && isDateActive.value) adminStore.showNotice(dateError.value || 'Không tải được đơn hàng mới nhất.', 'error')
+  } finally { ordersRefreshing.value = false }
+}
 
 const cleanPhone = (phone) => (phone ? String(phone).replace(/[^0-9]/g, '') : '')
 
@@ -414,6 +428,14 @@ const getStatusClass = (status) => ({
   HOAN_THANH: 'adm-status-green',
   HUY: 'adm-status-gray'
 }[status] || '')
+
+onMounted(() => {
+  refreshOrders()
+  ordersRefreshTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') refreshOrders()
+  }, 20000)
+})
+onBeforeUnmount(() => { if (ordersRefreshTimer) clearInterval(ordersRefreshTimer) })
 </script>
 
 <style scoped>

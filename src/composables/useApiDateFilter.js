@@ -13,6 +13,36 @@ export function useApiDateFilter(endpoint, fallbackRows) {
   let debounceTimer
   let requestId = 0
 
+  const loadRows = async requestVersion => {
+    const params = new URLSearchParams()
+    if (fromDate.value) params.set('from', fromDate.value)
+    if (toDate.value) params.set('to', toDate.value)
+
+    try {
+      const result = await apiRequest(`${endpoint}?${params.toString()}`)
+      if (requestVersion !== requestId) return false
+      if (!result.success || !Array.isArray(result.data)) throw new Error('Máy chủ trả về dữ liệu ngày không hợp lệ.')
+      apiRows.value = result.data
+      error.value = ''
+      return true
+    } catch (err) {
+      if (requestVersion !== requestId) return false
+      apiRows.value = []
+      error.value = err.message || 'Không tải được dữ liệu theo ngày từ máy chủ.'
+      return false
+    } finally {
+      if (requestVersion === requestId) isLoading.value = false
+    }
+  }
+
+  const refresh = async () => {
+    if (!isActive.value || fromDate.value && toDate.value && fromDate.value > toDate.value) return false
+    const requestVersion = ++requestId
+    clearTimeout(debounceTimer)
+    isLoading.value = true
+    return loadRows(requestVersion)
+  }
+
   watch([fromDate, toDate], () => {
     const requestVersion = ++requestId
     clearTimeout(debounceTimer)
@@ -32,26 +62,7 @@ export function useApiDateFilter(endpoint, fallbackRows) {
     }
 
     isLoading.value = true
-    debounceTimer = setTimeout(async () => {
-      const params = new URLSearchParams()
-      if (fromDate.value) params.set('from', fromDate.value)
-      if (toDate.value) params.set('to', toDate.value)
-
-      try {
-        const result = await apiRequest(`${endpoint}?${params.toString()}`)
-        if (requestVersion !== requestId) return
-        if (!result.success || !Array.isArray(result.data)) {
-          throw new Error('Máy chủ trả về dữ liệu ngày không hợp lệ.')
-        }
-        apiRows.value = result.data
-      } catch (err) {
-        if (requestVersion !== requestId) return
-        apiRows.value = []
-        error.value = err.message || 'Không tải được dữ liệu theo ngày từ máy chủ.'
-      } finally {
-        if (requestVersion === requestId) isLoading.value = false
-      }
-    }, 250)
+    debounceTimer = setTimeout(() => loadRows(requestVersion), 250)
   })
 
   const clearDates = () => {
@@ -64,5 +75,5 @@ export function useApiDateFilter(endpoint, fallbackRows) {
     requestId += 1
   })
 
-  return { fromDate, toDate, rows, isActive, isLoading, error, clearDates }
+  return { fromDate, toDate, rows, isActive, isLoading, error, clearDates, refresh }
 }

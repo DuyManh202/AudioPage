@@ -300,7 +300,7 @@ export const useAdminStore = defineStore('admin', {
           Object.assign(lead, res.data)
           this._persistLeads()
         }
-        this.showNotice('Đã cập nhật hồ sơ khách hàng.', 'success')
+        this.showNotice(res?.syncedOrders ? `Đã cập nhật hồ sơ và đồng bộ ${res.syncedOrders} đơn chưa giao.` : 'Đã cập nhật hồ sơ khách hàng.', 'success')
         return true
       } catch (err) {
         if (lead && backup) {
@@ -490,6 +490,21 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // Quản lý Đơn đặt hàng lẻ
+    async refreshOrders(silent = true) {
+      try {
+        const response = await apiRequest('/admin/orders')
+        if (response.success && Array.isArray(response.data)) {
+          this.orders = response.data
+          this._persistOrders()
+          return true
+        }
+        throw new Error('Máy chủ trả về danh sách đơn hàng không hợp lệ.')
+      } catch (err) {
+        if (!silent) this.showNotice(err.message || 'Không tải được đơn hàng mới nhất.', 'error')
+        return false
+      }
+    },
+
     async updateOrderStatus(orderId, status) {
       const ord = this.orders.find(o => o.id === orderId)
       const prev = ord?.status
