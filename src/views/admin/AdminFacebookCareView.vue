@@ -55,6 +55,7 @@ const formatNumber = value => new Intl.NumberFormat('vi-VN').format(value || 0)
 const formatMoney = value => `${new Intl.NumberFormat('vi-VN').format(value || 0)} đ`
 const knownAds = computed(() => {
   const grouped = new Map()
+  ads.value.forEach(ad => grouped.set(ad.id, { id: ad.id, name: ad.name || `Quảng cáo ${ad.id}`, count: 0 }))
   customers.value.filter(c => c.sourceAdId).forEach(c => {
     const item = grouped.get(c.sourceAdId) || { id: c.sourceAdId, name: c.sourceAdName || `Quảng cáo ${c.sourceAdId}`, count: 0 }
     item.count++
