@@ -297,6 +297,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
 import { formatCurrency } from '../../utils/formatters'
@@ -305,6 +306,8 @@ import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { useApiDateFilter } from '../../composables/useApiDateFilter'
 
 const adminStore = useAdminStore()
+const route = useRoute()
+if (route.query.phone) adminStore.leadSearchKeyword = String(route.query.phone)
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
 const dateFilter = useApiDateFilter('/admin/leads', computed(() => adminStore.leads))

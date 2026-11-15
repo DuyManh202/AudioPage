@@ -170,6 +170,11 @@ CREATE TABLE IF NOT EXISTS facebook_care_customers (
     follow_up_at TIMESTAMP NULL,
     notes TEXT,
     last_message TEXT,
+    address TEXT,
+    province VARCHAR(100),
+    location_lat DOUBLE PRECISION,
+    location_lng DOUBLE PRECISION,
+    location_manually_set BOOLEAN NOT NULL DEFAULT FALSE,
     source_type VARCHAR(50),
     source_ad_id VARCHAR(100),
     source_ad_name VARCHAR(255),
@@ -197,6 +202,11 @@ ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_id VARCHA
 ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_name VARCHAR(255);
 ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_campaign_id VARCHAR(100);
 ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_campaign_name VARCHAR(255);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS province VARCHAR(100);
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION;
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION;
+ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS location_manually_set BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Mã lead/order chứa UUID (LD-/ORD- + 36 ký tự), cần đủ chỗ trên DB cũ.
 -- Giữ trade-ins nếu lead bị xóa, đúng với chính sách của schema.

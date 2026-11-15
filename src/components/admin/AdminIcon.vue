@@ -62,6 +62,12 @@
     </template>
 
     <!-- Globe / Storefront -->
+    <template v-else-if="name === 'map'">
+      <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z" />
+      <path d="M9 3v15" />
+      <path d="M15 6v15" />
+    </template>
+
     <template v-else-if="name === 'globe'">
       <circle cx="12" cy="12" r="10" />
       <line x1="2" y1="12" x2="22" y2="12" />

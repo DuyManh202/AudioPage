@@ -67,6 +67,12 @@ const routes = [
         meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
       },
       {
+        path: 'customer-map',
+        name: 'AdminCustomerMap',
+        component: () => import('../views/admin/AdminCustomerMapView.vue'),
+        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+      },
+      {
         path: 'orders',
         name: 'AdminOrders',
         component: () => import('../views/admin/AdminOrdersView.vue'),

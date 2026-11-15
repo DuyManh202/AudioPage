@@ -17,9 +17,10 @@
 
     <form v-if="showCreate" class="adm-card create-form" @submit.prevent="createCustomer">
       <h2>Thêm khách cần chăm sóc</h2>
-      <div class="form-grid"><label>Tên khách *<input v-model="draft.customerName" required placeholder="Tên hiển thị Facebook"></label><label>Facebook ID / link hồ sơ<input v-model="draft.facebookId" placeholder="Tùy chọn"></label><label>Số điện thoại<input v-model="draft.phone" placeholder="Nếu khách đã cung cấp"></label><label>Sản phẩm quan tâm<input v-model="draft.interest" placeholder="Ví dụ: Dàn karaoke 29 triệu"></label><label>Nhắc chăm sóc lúc<input v-model="draft.followUpAt" type="datetime-local"></label><label>Ghi chú<textarea v-model="draft.notes" rows="2" placeholder="Nhu cầu, khu vực, vấn đề đang gặp"></textarea></label></div>
+      <div class="form-grid"><label>Tên khách *<input v-model="draft.customerName" required placeholder="Tên hiển thị Facebook"></label><label>Facebook ID / link hồ sơ<input v-model="draft.facebookId" placeholder="Tùy chọn"></label><label>Số điện thoại<input v-model="draft.phone" placeholder="Nếu khách đã cung cấp"></label><label>Sản phẩm quan tâm<input v-model="draft.interest" placeholder="Ví dụ: Dàn karaoke 29 triệu"></label><label>Địa chỉ khách<input v-model="draft.address" placeholder="Số nhà, đường, xã/phường"></label><label>Tỉnh/thành<input v-model="draft.province" list="fb-province-options" placeholder="Chọn hoặc nhập tỉnh/thành"></label><label>Nhắc chăm sóc lúc<input v-model="draft.followUpAt" type="datetime-local"></label><label>Ghi chú<textarea v-model="draft.notes" rows="2" placeholder="Nhu cầu, khu vực, vấn đề đang gặp"></textarea></label></div>
       <button class="adm-btn adm-btn-gold" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Lưu hồ sơ' }}</button>
     </form>
+    <datalist id="fb-province-options"><option v-for="p in VIETNAM_PROVINCES" :key="p.name" :value="p.displayName" /></datalist>
 
     <div class="stats"><button v-for="item in statusOptions" :key="item.key" :class="['stat', { selected: filter === item.key }]" @click="filter = item.key"><span>{{ item.label }}</span><b>{{ item.key === 'ALL' ? customers.length : customers.filter(c => c.status === item.key).length }}</b></button><label class="ad-filter">Nguồn quảng cáo<select v-model="adFilter"><option value="ALL">Tất cả nguồn</option><option value="NONE">Chưa xác định quảng cáo</option><option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} · {{ ad.count }}</option></select></label><div class="search"><input v-model="keyword" placeholder="Tìm tên, số điện thoại, nhu cầu…"></div></div>
 
@@ -27,7 +28,7 @@
       <div class="customer-list"><div class="list-title">Danh sách khách <span>{{ visibleCustomers.length }}</span></div><button v-for="c in visibleCustomers" :key="c.id" :class="['customer-row', { active: selected?.id === c.id }]" @click="select(c)"><strong>{{ c.customerName }}</strong><small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small><small>{{ c.phone || c.facebookId || c.id }}</small><small v-if="c.sourceAdName || c.sourceAdId" class="source-small">Nguồn quảng cáo: {{ c.sourceAdName || c.sourceAdId }}</small><small v-else-if="c.sourceType">Nguồn: {{ c.sourceType }}</small><span :class="['status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span><em v-if="c.followUpAt">Nhắc: {{ displayDate(c.followUpAt) }}</em></button><p v-if="!visibleCustomers.length" class="empty">Chưa có khách. Hệ thống tự động đồng bộ tin nhắn từ Fanpage.</p></div>
       <section v-if="selected" class="detail">
         <div class="detail-head"><div><h2>{{ selected.customerName }}</h2><p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId"> · {{ selected.facebookId }}</span></p></div><select v-model="edit.status" @change="save"><option v-for="s in statusOptions.slice(1)" :key="s.key" :value="s.key">{{ s.label }}</option></select></div>
-        <div class="edit-grid"><label>Nhu cầu<input v-model="edit.interest" @change="save"></label><label>Điện thoại<input v-model="edit.phone" @change="save"></label><label>Nhắc chăm sóc<input v-model="edit.followUpAt" type="datetime-local" @change="save"></label><label>Phụ trách<input v-model="edit.assignedTo" @change="save"></label></div>
+        <div class="edit-grid"><label>Nhu cầu<input v-model="edit.interest" @change="save"></label><label>Điện thoại<input v-model="edit.phone" @change="save"></label><label>Địa chỉ<input v-model="edit.address" placeholder="Địa chỉ lắp đặt" @change="save"></label><label>Tỉnh/thành<input v-model="edit.province" list="fb-province-options" @change="save"></label><label>Nhắc chăm sóc<input v-model="edit.followUpAt" type="datetime-local" @change="save"></label><label>Phụ trách<input v-model="edit.assignedTo" @change="save"></label></div>
         <label class="notes">Ghi chú khách hàng<textarea v-model="edit.notes" rows="3" @change="save"></textarea></label>
         <div v-if="selected.sourceAdId || selected.sourceType" class="ad-context"><span class="ad-context-icon">▣</span><div><strong>{{ selected.sourceAdId ? 'Cuộc trò chuyện này đến từ quảng cáo' : 'Nguồn cuộc trò chuyện từ Meta' }}</strong><span>{{ selected.sourceAdName || (selected.sourceAdId ? `Quảng cáo ID ${selected.sourceAdId}` : selected.sourceType) }}</span><small v-if="selected.sourceCampaignName">Chiến dịch: {{ selected.sourceCampaignName }}</small></div><span v-if="selected.sourceAdId" class="ad-context-tag">QUẢNG CÁO</span></div>
         <div class="history-head"><h3>Lịch sử tư vấn</h3><span>{{ messengerConnected ? 'Tin nhắn OUT sẽ gửi qua Messenger' : 'Ghi nhận nội bộ · Messenger chưa kết nối' }}</span></div>
@@ -42,10 +43,13 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { apiRequest } from '../../utils/api'
+import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
 const customers = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false)
+const route = useRoute()
 const statusOptions = [{ key: 'ALL', label: 'Tất cả' }, { key: 'MOI', label: 'Mới' }, { key: 'DANG_TU_VAN', label: 'Đang tư vấn' }, { key: 'CHO_PHAN_HOI', label: 'Chờ phản hồi' }, { key: 'DA_CHOT', label: 'Đã chốt' }, { key: 'DA_HUY', label: 'Đã dừng' }]
-const blank = () => ({ customerName: '', facebookId: '', phone: '', interest: '', notes: '', followUpAt: '' })
+const blank = () => ({ customerName: '', facebookId: '', phone: '', interest: '', address: '', province: '', notes: '', followUpAt: '' })
 const draft = reactive(blank()), edit = reactive({})
 let careTimer = null, adsTimer = null
 const labelFor = value => statusOptions.find(x => x.key === value)?.label || value
@@ -79,7 +83,8 @@ async function load({ silent = false, force = false } = {}) {
       if (updated && silent && isEditingDetail()) selected.value = updated
       else select(updated)
     } else if (customers.value.length && !silent) {
-      select(customers.value[0])
+      const routeCustomer = customers.value.find(c => c.id === String(route.query.customerId || ''))
+      select(routeCustomer || customers.value[0])
     }
   } catch (e) {
     if (!silent) error.value = e.message
@@ -87,7 +92,7 @@ async function load({ silent = false, force = false } = {}) {
 }
 async function forceSync() { syncBusy.value = true; error.value = ''; try { await load({ force: true }) } finally { syncBusy.value = false } }
 async function loadAds() { adsBusy.value = true; adsError.value = ''; try { const r = await apiRequest('/admin/facebook-ads'); ads.value = r.data || []; adsConfigured.value = Boolean(r.configured) } catch (e) { adsError.value = e.message; adsConfigured.value = e.status !== 503 } finally { adsBusy.value = false } }
-function select(c) { selected.value = c; if (c) Object.assign(edit, { status: c.status, interest: c.interest, phone: c.phone, notes: c.notes, followUpAt: c.followUpAt, assignedTo: c.assignedTo }) }
+function select(c) { selected.value = c; if (c) Object.assign(edit, { status: c.status, interest: c.interest, phone: c.phone, address: c.address || '', province: c.province || '', notes: c.notes, followUpAt: c.followUpAt, assignedTo: c.assignedTo }) }
 async function createCustomer() { busy.value = true; error.value = ''; try { const r = await apiRequest('/admin/facebook-care', { method: 'POST', body: JSON.stringify(draft) }); customers.value.unshift(r.data); select(r.data); Object.assign(draft, blank()); showCreate.value = false } catch (e) { error.value = e.message } finally { busy.value = false } }
 async function save() { if (!selected.value) return; try { const r = await apiRequest(`/admin/facebook-care/${selected.value.id}`, { method: 'PATCH', body: JSON.stringify(edit) }); Object.assign(selected.value, r.data) } catch (e) { error.value = e.message } }
 async function addMessage() { if (!messageBody.value.trim()) return; busy.value = true; try { const customerId = selected.value.id; const endpoint = messageDirection.value === 'OUT' && messengerConnected.value ? `/admin/facebook-care/${customerId}/send` : `/admin/facebook-care/${customerId}/messages`; await apiRequest(endpoint, { method: 'POST', body: JSON.stringify({ body: messageBody.value, direction: messageDirection.value }) }); messageBody.value = ''; await load({ silent: true }); select(customers.value.find(c => c.id === customerId) || selected.value) } catch (e) { error.value = e.message } finally { busy.value = false } }

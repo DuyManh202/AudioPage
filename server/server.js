@@ -1,4 +1,4 @@
-﻿import express from 'express'
+import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { query } from './db.js'
+import { findProvince } from './vietnamProvinces.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
@@ -17,6 +18,14 @@ const PORT = process.env.PORT || 5000
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET.includes('replace-with')) {
   throw new Error('JWT_SECRET phải được cấu hình và có ít nhất 32 ký tự.')
+}
+
+const phoneFromMessage = (value) => {
+  const match = String(value || '').match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/)
+  if (!match) return null
+  const digits = match[0].replace(/\D/g, '')
+  const normalized = digits.startsWith('84') ? `0${digits.slice(2)}` : digits
+  return /^0\d{9,10}$/.test(normalized) ? normalized : null
 }
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',').map(origin => origin.trim()).filter(Boolean)
@@ -198,22 +207,32 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
           .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
 
         const latestMsg = normalizedMessages[normalizedMessages.length - 1] || null
+        const inboundMessages = normalizedMessages.filter(message => message.direction === 'IN')
+        const inferredProvince = inboundMessages.slice().reverse().map(message => findProvince(message.body, { requireContext: true })).find(Boolean)
+        const inferredPhone = inboundMessages.map(message => phoneFromMessage(message.body)).find(Boolean)
         const convUpdatedIso = conv.updated_time && !Number.isNaN(Date.parse(conv.updated_time))
           ? new Date(conv.updated_time).toISOString()
           : (latestMsg?.createdAt || new Date().toISOString())
 
         const customerRes = await query(`INSERT INTO facebook_care_customers
-          (id, customer_name, facebook_id, status, last_message, created_at, updated_at)
-          VALUES ($1, $2, $3, 'MOI', $4, $5::timestamptz, $5::timestamptz)
+          (id, customer_name, facebook_id, phone, status, last_message, province, location_lat, location_lng, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, 'MOI', $5, $6, $7, $8, $9::timestamptz, $9::timestamptz)
           ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
             customer_name = CASE
               WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
               THEN EXCLUDED.customer_name
               ELSE facebook_care_customers.customer_name
             END,
+            phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
             last_message = COALESCE(EXCLUDED.last_message, facebook_care_customers.last_message),
+            province=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.province ELSE COALESCE(EXCLUDED.province,facebook_care_customers.province) END,
+            location_lat=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lat ELSE COALESCE(EXCLUDED.location_lat,facebook_care_customers.location_lat) END,
+            location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
             updated_at = GREATEST(facebook_care_customers.updated_at, EXCLUDED.updated_at)
-          RETURNING id`, [`FB-${randomUUID()}`, resolvedName, psid, latestMsg?.body || null, convUpdatedIso])
+          RETURNING id`, [
+          `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, latestMsg?.body || null,
+          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, convUpdatedIso
+        ])
         const customerId = customerRes.rows[0]?.id
         if (!customerId) continue
         syncedCustomers += 1
@@ -357,24 +376,33 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         ])
         const resolvedName = profileName || `Khách Facebook ${psid.slice(-6)}`
         const sourceType = referral.source || (referralAdId ? 'AD' : null)
+        const inferredProvince = findProvince(text, { requireContext: true })
+        const inferredPhone = phoneFromMessage(text)
         const customer = await query(`INSERT INTO facebook_care_customers
-          (id, customer_name, facebook_id, status, last_message, source_type, source_ad_id, source_ad_name, source_campaign_id, source_campaign_name)
-          VALUES ($1,$2,$3,'MOI',$4,$5,$6,$7,$8,$9)
+          (id, customer_name, facebook_id, phone, status, last_message, source_type, source_ad_id, source_ad_name, source_campaign_id, source_campaign_name, province, location_lat, location_lng)
+          VALUES ($1,$2,$3,$4,'MOI',$5,$6,$7,$8,$9,$10,$11,$12,$13)
           ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
             customer_name=CASE
               WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
               THEN EXCLUDED.customer_name
               ELSE facebook_care_customers.customer_name
             END,
+            phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
             last_message=COALESCE(EXCLUDED.last_message,facebook_care_customers.last_message),
+            province=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.province ELSE COALESCE(EXCLUDED.province,facebook_care_customers.province) END,
+            location_lat=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lat ELSE COALESCE(EXCLUDED.location_lat,facebook_care_customers.location_lat) END,
+            location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
             source_type=COALESCE(EXCLUDED.source_type,facebook_care_customers.source_type),
             source_ad_id=COALESCE(EXCLUDED.source_ad_id,facebook_care_customers.source_ad_id),
             source_ad_name=COALESCE(EXCLUDED.source_ad_name,facebook_care_customers.source_ad_name),
             source_campaign_id=COALESCE(EXCLUDED.source_campaign_id,facebook_care_customers.source_campaign_id),
             source_campaign_name=COALESCE(EXCLUDED.source_campaign_name,facebook_care_customers.source_campaign_name),
             updated_at=CURRENT_TIMESTAMP
-          RETURNING id`, [`FB-${randomUUID()}`, resolvedName, psid, text || null, sourceType,
-          adDetails.adId || referralAdId, adDetails.adName || null, adDetails.campaignId || null, adDetails.campaignName || null])
+          RETURNING id`, [
+          `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, text || null, sourceType,
+          adDetails.adId || referralAdId, adDetails.adName || null, adDetails.campaignId || null, adDetails.campaignName || null,
+          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null
+        ])
         if (!text) continue
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
         const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
@@ -1296,6 +1324,7 @@ app.delete('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_
 // Facebook Page care CRM: stores customers and a staff-maintained conversation log.
 const mapFbCare = row => ({
   id: row.id, customerName: row.customer_name, facebookId: row.facebook_id || '', phone: row.phone || '',
+  address: row.address || '', province: row.province || '', locationLat: row.location_lat == null ? null : Number(row.location_lat), locationLng: row.location_lng == null ? null : Number(row.location_lng),
   interest: row.interest || '', status: row.status, assignedTo: row.assigned_to || '',
   followUpAt: row.follow_up_at ? new Date(row.follow_up_at).toISOString().slice(0, 16) : '',
   sourceType: row.source_type || '', sourceAdId: row.source_ad_id || '', sourceAdName: row.source_ad_name || '',
@@ -1348,6 +1377,84 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
+app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const [fbResult, leadResult] = await Promise.all([
+      query(`SELECT c.id,c.customer_name,c.facebook_id,c.phone,c.address,c.province,c.location_lat,c.location_lng,c.interest,c.last_message,c.status,c.source_ad_name,c.updated_at,
+        COALESCE(product_image.image_url,combo_image.image_url,'') AS interest_image, combo_image.video_url AS interest_video_url
+        FROM facebook_care_customers c
+        LEFT JOIN LATERAL (SELECT p.image_url FROM products p WHERE LOWER(COALESCE(NULLIF(c.interest,''),c.last_message,'')) LIKE '%' || LOWER(p.name) || '%' LIMIT 1) product_image ON TRUE
+        LEFT JOIN LATERAL (SELECT p.image_url,co.video_url FROM combos co JOIN combo_components cc ON cc.combo_id=co.id JOIN products p ON p.id=cc.product_id OR LOWER(cc.item_name) LIKE '%' || LOWER(p.name) || '%' WHERE LOWER(COALESCE(NULLIF(c.interest,''),c.last_message,'')) LIKE '%' || LOWER(SPLIT_PART(co.name,'—',1)) || '%' ORDER BY cc.sort_order LIMIT 1) combo_image ON TRUE
+        ORDER BY c.updated_at DESC`),
+      query(`SELECT l.id,l.name AS customer_name,l.phone,l.address,l.interest,l.status,l.updated_at,
+        COALESCE(product_image.image_url,combo_image.image_url,'') AS interest_image, combo_image.video_url AS interest_video_url
+        FROM leads l
+        LEFT JOIN LATERAL (SELECT p.image_url FROM products p WHERE LOWER(COALESCE(l.interest,'')) LIKE '%' || LOWER(p.name) || '%' LIMIT 1) product_image ON TRUE
+        LEFT JOIN LATERAL (SELECT p.image_url,co.video_url FROM combos co JOIN combo_components cc ON cc.combo_id=co.id JOIN products p ON p.id=cc.product_id OR LOWER(cc.item_name) LIKE '%' || LOWER(p.name) || '%' WHERE LOWER(COALESCE(l.interest,'')) LIKE '%' || LOWER(SPLIT_PART(co.name,'—',1)) || '%' ORDER BY cc.sort_order LIMIT 1) combo_image ON TRUE
+        ORDER BY l.updated_at DESC`)
+    ])
+    const byPhone = new Map()
+    let unlocatedCount = 0
+    const normalizePhone = value => String(value || '').replace(/\D/g, '').replace(/^84/, '0')
+    const videoThumbnail = value => {
+      const match = String(value || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/)
+      return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : ''
+    }
+    const add = (row, type) => {
+      const province = findProvince(row.province) || findProvince(row.address)
+      const lat = row.location_lat == null ? province?.lat : Number(row.location_lat)
+      const lng = row.location_lng == null ? province?.lng : Number(row.location_lng)
+      if (!province || !Number.isFinite(lat) || !Number.isFinite(lng)) { unlocatedCount += 1; return }
+      const phoneKey = normalizePhone(row.phone)
+      const previous = phoneKey ? byPhone.get(phoneKey) : null
+      const record = {
+        id: row.id,
+        recordType: type,
+        customerName: row.customer_name || 'Khách hàng',
+        facebookId: row.facebook_id || '',
+        phone: row.phone || previous?.phone || '',
+        address: row.address || previous?.address || '',
+        province: province.displayName,
+        lat, lng,
+        locationPrecision: row.location_lat == null ? 'PROVINCE' : 'PROVINCE',
+        interest: row.interest || row.last_message || previous?.interest || '',
+        interestImage: row.interest_image || videoThumbnail(row.interest_video_url) || previous?.interestImage || '',
+        status: row.status || '',
+        sourceAdName: row.source_ad_name || '',
+        updatedAt: row.updated_at,
+        facebookCareId: type === 'FACEBOOK' ? row.id : previous?.facebookCareId || '',
+        leadId: type === 'LEAD' ? row.id : previous?.leadId || ''
+      }
+      if (phoneKey && previous) {
+        const incomingIsNewer = Date.parse(record.updatedAt || 0) >= Date.parse(previous.updatedAt || 0)
+        const newest = incomingIsNewer ? record : previous
+        byPhone.set(phoneKey, {
+          ...previous, ...record,
+          customerName: newest.customerName || previous.customerName,
+          province: newest.province || previous.province,
+          lat: newest.lat ?? previous.lat,
+          lng: newest.lng ?? previous.lng,
+          address: newest.address || record.address || previous.address,
+          interest: newest.interest || record.interest || previous.interest,
+          interestImage: newest.interestImage || record.interestImage || previous.interestImage,
+          phone: record.phone || previous.phone,
+          facebookCareId: record.facebookCareId || previous.facebookCareId,
+          leadId: record.leadId || previous.leadId,
+          recordType: record.facebookCareId || previous.facebookCareId ? 'FACEBOOK' : newest.recordType,
+          updatedAt: newest.updatedAt || previous.updatedAt
+        })
+      } else {
+        byPhone.set(phoneKey || `${type}:${row.id}`, record)
+      }
+    }
+    leadResult.rows.forEach(row => add(row, 'LEAD'))
+    fbResult.rows.forEach(row => add(row, 'FACEBOOK'))
+    res.json({ success: true, data: [...byPhone.values()], unlocatedCount, origin: { address: '43 Hùng Vương, Phường Vĩnh Yên, Phú Thọ', lat: 21.31, lng: 105.60 } })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 app.post('/api/v1/admin/facebook-care/sync', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const syncInfo = await syncFacebookConversations({ force: true })
@@ -1363,24 +1470,31 @@ app.post('/api/v1/admin/facebook-care/sync', authenticateAdmin, authorizeRoles('
 
 app.post('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const { customerName, facebookId, phone, interest, notes, followUpAt } = req.body
+    const { customerName, facebookId, phone, interest, notes, followUpAt, address, province } = req.body
     if (!String(customerName || '').trim()) return res.status(400).json({ success: false, message: 'Vui lòng nhập tên khách hàng.' })
+    if (!validOptionalText(address, 500)) return res.status(400).json({ success: false, message: 'Địa chỉ không hợp lệ.' })
     const id = `FB-${randomUUID()}`
-    const result = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, phone, interest, notes, follow_up_at, assigned_to)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [id, String(customerName).trim(), facebookId || null, phone || null, interest || null, notes || null, followUpAt || null, req.admin.name])
+    const detectedProvince = findProvince(province || address)
+    const result = await query(`INSERT INTO facebook_care_customers (id, customer_name, facebook_id, phone, interest, notes, follow_up_at, assigned_to, address, province, location_lat, location_lng, location_manually_set)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`, [id, String(customerName).trim(), facebookId || null, phone || null, interest || null, notes || null, followUpAt || null, req.admin.name, address || null, detectedProvince?.displayName || null, detectedProvince?.lat ?? null, detectedProvince?.lng ?? null, Boolean(detectedProvince)])
     res.status(201).json({ success: true, data: mapFbCare({ ...result.rows[0], messages: [] }) })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
 app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const { status, notes, phone, interest, assignedTo, followUpAt, customerName } = req.body
+    const { status, notes, phone, interest, assignedTo, followUpAt, customerName, address, province } = req.body
     const validStatuses = ['MOI', 'DANG_TU_VAN', 'CHO_PHAN_HOI', 'DA_CHOT', 'DA_HUY']
     if (status !== undefined && !validStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Trạng thái chăm sóc không hợp lệ.' })
+    if (!validOptionalText(address, 500) || !validOptionalText(province, 100)) return res.status(400).json({ success: false, message: 'Địa chỉ hoặc tỉnh/thành không hợp lệ.' })
+    const locationChanged = address !== undefined || province !== undefined
+    const detectedProvince = locationChanged ? findProvince(province || address) : null
     const result = await query(`UPDATE facebook_care_customers SET
       customer_name=COALESCE($1,customer_name), phone=COALESCE($2,phone), interest=COALESCE($3,interest), notes=COALESCE($4,notes),
-      status=COALESCE($5,status), assigned_to=COALESCE($6,assigned_to), follow_up_at=$7, updated_at=CURRENT_TIMESTAMP
-      WHERE id=$8 RETURNING *`, [customerName ?? null, phone ?? null, interest ?? null, notes ?? null, status ?? null, assignedTo ?? null, followUpAt || null, req.params.id])
+      status=COALESCE($5,status), assigned_to=COALESCE($6,assigned_to), follow_up_at=$7,
+      address=COALESCE($8,address), province=COALESCE($9,province), location_lat=COALESCE($10,location_lat), location_lng=COALESCE($11,location_lng),
+      location_manually_set=CASE WHEN $12 THEN TRUE ELSE location_manually_set END, updated_at=CURRENT_TIMESTAMP
+      WHERE id=$13 RETURNING *`, [customerName ?? null, phone ?? null, interest ?? null, notes ?? null, status ?? null, assignedTo ?? null, followUpAt || null, address ?? null, detectedProvince?.displayName || null, detectedProvince?.lat ?? null, detectedProvince?.lng ?? null, locationChanged && Boolean(detectedProvince), req.params.id])
     if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách Facebook.' })
     res.json({ success: true, data: mapFbCare({ ...result.rows[0], messages: [] }) })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
@@ -1427,10 +1541,16 @@ const ensureDatabaseSchema = async () => {
     await query(`CREATE TABLE IF NOT EXISTS facebook_care_customers (
       id VARCHAR(50) PRIMARY KEY, customer_name VARCHAR(150) NOT NULL, facebook_id VARCHAR(100), phone VARCHAR(30),
       interest TEXT, status VARCHAR(30) NOT NULL DEFAULT 'MOI', assigned_to VARCHAR(100), follow_up_at TIMESTAMP NULL,
-      notes TEXT, last_message TEXT, source_type VARCHAR(50), source_ad_id VARCHAR(100), source_ad_name VARCHAR(255),
+      notes TEXT, last_message TEXT, address TEXT, province VARCHAR(100), location_lat DOUBLE PRECISION, location_lng DOUBLE PRECISION,
+      location_manually_set BOOLEAN NOT NULL DEFAULT FALSE, source_type VARCHAR(50), source_ad_id VARCHAR(100), source_ad_name VARCHAR(255),
       source_campaign_id VARCHAR(100), source_campaign_name VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`)
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS address TEXT')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS province VARCHAR(100)')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION')
+    await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS location_manually_set BOOLEAN NOT NULL DEFAULT FALSE')
     await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_type VARCHAR(50)')
     await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_id VARCHAR(100)')
     await query('ALTER TABLE facebook_care_customers ADD COLUMN IF NOT EXISTS source_ad_name VARCHAR(255)')
