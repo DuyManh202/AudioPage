@@ -45,7 +45,7 @@ import { apiRequest } from '../../utils/api'
 
 const router = useRouter()
 const customers = ref([]), selected = ref(null), keyword = ref(''), busy = ref(false), error = ref(''), unlocatedCount = ref(0), mapElement = ref(null)
-let map = null, markerLayer = null, refreshTimer = null, origin = { lat: 21.31, lng: 105.60 }
+let map = null, markerLayer = null, tileLayer = null, refreshTimer = null, tileErrorCount = 0, tileLoadCount = 0, usingFallbackTiles = false, origin = { lat: 21.31, lng: 105.60 }
 const visibleCustomers = computed(() => {
   const term = keyword.value.trim().toLocaleLowerCase('vi')
   if (!term) return customers.value
@@ -67,7 +67,17 @@ const popupContent = customer => {
 function initMap() {
   if (!mapElement.value || map) return
   map = L.map(mapElement.value, { scrollWheelZoom: true, zoomControl: true }).setView([origin.lat, origin.lng], 6)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(map)
+  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+  tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution, subdomains: 'abc' }).addTo(map)
+  tileLayer.on('tileload', () => { tileLoadCount += 1 })
+  tileLayer.on('tileerror', () => {
+    tileErrorCount += 1
+    if (!usingFallbackTiles && tileErrorCount >= 3 && tileLoadCount === 0) {
+      usingFallbackTiles = true
+      tileLayer.remove()
+      tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', { maxZoom: 19, attribution, subdomains: 'abc' }).addTo(map)
+    }
+  })
   markerLayer = L.layerGroup().addTo(map)
 }
 function renderMarkers() {
