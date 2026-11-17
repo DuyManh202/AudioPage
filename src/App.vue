@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="audio-shop-app">
     <AppHeader v-if="!isAdminRoute" />
     <main :class="['main-content', { 'admin-mode': isAdminRoute }]">
@@ -10,6 +10,7 @@
     </main>
     <AppFooter v-if="!isAdminRoute" />
     <FloatingContact v-if="!isAdminRoute" />
+    <AiChatWidget v-if="!isAdminRoute" />
     <MobileActionBar v-if="!isAdminRoute" />
     <QuickOrderModal />
     <CartDrawer />
@@ -24,6 +25,7 @@ import AppHeader from './components/common/AppHeader.vue'
 import AppFooter from './components/common/AppFooter.vue'
 import MobileActionBar from './components/common/MobileActionBar.vue'
 import FloatingContact from './components/common/FloatingContact.vue'
+import AiChatWidget from './components/common/AiChatWidget.vue'
 import QuickOrderModal from './components/cart/QuickOrderModal.vue'
 import CartDrawer from './components/cart/CartDrawer.vue'
 

@@ -9,6 +9,7 @@ import { randomUUID } from 'crypto'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { query } from './db.js'
 import { findProvince } from './vietnamProvinces.js'
+import { handleAiChatRequest } from './aiChat.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
@@ -778,6 +779,11 @@ app.post('/api/v1/orders', async (req, res) => {
     res.status(500).json({ success: false, message: err.message })
   }
 })
+
+// ==========================================
+// 1.4 AI CHATBOT TÚ AUDIO (TỰ ĐỘNG TƯ VẤN & CRM MAP AUTO-SYNC)
+// ==========================================
+app.post('/api/v1/ai-chat', handleAiChatRequest)
 
 // ==========================================
 // 2. ADMIN APIS (QUẢN TRỊ BẢO MẬT BẰNG JWT)

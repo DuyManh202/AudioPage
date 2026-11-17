@@ -10,7 +10,7 @@
 
     <div class="map-notice"><strong>Khoảng cách là ước tính:</strong> khách chỉ ghi tỉnh/thành sẽ được đặt tại trung tâm tỉnh; số km tính đường chim bay từ cửa hàng, không phải quãng đường lái xe hay vị trí chính xác của nhà khách.</div>
     <section v-if="deliveryLocation" class="delivery-next adm-card">
-      <div class="delivery-next-head"><div><strong>Đơn giao tiếp theo gần bạn</strong><small>Vị trí cập nhật {{ deliveryLocation.updatedAt ? formatVisitTime(deliveryLocation.updatedAt) : '' }} · khoảng cách đường chim bay</small></div><button class="adm-btn" :disabled="locationBusy" @click="refreshCurrentLocation">{{ locationBusy ? 'Đang cập nhật…' : 'Cập nhật vị trí' }}</button></div>
+      <div class="delivery-next-head"><div><strong>Đơn giao tiếp theo gần bạn</strong><small><i :class="['gps-indicator', { active: trackingLocation }]"></i>{{ trackingLocation ? 'Đang theo dõi GPS' : 'Đã dừng theo dõi' }} · cập nhật {{ deliveryLocation.updatedAt ? formatVisitTime(deliveryLocation.updatedAt) : '' }} · khoảng cách đường chim bay</small></div><button class="adm-btn" :disabled="locationBusy" @click="toggleLocationTracking">{{ trackingLocation ? 'Tạm dừng theo dõi' : 'Bật theo dõi vị trí' }}</button></div>
       <div v-if="nearestOrders.length" class="delivery-next-list"><button v-for="(order, index) in nearestOrders" :key="order.id" class="delivery-next-item" @click="focusOrder(order)"><b>{{ index + 1 }}</b><span><strong>{{ order.customerName }} · {{ order.distanceKm }} km</strong><small>{{ order.address }} · {{ order.status === 'DANG_GIAO' ? 'Đang giao' : 'Đã xác nhận' }}</small></span></button></div>
       <p v-else class="map-empty">Không có đơn đã xác nhận hoặc đang giao có tỉnh/thành để gợi ý.</p>
     </section>
@@ -31,7 +31,7 @@
           <button class="adm-btn visit-toggle" :disabled="visitBusy" @click="toggleVisited(selected)">{{ visitBusy ? 'Đang lưu…' : selected.visitedAt ? '↶ Đánh dấu chưa đi' : '✓ Đánh dấu đã đi' }}</button>
           <button class="adm-btn adm-btn-gold open-crm" @click="openCrm(selected)">Mở hồ sơ khách hàng</button>
         </div>
-        <div class="map-search"><input v-model="keyword" placeholder="Tìm trong danh sách…"></div>
+        <div class="map-search"><input v-model="keyword" placeholder="Tìm trong danh sách…"><small>Gần {{ deliveryLocation ? 'vị trí hiện tại' : 'cửa hàng' }} trước</small></div>
         <button v-for="customer in visibleCustomers" :key="`${customer.recordType}:${customer.id}`" :class="['map-customer-row', { active: selected?.id === customer.id && selected?.recordType === customer.recordType }]" @click="selectCustomer(customer)">
           <span :class="['red-dot', { visited: customer.visitedAt }]"></span><span class="row-main"><strong>{{ customer.customerName }} <em v-if="customer.visitedAt" class="visited-badge">Đã đi</em></strong><small>{{ customer.province }} · ~{{ distanceFromStore(customer).toLocaleString('vi-VN') }} km</small><small>{{ customer.phone || customer.interest || 'Chưa có số điện thoại' }}</small></span>
         </button>
@@ -52,24 +52,23 @@ import 'leaflet/dist/leaflet.css'
 import { apiRequest } from '../../utils/api'
 
 const router = useRouter()
-const customers = ref([]), deliveryOrders = ref([]), deliveryLocation = ref(null), selected = ref(null), keyword = ref(''), visitFilter = ref('ALL'), busy = ref(false), visitBusy = ref(false), locationBusy = ref(false), error = ref(''), unlocatedCount = ref(0), mapElement = ref(null)
-let map = null, markerLayer = null, tileLayer = null, refreshTimer = null, tileErrorCount = 0, tileLoadCount = 0, usingFallbackTiles = false, origin = { lat: 21.31, lng: 105.60 }
+const customers = ref([]), deliveryOrders = ref([]), deliveryLocation = ref(null), selected = ref(null), keyword = ref(''), visitFilter = ref('ALL'), busy = ref(false), visitBusy = ref(false), trackingLocation = ref(false), error = ref(''), unlocatedCount = ref(0), mapElement = ref(null)
+let map = null, markerLayer = null, tileLayer = null, refreshTimer = null, locationWatchId = null, tileErrorCount = 0, tileLoadCount = 0, usingFallbackTiles = false, origin = { lat: 21.31, lng: 105.60 }
 const visibleCustomers = computed(() => {
   const term = keyword.value.trim().toLocaleLowerCase('vi')
+  const reference = deliveryLocation.value || origin
   return customers.value.filter(c => {
     const matchesTerm = !term || `${c.customerName} ${c.phone} ${c.address} ${c.province} ${c.interest} ${c.sourceAdName}`.toLocaleLowerCase('vi').includes(term)
     const matchesVisit = visitFilter.value === 'ALL' || (visitFilter.value === 'VISITED' ? Boolean(c.visitedAt) : !c.visitedAt)
     return matchesTerm && matchesVisit
-  })
+  }).sort((a, b) => distanceBetween(reference, a) - distanceBetween(reference, b))
 })
 const visitedCount = computed(() => customers.value.filter(customer => customer.visitedAt).length)
 const unvisitedCount = computed(() => customers.value.length - visitedCount.value)
 const nearestOrders = computed(() => deliveryLocation.value ? deliveryOrders.value.map(order => ({ ...order, distanceKm: distanceBetween(deliveryLocation.value, order) })).sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 5) : [])
 watch(visibleCustomers, renderMarkers)
 watch([deliveryOrders, deliveryLocation], renderMarkers)
-const distanceFromStore = customer => {
-  return distanceBetween(origin, customer)
-}
+const distanceFromStore = customer => distanceBetween(deliveryLocation.value || origin, customer)
 const distanceBetween = (from, to) => {
   const rad = degree => degree * Math.PI / 180
   const dLat = rad(to.lat - from.lat), dLng = rad(to.lng - from.lng)
@@ -173,14 +172,27 @@ function focusOrder(order) {
   const marker = markerLayer?.getLayers().find(item => item.orderRecord?.id === order.id)
   if (marker) { map.setView([order.lat, order.lng], Math.max(map.getZoom(), 8)); marker.openPopup() }
 }
-function refreshCurrentLocation() {
-  if (!navigator.geolocation || locationBusy.value) return
-  locationBusy.value = true
-  navigator.geolocation.getCurrentPosition(position => {
-    deliveryLocation.value = { lat: position.coords.latitude, lng: position.coords.longitude, updatedAt: new Date().toISOString() }
+function stopLocationTracking() {
+  if (locationWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatchId)
+  locationWatchId = null
+  trackingLocation.value = false
+}
+function startLocationTracking() {
+  if (!navigator.geolocation || locationWatchId !== null) return
+  error.value = ''
+  locationWatchId = navigator.geolocation.watchPosition(position => {
+    deliveryLocation.value = { lat: position.coords.latitude, lng: position.coords.longitude, accuracy: Math.round(position.coords.accuracy || 0), updatedAt: new Date().toISOString() }
     localStorage.setItem('deliveryCurrentLocation', JSON.stringify(deliveryLocation.value))
-    locationBusy.value = false
-  }, () => { error.value = 'Không lấy được vị trí. Hãy bật quyền vị trí cho trang web.'; locationBusy.value = false }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 })
+    trackingLocation.value = true
+  }, () => {
+    stopLocationTracking()
+    error.value = 'Không lấy được GPS liên tục. Hãy cấp quyền vị trí và mở trang bằng HTTPS.'
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 })
+  trackingLocation.value = true
+}
+function toggleLocationTracking() {
+  if (trackingLocation.value) stopLocationTracking()
+  else startLocationTracking()
 }
 function selectCustomer(customer) {
   selected.value = customer
@@ -213,12 +225,14 @@ function openCrm(customer) {
 }
 onMounted(() => {
   loadData()
+  startLocationTracking()
   refreshTimer = setInterval(() => {
     if (document.visibilityState === 'visible' && !busy.value) loadData()
   }, 30000)
 })
 onBeforeUnmount(() => {
   if (refreshTimer) clearInterval(refreshTimer)
+  stopLocationTracking()
   if (map) { map.remove(); map = null }
 })
 </script>
@@ -227,4 +241,6 @@ onBeforeUnmount(() => {
 .customer-map-page{--map-ink:#172033;--map-muted:#64748b}.map-notice{padding:11px 14px;margin-bottom:12px;border:1px solid #fed7aa;background:#fff7ed;border-radius:9px;color:#9a3412;font-size:.78rem}.map-toolbar{display:flex;align-items:center;gap:18px;margin-bottom:12px;color:#64748b;font-size:.8rem}.map-toolbar b{color:#172033}.map-toolbar input,.map-search input{border:1px solid #dbe2ec;border-radius:8px;padding:9px 10px;font:inherit}.map-toolbar input{margin-left:auto;min-width:250px}.map-workspace{display:grid;grid-template-columns:330px minmax(0,1fr);height:min(72vh,760px);min-height:500px;padding:0;overflow:hidden}.map-customer-list{border-right:1px solid #e2e8f0;overflow:auto;background:#fff}.map-search{position:sticky;top:0;z-index:2;background:white;padding:12px;border-bottom:1px solid #e2e8f0}.map-search input{width:100%}.map-customer-row{display:flex;width:100%;align-items:flex-start;gap:10px;padding:12px;border:0;border-bottom:1px solid #f1f5f9;background:white;text-align:left;cursor:pointer;color:#172033}.map-customer-row:hover,.map-customer-row.active{background:#eff6ff}.red-dot{width:12px;height:12px;flex:none;margin-top:4px;border-radius:50%;background:#ef4444;border:2px solid #991b1b}.row-main{display:grid;gap:4px;min-width:0}.row-main strong{font-size:.82rem}.row-main small{font-size:.72rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.map-canvas{height:100%;min-width:0;z-index:0}.map-selected{display:grid;gap:8px;padding:14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#475569;font-size:.76rem}.selected-head{display:flex;justify-content:space-between;align-items:center;color:#172033;font-size:.9rem}.selected-head button{border:0;background:transparent;font-size:1.4rem;cursor:pointer;color:#64748b}.map-selected>img{width:100%;height:130px;object-fit:cover;border-radius:8px;background:white}.map-selected a{color:#1d4ed8}.selected-interest{color:#334155;font-weight:650}.open-crm{justify-self:start;margin-top:2px}.map-empty{padding:20px;color:#94a3b8;font-size:.8rem;text-align:center}.map-error{color:#b91c1c}.map-attribution{font-size:.68rem;color:#94a3b8;margin-top:8px}:global(.customer-popup){display:grid;gap:5px;min-width:160px;color:#172033;font:12px/1.4 Arial,sans-serif}:global(.customer-popup img){width:100%;height:110px;object-fit:cover;border-radius:6px}:global(.customer-popup strong){font-size:13px}:global(.customer-popup a){color:#1d4ed8}:global(.customer-popup small){color:#64748b}:global(.cluster-customer-list){display:grid;gap:4px;max-height:180px;overflow:auto}:global(.cluster-customer-list button){border:0;border-radius:5px;background:#eff6ff;padding:6px;text-align:left;color:#1e3a8a;cursor:pointer;font-size:11px}:global(.customer-cluster-pin){display:grid;place-items:center;border:0!important;background:transparent!important}:global(.customer-cluster-pin span){display:grid;place-items:center;width:34px;height:34px;border:2px solid #991b1b;border-radius:50%;background:#ef4444;color:white;font-weight:800;box-shadow:0 1px 4px #0004}@media(max-width:760px){.map-workspace{grid-template-columns:1fr;height:auto;min-height:0}.map-customer-list{max-height:300px;border-right:0;border-bottom:1px solid #e2e8f0}.map-canvas{height:55vh;min-height:360px}.map-toolbar{flex-wrap:wrap;gap:8px}.map-toolbar input{margin:0;width:100%;min-width:0}}
 .map-toolbar select{border:1px solid #dbe2ec;border-radius:8px;padding:9px 10px;background:#fff;color:#172033;font:inherit}.red-dot.visited{background:#22c55e;border-color:#166534}.visited-badge{font-size:.65rem;font-style:normal;font-weight:700;color:#15803d;background:#dcfce7;border-radius:999px;padding:2px 6px}.visit-state{font-weight:700;color:#b91c1c}.visit-state.visited{color:#15803d}.visit-toggle{justify-self:start;color:#166534;border-color:#86efac;background:#f0fdf4}.visit-toggle:hover{background:#dcfce7}:global(.customer-cluster-pin span.visited){background:#22c55e}:global(.customer-cluster-pin span.mixed){background:#f59e0b}@media(max-width:760px){.map-toolbar select{width:100%}}
 .delivery-next{padding:12px 14px;margin-bottom:12px}.delivery-next-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.delivery-next-head>div{display:grid;gap:3px}.delivery-next-head strong{font-size:.84rem;color:#172033}.delivery-next-head small,.delivery-next-item small{font-size:.7rem;color:#64748b}.delivery-next-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:7px;margin-top:10px}.delivery-next-item{display:flex;align-items:center;gap:9px;min-width:0;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;background:white;text-align:left;cursor:pointer}.delivery-next-item:hover{border-color:#93c5fd;background:#eff6ff}.delivery-next-item>b{display:grid;place-items:center;width:23px;height:23px;flex:none;border-radius:50%;background:#ffedd5;color:#c2410c}.delivery-next-item>span{display:grid;gap:3px;min-width:0}.delivery-next-item strong{font-size:.73rem;color:#172033}.delivery-next-item small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.google-maps-link{color:#1d4ed8;font-weight:700}.map-selected .google-maps-link{justify-self:start}
+.gps-indicator{display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:50%;background:#94a3b8}.gps-indicator.active{background:#16a34a;box-shadow:0 0 0 3px #dcfce7}
+.map-search small{display:block;margin-top:5px;color:#64748b;font-size:.68rem}
 </style>
