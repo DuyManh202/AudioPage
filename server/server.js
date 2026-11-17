@@ -28,6 +28,21 @@ const phoneFromMessage = (value) => {
   return /^0\d{9,10}$/.test(normalized) ? normalized : null
 }
 
+const addressFromMessage = value => {
+  const text = String(value || '').replace(/\r/g, '\n').trim()
+  const labeled = text.match(/(?:địa\s*chỉ(?:\s*(?:nhận hàng|giao hàng))?|địa điểm nhận|đ\s*\/\s*c|đc|giao\s*(?:hàng|về|đến)|ship\s*(?:về|đến|tới)|nhận\s*hàng\s*(?:tại|ở)?|nhà\s*(?:em|anh|chị|mình)\s*(?:ở|tại))\s*[:：-]?\s*([\s\S]+)/i)
+  if (!labeled) return null
+  let address = labeled[1].trim()
+    .split(/\n+/)[0]
+    .replace(/\b(?:sđt|số điện thoại|điện thoại|tên khách hàng)\s*[:：-]?.*$/i, '')
+    .replace(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/g, '')
+    .replace(/^[\s,;:.\-]+|[\s,;:.\-]+$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, 500)
+  if (address.length < 8 || !/(\d|phường|xã|quận|huyện|thị trấn|thôn|ấp|tổ|khu phố|đường|phố|ngõ|ngách|hẻm|chung cư|tòa nhà)/i.test(address)) return null
+  return address
+}
+
 const normalizePhoneForSync = value => {
   const digits = String(value || '').replace(/\D/g, '')
   if (!digits) return ''
@@ -242,15 +257,17 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
 
         const latestMsg = normalizedMessages[normalizedMessages.length - 1] || null
         const inboundMessages = normalizedMessages.filter(message => message.direction === 'IN')
+        const inferredAddress = inboundMessages.slice().reverse().map(message => addressFromMessage(message.body)).find(Boolean)
         const inferredProvince = inboundMessages.slice().reverse().map(message => findProvince(message.body, { requireContext: true })).find(Boolean)
+          || (inferredAddress ? findProvince(inferredAddress) : null)
         const inferredPhone = inboundMessages.map(message => phoneFromMessage(message.body)).find(Boolean)
         const convUpdatedIso = conv.updated_time && !Number.isNaN(Date.parse(conv.updated_time))
           ? new Date(conv.updated_time).toISOString()
           : (latestMsg?.createdAt || new Date().toISOString())
 
         const customerRes = await query(`INSERT INTO facebook_care_customers
-          (id, customer_name, facebook_id, phone, status, last_message, province, location_lat, location_lng, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, 'MOI', $5, $6, $7, $8, $9::timestamptz, $9::timestamptz)
+          (id, customer_name, facebook_id, phone, status, last_message, province, location_lat, location_lng, address, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, 'MOI', $5, $6, $7, $8, $9, $10::timestamptz, $10::timestamptz)
           ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
             customer_name = CASE
               WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
@@ -259,18 +276,19 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             END,
             phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
             last_message = COALESCE(EXCLUDED.last_message, facebook_care_customers.last_message),
+            address=COALESCE(NULLIF(facebook_care_customers.address,''),EXCLUDED.address),
             province=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.province ELSE COALESCE(EXCLUDED.province,facebook_care_customers.province) END,
             location_lat=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lat ELSE COALESCE(EXCLUDED.location_lat,facebook_care_customers.location_lat) END,
             location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
             updated_at = GREATEST(facebook_care_customers.updated_at, EXCLUDED.updated_at)
           RETURNING id,customer_name,phone,address`, [
           `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, latestMsg?.body || null,
-          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, convUpdatedIso
+          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, inferredAddress || null, convUpdatedIso
         ])
         const syncedCustomer = customerRes.rows[0]
         const customerId = syncedCustomer?.id
         if (!customerId) continue
-        if (inferredPhone || inferredProvince) {
+        if (inferredPhone || inferredProvince || inferredAddress) {
           await syncOpenOrdersForCustomer({ customerName: syncedCustomer.customer_name, phone: syncedCustomer.phone, address: syncedCustomer.address })
         }
         syncedCustomers += 1
@@ -414,11 +432,12 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         ])
         const resolvedName = profileName || `Khách Facebook ${psid.slice(-6)}`
         const sourceType = referral.source || (referralAdId ? 'AD' : null)
-        const inferredProvince = findProvince(text, { requireContext: true })
+        const inferredAddress = addressFromMessage(text)
+        const inferredProvince = findProvince(text, { requireContext: true }) || (inferredAddress ? findProvince(inferredAddress) : null)
         const inferredPhone = phoneFromMessage(text)
         const customer = await query(`INSERT INTO facebook_care_customers
-          (id, customer_name, facebook_id, phone, status, last_message, source_type, source_ad_id, source_ad_name, source_campaign_id, source_campaign_name, province, location_lat, location_lng)
-          VALUES ($1,$2,$3,$4,'MOI',$5,$6,$7,$8,$9,$10,$11,$12,$13)
+          (id, customer_name, facebook_id, phone, status, last_message, source_type, source_ad_id, source_ad_name, source_campaign_id, source_campaign_name, province, location_lat, location_lng, address)
+          VALUES ($1,$2,$3,$4,'MOI',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
           ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
             customer_name=CASE
               WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
@@ -427,6 +446,7 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
             END,
             phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
             last_message=COALESCE(EXCLUDED.last_message,facebook_care_customers.last_message),
+            address=COALESCE(NULLIF(facebook_care_customers.address,''),EXCLUDED.address),
             province=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.province ELSE COALESCE(EXCLUDED.province,facebook_care_customers.province) END,
             location_lat=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lat ELSE COALESCE(EXCLUDED.location_lat,facebook_care_customers.location_lat) END,
             location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
@@ -439,7 +459,7 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
           RETURNING id,customer_name,phone,address`, [
           `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, text || null, sourceType,
           adDetails.adId || referralAdId, adDetails.adName || null, adDetails.campaignId || null, adDetails.campaignName || null,
-          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null
+          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, inferredAddress || null
         ])
         const syncedCustomer = customer.rows[0]
         if (syncedCustomer?.phone) {
