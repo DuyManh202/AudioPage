@@ -518,12 +518,14 @@ export const useAdminStore = defineStore('admin', {
           body: JSON.stringify({ status })
         })
         this.showNotice('Đã cập nhật trạng thái đơn hàng.', 'success')
+        return true
       } catch (err) {
         if (ord && prev !== undefined) {
           ord.status = prev
           this._persistOrders()
         }
         this.showNotice(err.message || 'Không cập nhật được trạng thái đơn hàng.', 'error')
+        return false
       }
     },
 

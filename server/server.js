@@ -1455,19 +1455,25 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
 
 app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const [fbResult, leadResult] = await Promise.all([
+    const [fbResult, leadResult, ordersResult] = await Promise.all([
       query(`SELECT c.id,c.customer_name,c.facebook_id,c.phone,c.address,c.province,c.location_lat,c.location_lng,c.interest,c.last_message,c.status,c.source_ad_name,c.updated_at,
+        visits.visited_at,visits.visited_by,
         COALESCE(product_image.image_url,combo_image.image_url,'') AS interest_image, combo_image.video_url AS interest_video_url
         FROM facebook_care_customers c
+        LEFT JOIN customer_map_visits visits ON visits.record_type='FACEBOOK' AND visits.record_id=c.id
         LEFT JOIN LATERAL (SELECT p.image_url FROM products p WHERE LOWER(COALESCE(NULLIF(c.interest,''),c.last_message,'')) LIKE '%' || LOWER(p.name) || '%' LIMIT 1) product_image ON TRUE
         LEFT JOIN LATERAL (SELECT p.image_url,co.video_url FROM combos co JOIN combo_components cc ON cc.combo_id=co.id JOIN products p ON p.id=cc.product_id OR LOWER(cc.item_name) LIKE '%' || LOWER(p.name) || '%' WHERE LOWER(COALESCE(NULLIF(c.interest,''),c.last_message,'')) LIKE '%' || LOWER(SPLIT_PART(co.name,'—',1)) || '%' ORDER BY cc.sort_order LIMIT 1) combo_image ON TRUE
         ORDER BY c.updated_at DESC`),
       query(`SELECT l.id,l.name AS customer_name,l.phone,l.address,l.interest,l.status,l.updated_at,
+        visits.visited_at,visits.visited_by,
         COALESCE(product_image.image_url,combo_image.image_url,'') AS interest_image, combo_image.video_url AS interest_video_url
         FROM leads l
+        LEFT JOIN customer_map_visits visits ON visits.record_type='LEAD' AND visits.record_id=l.id
         LEFT JOIN LATERAL (SELECT p.image_url FROM products p WHERE LOWER(COALESCE(l.interest,'')) LIKE '%' || LOWER(p.name) || '%' LIMIT 1) product_image ON TRUE
         LEFT JOIN LATERAL (SELECT p.image_url,co.video_url FROM combos co JOIN combo_components cc ON cc.combo_id=co.id JOIN products p ON p.id=cc.product_id OR LOWER(cc.item_name) LIKE '%' || LOWER(p.name) || '%' WHERE LOWER(COALESCE(l.interest,'')) LIKE '%' || LOWER(SPLIT_PART(co.name,'—',1)) || '%' ORDER BY cc.sort_order LIMIT 1) combo_image ON TRUE
-        ORDER BY l.updated_at DESC`)
+        ORDER BY l.updated_at DESC`),
+      query(`SELECT id,customer_name,customer_phone,shipping_address,status,created_at FROM orders
+        WHERE status IN ('DA_XAC_NHAN','DANG_GIAO') ORDER BY created_at DESC`)
     ])
     const byPhone = new Map()
     let unlocatedCount = 0
@@ -1497,6 +1503,8 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
         interestImage: row.interest_image || videoThumbnail(row.interest_video_url) || previous?.interestImage || '',
         status: row.status || '',
         sourceAdName: row.source_ad_name || '',
+        visitedAt: row.visited_at || '',
+        visitedBy: row.visited_by || '',
         updatedAt: row.updated_at,
         facebookCareId: type === 'FACEBOOK' ? row.id : previous?.facebookCareId || '',
         leadId: type === 'LEAD' ? row.id : previous?.leadId || ''
@@ -1504,6 +1512,8 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
       if (phoneKey && previous) {
         const incomingIsNewer = Date.parse(record.updatedAt || 0) >= Date.parse(previous.updatedAt || 0)
         const newest = incomingIsNewer ? record : previous
+        const visitTime = value => value ? (Date.parse(value) || 0) : 0
+        const newestVisit = visitTime(record.visitedAt) >= visitTime(previous.visitedAt) ? record : previous
         byPhone.set(phoneKey, {
           ...previous, ...record,
           customerName: newest.customerName || previous.customerName,
@@ -1513,6 +1523,8 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
           address: newest.address || record.address || previous.address,
           interest: newest.interest || record.interest || previous.interest,
           interestImage: newest.interestImage || record.interestImage || previous.interestImage,
+          visitedAt: newestVisit.visitedAt || '',
+          visitedBy: newestVisit.visitedBy || '',
           phone: record.phone || previous.phone,
           facebookCareId: record.facebookCareId || previous.facebookCareId,
           leadId: record.leadId || previous.leadId,
@@ -1525,10 +1537,43 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
     }
     leadResult.rows.forEach(row => add(row, 'LEAD'))
     fbResult.rows.forEach(row => add(row, 'FACEBOOK'))
-    res.json({ success: true, data: [...byPhone.values()], unlocatedCount, origin: { address: '43 Hùng Vương, Phường Vĩnh Yên, Phú Thọ', lat: 21.31, lng: 105.60 } })
+    const deliveryOrders = ordersResult.rows.flatMap(row => {
+      const province = findProvince(row.shipping_address)
+      return province ? [{ id: row.id, customerName: row.customer_name || 'Khách đặt hàng', phone: row.customer_phone || '', address: row.shipping_address || '', status: row.status, lat: province.lat, lng: province.lng, province: province.displayName, locationPrecision: 'PROVINCE' }] : []
+    })
+    res.json({ success: true, data: [...byPhone.values()], deliveryOrders, unlocatedCount, origin: { address: '43 Hùng Vương, Phường Vĩnh Yên, Phú Thọ', lat: 21.31, lng: 105.60 } })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
+})
+
+app.patch('/api/v1/admin/customer-map/:recordType/:id/visit', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const recordType = String(req.params.recordType || '').toUpperCase()
+    const { visited } = req.body || {}
+    if (!['FACEBOOK', 'LEAD'].includes(recordType) || typeof visited !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Thông tin đánh dấu lượt ghé thăm không hợp lệ.' })
+    }
+    const linked = Array.isArray(req.body?.linkedRecords) ? req.body.linkedRecords.slice(0, 2) : []
+    const records = [...new Map([{ recordType, id: req.params.id }, ...linked]
+      .filter(record => ['FACEBOOK', 'LEAD'].includes(String(record?.recordType || '').toUpperCase()) && typeof record?.id === 'string' && record.id.length <= 50)
+      .map(record => [`${String(record.recordType).toUpperCase()}:${record.id}`, { recordType: String(record.recordType).toUpperCase(), id: record.id }])).values()]
+    for (const record of records) {
+      const table = record.recordType === 'FACEBOOK' ? 'facebook_care_customers' : 'leads'
+      const exists = await query(`SELECT id FROM ${table} WHERE id=$1`, [record.id])
+      if (!exists.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách hàng.' })
+    }
+    for (const record of records) {
+      if (visited) {
+        await query(`INSERT INTO customer_map_visits (record_type,record_id,visited_at,visited_by)
+          VALUES ($1,$2,CURRENT_TIMESTAMP,$3)
+          ON CONFLICT (record_type,record_id) DO UPDATE SET visited_at=CURRENT_TIMESTAMP,visited_by=EXCLUDED.visited_by`, [record.recordType, record.id, req.admin.name])
+      } else {
+        await query('DELETE FROM customer_map_visits WHERE record_type=$1 AND record_id=$2', [record.recordType, record.id])
+      }
+    }
+    res.json({ success: true, visited })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
 app.post('/api/v1/admin/facebook-care/sync', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
@@ -1654,6 +1699,13 @@ const ensureDatabaseSchema = async () => {
     await query('ALTER TABLE facebook_care_messages ADD COLUMN IF NOT EXISTS platform_message_id TEXT')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_platform_message_id ON facebook_care_messages(platform_message_id)')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL')
+    await query(`CREATE TABLE IF NOT EXISTS customer_map_visits (
+      record_type VARCHAR(20) NOT NULL CHECK (record_type IN ('FACEBOOK','LEAD')),
+      record_id VARCHAR(50) NOT NULL,
+      visited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      visited_by VARCHAR(100) NOT NULL,
+      PRIMARY KEY (record_type,record_id)
+    )`)
   } catch (err) {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
   }

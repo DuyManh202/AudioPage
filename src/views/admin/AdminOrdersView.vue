@@ -313,8 +313,10 @@ import { exportRowsToCsv } from '../../utils/csvExport'
 import { CONTACT_INFO } from '../../config/contact'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { useApiDateFilter } from '../../composables/useApiDateFilter'
+import { useRouter } from 'vue-router'
 
 const adminStore = useAdminStore()
+const router = useRouter()
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.currentUser?.role === 'SUPER_ADMIN')
 const dateFilter = useApiDateFilter('/admin/orders', computed(() => adminStore.orders))
@@ -407,8 +409,20 @@ const exportOrdersCsv = () => {
   )
 }
 
-const updateStatus = (id, status) => {
-  adminStore.updateOrderStatus(id, status)
+const updateStatus = async (id, status) => {
+  const saved = await adminStore.updateOrderStatus(id, status)
+  if (!saved || status !== 'HOAN_THANH') return
+  if (!navigator.geolocation) {
+    adminStore.showNotice('Đã giao xong. Trình duyệt này không hỗ trợ xác định vị trí.', 'error')
+    return
+  }
+  navigator.geolocation.getCurrentPosition(position => {
+    const location = { lat: position.coords.latitude, lng: position.coords.longitude, updatedAt: new Date().toISOString() }
+    localStorage.setItem('deliveryCurrentLocation', JSON.stringify(location))
+    router.push({ path: '/admin/customer-map', query: { delivery: '1' } })
+  }, () => {
+    adminStore.showNotice('Đã giao xong. Cho phép truy cập vị trí để tìm đơn giao tiếp theo gần bạn.', 'error')
+  }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 })
 }
 
 const handleDelete = (id) => {
