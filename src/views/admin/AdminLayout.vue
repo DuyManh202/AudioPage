@@ -780,7 +780,7 @@ const handleLogout = () => {
   position: fixed;
   top: max(84px, calc(env(safe-area-inset-top) + 72px));
   right: 22px;
-  z-index: 300;
+  z-index: 2100;
   width: min(390px, calc(100vw - 28px));
   padding: 14px 14px 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.8);
@@ -905,9 +905,9 @@ const handleLogout = () => {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
+    background: rgba(15, 23, 42, 0.55);
     backdrop-filter: blur(4px);
-    z-index: 85;
+    z-index: 2000;
   }
 
   .admin-sidebar {
@@ -917,11 +917,13 @@ const handleLogout = () => {
     bottom: 0;
     transform: translateX(-100%);
     transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 20px 0 50px rgba(15, 23, 42, 0.2);
+    box-shadow: 20px 0 50px rgba(15, 23, 42, 0.3);
+    z-index: 2010;
   }
 
   .admin-sidebar.is-open {
     transform: translateX(0);
+    z-index: 2010;
   }
 
   .mobile-close-nav,
