@@ -218,8 +218,47 @@ const sendViaResend = async (apiKey, toEmail, subject, htmlBody) => {
 }
 
 /**
+ * Gửi email qua Vercel Serverless Relay (Port 443 HTTPS)
+ * Bỏ qua hoàn toàn giới hạn chặn cổng SMTP 465/587 của Render Free Tier
+ */
+const sendViaVercelRelay = async (toEmail, subject, htmlBody) => {
+  const relayEndpoints = [
+    'https://www.amek.io.vn/api/send-otp',
+    'https://amek.io.vn/api/send-otp',
+    'https://audioshop.vercel.app/api/send-otp'
+  ]
+  const secret = process.env.JWT_SECRET || 'tuaudio_super_secret_auth_token_2026'
+
+  for (const endpoint of relayEndpoints) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-otp-secret': secret
+        },
+        body: JSON.stringify({ toEmail, subject, htmlBody }),
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) return true
+      }
+    } catch {
+      // Thử endpoint tiếp theo
+    }
+  }
+  throw new Error('Vercel relay chưa sẵn sàng')
+}
+
+/**
  * Hàm điều phối gửi mã OTP chính
- * Tự động chọn kênh gửi phù hợp nhất: Resend -> SMTP -> Console Logger
+ * Tự động chọn kênh gửi phù hợp nhất: Resend -> Vercel Relay -> SMTP -> Console Logger
  */
 export const dispatchOtpEmail = async ({ toEmail, otpCode, adminName = 'Quản trị viên' }) => {
   const subject = `[Tú Audio] Mã xác thực đăng nhập: ${otpCode}`
@@ -236,7 +275,16 @@ export const dispatchOtpEmail = async ({ toEmail, otpCode, adminName = 'Quản t
     }
   }
 
-  // 2. Nếu có cấu hình SMTP (Gmail, Zoho, Hostinger, ...)
+  // 2. Gửi qua Vercel Relay (Chạy trên Port 443 HTTPS - Vượt qua tường lửa Render Free)
+  try {
+    await sendViaVercelRelay(toEmail, subject, htmlBody)
+    console.log(`📧 [OTP SUCCESS] Đã gửi mã OTP tới email ${toEmail} qua Vercel Relay (Port 443 -> SMTP 465)`)
+    return { sent: true, provider: 'vercel_relay' }
+  } catch (relayErr) {
+    console.warn(`⚠️ [RELAY NOTICE] ${relayErr.message}, thử tiếp kết nối trực tiếp...`)
+  }
+
+  // 3. Nếu có cấu hình SMTP (Gmail, Zoho, Hostinger, ...) trực tiếp
   const smtpHost = process.env.SMTP_HOST?.trim()
   const smtpUser = process.env.SMTP_USER?.trim()
   const smtpPass = process.env.SMTP_PASS?.replace(/\s+/g, '').trim()
