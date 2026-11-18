@@ -57,6 +57,17 @@
         </router-link>
 
         <router-link
+          v-if="can('ai-chat')"
+          to="/admin/ai-chat"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="bot" :size="18" />
+          <span class="nav-text">Trợ Lý AI Chatbot</span>
+          <span class="nav-pill" style="background: rgba(37, 99, 235, 0.18); color: #2563eb; font-weight: 700;">Live</span>
+        </router-link>
+
+        <router-link
           v-if="can('facebook-care')"
           to="/admin/facebook-care"
           class="nav-item"

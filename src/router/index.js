@@ -61,6 +61,12 @@ const routes = [
         meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
       },
       {
+        path: 'ai-chat',
+        name: 'AdminAiChat',
+        component: () => import('../views/admin/AdminAiChatView.vue'),
+        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+      },
+      {
         path: 'facebook-care',
         name: 'AdminFacebookCare',
         component: () => import('../views/admin/AdminFacebookCareView.vue'),
