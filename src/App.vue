@@ -10,10 +10,10 @@
     </main>
     <AppFooter v-if="!isAdminRoute" />
     <FloatingContact v-if="!isAdminRoute" />
-    <AiChatWidget />
+    <AiChatWidget v-if="!isAdminRoute" />
     <MobileActionBar v-if="!isAdminRoute" />
-    <QuickOrderModal />
-    <CartDrawer />
+    <QuickOrderModal v-if="!isAdminRoute" />
+    <CartDrawer v-if="!isAdminRoute" />
   </div>
 </template>
 
