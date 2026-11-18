@@ -120,10 +120,10 @@
             </div>
             <div class="test-msg-bubble">
               <div v-if="msg.guardrail" class="guardrail-tag">
-                ✓ Khớp Guardrail: {{ msg.guardrail }}
+                ✓ Khớp Guardrail Cố Định: {{ msg.guardrail }}
               </div>
               <div v-else-if="msg.role === 'assistant'" class="dynamic-tag">
-                ✦ Google Gemini 2.5 Flash (Dynamic Engine)
+                ✦ Google Gemini 3.8 Flash (AI Chuyên Gia Âm Thanh)
               </div>
               <div class="test-msg-text" v-html="formatText(msg.content)"></div>
               <span class="test-msg-time">{{ msg.time }}</span>
@@ -221,7 +221,7 @@ const scenarios = [
 
 const initialTestMessage = {
   role: 'assistant',
-  content: 'Chào anh Tú! Em là Trợ lý AI Tú Audio (Gemini 2.5 Flash). Anh có thể gõ bất kỳ câu hỏi nào bên dưới hoặc bấm vào các nút kịch bản nhanh để kiểm tra câu trả lời thực tế của em ạ!',
+  content: 'Chào anh Tú! Em là Trợ lý AI Chuyên Gia Tú Audio (sử dụng Gemini 3.8 Flash). Anh có thể gõ bất kỳ câu hỏi nào bên dưới hoặc bấm vào các nút kịch bản nhanh để kiểm tra câu trả lời thực tế của em ạ!',
   time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 

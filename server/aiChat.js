@@ -206,24 +206,7 @@ export const handleAiChatRequest = async (req, res) => {
       }
     }
 
-    // Kiểm tra Guardrail chuẩn xác 100% trước
-    const deterministic = checkDeterministicAiResponse(trimmedMsg)
-    if (deterministic) {
-      if (inferredPhone) {
-        await query(`
-          INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by)
-          VALUES ($1, $2, $3, 'OUT', 'AI Tú Audio')
-        `, [randomUUID(), 'WEB-' + inferredPhone, deterministic.reply]).catch(() => {})
-      }
-      return res.json({
-        success: true,
-        reply: deterministic.reply,
-        leadCaptured: Boolean(inferredPhone),
-        guardrail: deterministic.type
-      })
-    }
-
-    // Nếu không rơi vào guardrail cố định -> Lấy ngữ cảnh kho hàng từ Database
+    // Lấy ngữ cảnh kho hàng từ Database
     const [productsRes, combosRes] = await Promise.all([
       query(`SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc
         FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 20`),
@@ -254,6 +237,7 @@ Bối cảnh & Phong cách:
 THÔNG TIN ĐỘC QUYỀN CHÍNH XÁC:
 - Địa chỉ showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, có chỗ đỗ ô tô thoải mái).
 - Hotline / Zalo: 0984.259.898.
+- Phần mềm vang số: Đầy đủ link tải driver và phần mềm cho CM x16+, PF K9, X5, X6, S690... trên website tuaudio.vn hoặc gửi qua Zalo 0984.259.898 kèm hỗ trợ Ultraview/TeamViewer miễn phí.
 - Vang số tiêu biểu:
   + Vang số CM x16+ chính hãng: 4.200.000đ (dòng quốc dân, chống hú 99%, cài sẵn 4 cấu hình Echo/Reverb chuẩn).
   + Vang số PF K9: 6.800.000đ (chip DSP cao cấp, tiếng Reverb sâu mịn, hát rất nhẹ).
@@ -262,13 +246,14 @@ THÔNG TIN ĐỘC QUYỀN CHÍNH XÁC:
   + Combo Luxury Home (29.900.000đ): phòng 30 - 45m2.
 
 BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
-1. Khách hỏi Setup / Căn chỉnh tại nhà (kể cả ở xa như Hà Nội, Đông Anh, Bắc Ninh, Hải Phòng, Thanh Hóa...): Trả lời em CÓ nhận làm tại nhà, có ghép chuyến các tỉnh nên chi phí rất hợp lý; mời khách gửi ảnh dàn máy qua Zalo 0984.259.898 hoặc để lại số Zalo để em hẹn lịch.
-2. Khách hỏi về Lọc xì / Equalizer: Khẳng định ngay là ĐÃ CÓ VANG SỐ THÌ KHÔNG CẦN LỌC XÌ. Giải thích: thợ bán cố vẽ ra để lấy tiền, tín hiệu qua nhiều tầng bị méo pha; giải pháp gốc rễ là chỉnh chuẩn EQ trong vang số.
+1. Khách hỏi Setup / Căn chỉnh tại nhà (Đông Anh, Hà Nội, Bắc Ninh, Hải Phòng, Thanh Hóa...): Em CÓ nhận làm tại nhà, có ghép chuyến các tỉnh nên chi phí rất hợp lý; mời khách gửi ảnh dàn máy qua Zalo 0984.259.898 hoặc để lại số Zalo để em hẹn lịch.
+2. Khách hỏi về Lọc xì / Equalizer: Khẳng định ngay là ĐÃ CÓ VANG SỐ THÌ KHÔNG CẦN LỌC XÌ. Thợ bán cố vẽ ra để lấy tiền, tín hiệu qua nhiều tầng bị méo pha; giải pháp gốc rễ là chỉnh chuẩn EQ trong vang số.
 3. Khách hỏi Thu cũ đổi mới: Bên em có nhận thu cũ vang cơ/amply/vang X5 để lên vang số CM x16+ hoặc PF K9. Xin ảnh dàn máy cũ để định giá thu lại cao nhất.
-4. Khách hỏi nghe thử / đổi trả: Cam kết tự tay em Tú setup đo RTA trước khi gửi, nhận hàng hát thử ưng ý mới thanh toán, bao test 7 ngày không ưng hoàn tiền.
-5. Khách hỏi địa chỉ: Chỉ rõ số 220 Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc (gần Quán Tiên, có chỗ đỗ ô tô).
-6. Câu trả lời ngắn gọn, rõ ràng (khoảng 2-3 đoạn ngắn), đi thẳng vào giải pháp kỹ thuật, không nói sáo rỗng.
-7. Luôn kết thúc bằng việc mời khách kết bạn Zalo hoặc để lại số điện thoại/Zalo (0984.259.898) để em gửi video test âm thanh thực tế hoặc gọi video khám bệnh dàn máy.
+4. Khách hỏi tải phần mềm / driver vang số: Hỏi rõ bác đang dùng vang model gì, mời kết bạn Zalo 0984.259.898 em gửi link Google Drive tốc độ cao và hỗ trợ Ultraview miễn phí.
+5. Khách hỏi nghe thử / đổi trả: Cam kết tự tay em Tú setup đo RTA trước khi gửi, nhận hàng hát thử ưng ý mới thanh toán, bao test 7 ngày không ưng hoàn tiền.
+6. Khách hỏi địa chỉ: Chỉ rõ số 220 Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc (gần Quán Tiên, có chỗ đỗ ô tô).
+7. Câu trả lời ngắn gọn, thông minh, đúng trọng tâm câu hỏi của khách (2-3 đoạn ngắn).
+8. Luôn kết thúc bằng việc mời khách kết bạn Zalo hoặc để lại số điện thoại/Zalo (0984.259.898) để em gửi video test âm thanh thực tế hoặc gọi video khám bệnh dàn máy.
 
 DANH MỤC SẢN PHẨM & GÓI COMBO ĐANG CÓ TRONG KHO:
 ${JSON.stringify(catalogContext)}`
@@ -279,31 +264,41 @@ ${JSON.stringify(catalogContext)}`
     const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
     const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
 
-    const promptText = systemInstruction + '\n\n' + (recentHistory ? 'LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ:\n' + recentHistory + '\n\n' : '') + 'TIN NHẮN MỚI CỦA KHÁCH:\n"' + trimmedMsg + '"\n\nHãy trả lời khách tự nhiên, chuẩn phong cách Tú Audio:'
+    const promptText = systemInstruction + '\n\n' + (recentHistory ? 'LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ:\n' + recentHistory + '\n\n' : '') + 'TIN NHẮN MỚI CỦA KHÁCH:\n"' + trimmedMsg + '"\n\nHãy phân tích kỹ ý định thực sự của khách và trả lời đúng trọng tâm câu hỏi, chuẩn phong cách chuyên gia âm thanh Tú Audio:'
 
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: promptText }]
+    let reply = ''
+    let isAiGenerated = false
+
+    try {
+      const geminiRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: promptText }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.35,
+            maxOutputTokens: 2048
           }
-        ],
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens: 450
-        }
-      }),
-      signal: AbortSignal.timeout(20000)
-    })
+        }),
+        signal: AbortSignal.timeout(15000)
+      })
 
-    const geminiData = await geminiRes.json().catch(() => ({}))
-    let reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      const geminiData = await geminiRes.json().catch(() => ({}))
+      reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      if (reply) isAiGenerated = true
+    } catch (aiErr) {
+      console.warn('[Gemini AI Fetch Warning]:', aiErr.message)
+    }
 
+    // Nếu Gemini gặp lỗi mạng hoặc không trả về -> Dự phòng bằng Guardrail chuẩn xác
     if (!reply) {
-      reply = 'Dạ em Tú Audio đây ạ! Cảm ơn bác đã nhắn cho em. Bác cho em hỏi phòng khách nhà bác rộng bao nhiêu m2 hoặc bác đang quan tâm đến vang số hay cả bộ dàn để em tư vấn cấu hình chuẩn nhất cho bác ạ? Bác cũng có thể gọi hoặc kết bạn Zalo với em qua số 0984.259.898 nhé ạ!'
+      const fallbackDeterministic = checkDeterministicAiResponse(trimmedMsg)
+      reply = fallbackDeterministic?.reply || 'Dạ em Tú Audio đây ạ! Cảm ơn bác đã nhắn cho em. Bác cho em hỏi phòng khách nhà bác rộng bao nhiêu m2 hoặc bác đang quan tâm đến vang số hay cả bộ dàn để em tư vấn cấu hình chuẩn nhất cho bác ạ? Bác cũng có thể gọi hoặc kết bạn Zalo với em qua số 0984.259.898 nhé ạ!'
     }
 
     if (inferredPhone) {
@@ -316,7 +311,9 @@ ${JSON.stringify(catalogContext)}`
     res.json({
       success: true,
       reply,
-      leadCaptured: Boolean(inferredPhone)
+      leadCaptured: Boolean(inferredPhone),
+      isAi: isAiGenerated,
+      model: isAiGenerated ? model : 'fallback'
     })
   } catch (err) {
     console.error('[AI Chatbot Error]:', err.message)
