@@ -92,23 +92,19 @@
             />
           </div>
 
+          <select v-model="adminStore.leadFilterStatus" class="adm-select-filter" aria-label="Lọc trạng thái tư vấn">
+            <option value="ALL">Mọi trạng thái ({{ adminStore.leads.length }})</option>
+            <option value="MOI">Mới tiếp nhận ({{ adminStore.newLeadsCount }})</option>
+            <option value="DA_GOI">Đã gọi tư vấn</option>
+            <option value="HEN_THU_TAI_NHA">Lịch hẹn thử tại nhà ({{ adminStore.trialScheduledCount }})</option>
+            <option value="DA_CHOT">Đã chốt bàn giao ({{ adminStore.closedDealsCount }})</option>
+            <option value="HUY">Đã hủy</option>
+          </select>
+
           <div class="adm-date-filter">
             <label><span>Từ ngày</span><input v-model="fromDate" type="date" aria-label="Ngày bắt đầu lọc khách tư vấn" /></label>
             <label><span>Đến ngày</span><input v-model="toDate" type="date" aria-label="Ngày kết thúc lọc khách tư vấn" /></label>
             <button type="button" class="adm-date-clear" :disabled="!isDateActive" @click="clearDates">Xóa ngày</button>
-          </div>
-
-          <div class="adm-tabs">
-            <button
-              v-for="f in filterOptions"
-              :key="f.key"
-              type="button"
-              :class="['adm-tab', { active: adminStore.leadFilterStatus === f.key }]"
-              @click="adminStore.leadFilterStatus = f.key"
-            >
-              {{ f.label }}
-              <span class="adm-tab-count">{{ f.count }}</span>
-            </button>
           </div>
         </div>
         <p v-if="isDateLoading || dateError" :class="['adm-date-status', { error: dateError }]">
@@ -359,8 +355,14 @@ const getStatusClass = (status) => ({
   HUY: 'adm-status-gray'
 }[status] || '')
 
-const handleStatusChange = (leadId, newStatus) => {
-  adminStore.updateLeadStatus(leadId, newStatus)
+const handleStatusChange = async (leadId, newStatus) => {
+  const lead = adminStore.leads.find(l => l.id === leadId)
+  if (newStatus === 'DA_CHOT' && lead && (!lead.dealValue || Number(lead.dealValue) <= 0)) {
+    openEditModal(lead)
+    adminStore.showNotice('Vui lòng nhập giá trị hợp đồng/bộ dàn đã chốt để ghi nhận doanh số chính xác.', 'warning')
+    return
+  }
+  await adminStore.updateLeadStatus(leadId, newStatus)
 }
 
 const handleDelete = async (leadId) => {

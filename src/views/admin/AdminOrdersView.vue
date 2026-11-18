@@ -91,6 +91,15 @@
             />
           </div>
 
+          <select v-model="statusFilter" class="adm-select-filter" aria-label="Lọc trạng thái đơn hàng">
+            <option value="ALL">Mọi trạng thái ({{ adminStore.orders.length }})</option>
+            <option value="MOI">Đơn mới chờ duyệt ({{ adminStore.newOrdersCount }})</option>
+            <option value="DA_XAC_NHAN">Đã xác nhận</option>
+            <option value="DANG_GIAO">Đang vận chuyển</option>
+            <option value="HOAN_THANH">Đã giao thành công ({{ adminStore.completedOrdersCount }})</option>
+            <option value="HUY">Đã hủy</option>
+          </select>
+
           <select v-model="paymentFilter" class="adm-select-filter">
             <option value="ALL">Mọi hình thức thanh toán</option>
             <option value="COD">Thu hộ khi nhận (COD)</option>
@@ -101,19 +110,6 @@
             <label><span>Từ ngày</span><input v-model="fromDate" type="date" aria-label="Ngày bắt đầu lọc đơn hàng" /></label>
             <label><span>Đến ngày</span><input v-model="toDate" type="date" aria-label="Ngày kết thúc lọc đơn hàng" /></label>
             <button type="button" class="adm-date-clear" :disabled="!isDateActive" @click="clearDates">Xóa ngày</button>
-          </div>
-
-          <div class="adm-tabs">
-            <button
-              v-for="tab in statusTabs"
-              :key="tab.key"
-              type="button"
-              :class="['adm-tab', { active: statusFilter === tab.key }]"
-              @click="statusFilter = tab.key"
-            >
-              {{ tab.label }}
-              <span class="adm-tab-count">{{ tab.count }}</span>
-            </button>
           </div>
         </div>
         <p v-if="isDateLoading || dateError" :class="['adm-date-status', { error: dateError }]">

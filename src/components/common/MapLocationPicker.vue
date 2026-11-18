@@ -13,7 +13,7 @@
           :value="modelValue"
           :placeholder="placeholder"
           :required="required"
-          @input="$emit('update:modelValue', $event.target.value)"
+          @input="handleManualAddressInput"
         />
       </div>
 
@@ -21,7 +21,7 @@
         type="button"
         :class="['gmap-trigger-btn', { active: isMapOpen }]"
         @click="toggleMap"
-        :title="isMapOpen ? 'Đóng bản đồ' : 'Mở bản đồ để chọn vị trí'"
+        :title="isMapOpen ? 'Đóng bản đồ' : 'Tùy chọn ghim vị trí trên bản đồ'"
       >
         <svg v-if="!isMapOpen" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
           <path
@@ -33,9 +33,10 @@
         <svg v-else viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
         </svg>
-        <span>{{ isMapOpen ? 'Đóng bản đồ' : 'Bản đồ' }}</span>
-      </button>n
+        <span>{{ isMapOpen ? 'Đóng bản đồ' : 'Chọn trên bản đồ' }}</span>
+      </button>
     </div>
+    <p class="address-help">Cứ nhập theo cách khách thường nhắn, ví dụ “Đc: Lam Sơn, Tích Sơn, Vĩnh Yên, Vĩnh Phúc”. Không cần ghim bản đồ; nhân viên sẽ gọi hỏi thêm nếu cần số nhà hoặc ngõ.</p>
 
     <div v-if="coords && distanceKm !== null" :class="['distance-hint', distanceKm <= 300 ? 'in-zone' : 'out-zone']">
       <span v-if="distanceKm <= 300">
@@ -272,7 +273,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Nhập địa chỉ hoặc chọn vị trí trên Google Maps...'
+    default: 'Ví dụ: Đc: Lam Sơn, Tích Sơn, Vĩnh Yên, Vĩnh Phúc'
   },
   required: {
     type: Boolean,
@@ -304,6 +305,7 @@ let leafletLabelLayer = null
 let leafletUserMarker = null
 
 let activeMapPickerClose = null
+let reverseGeocodeRequestId = 0
 
 const quickCities = [
   { label: 'Vĩnh Yên', lat: 21.3095, lng: 105.5966, zoom: 13 },
@@ -355,6 +357,21 @@ const createShowroomPinHtml = () => `
 const clampAddress = (text, lat, lng) => {
   const combined = `${text} (${lat.toFixed(5)}, ${lng.toFixed(5)})`
   return combined.length > 480 ? combined.slice(0, 480) : combined
+}
+
+const handleManualAddressInput = (event) => {
+  // Manual edits take precedence over any previous pin and prevent a late
+  // reverse-geocode response from replacing what the customer just typed.
+  reverseGeocodeRequestId += 1
+  coords.value = null
+  distanceKm.value = null
+  resolvedLabel.value = ''
+  statusMsg.value = ''
+  if (leafletMap && leafletUserMarker) {
+    leafletMap.removeLayer(leafletUserMarker)
+    leafletUserMarker = null
+  }
+  emit('update:modelValue', event.target.value)
 }
 
 const parseDirectCoordsOrUrl = (raw) => {
@@ -441,6 +458,7 @@ const syncUserPinOnMap = (lat, lng, panZoom = null) => {
 }
 
 const setMarkerAndReverseGeocode = async (lat, lng, panZoom = null) => {
+  const requestId = ++reverseGeocodeRequestId
   coords.value = { lat, lng }
   distanceKm.value = haversineKm(SHOWROOM_COORDS.lat, SHOWROOM_COORDS.lng, lat, lng)
   syncUserPinOnMap(lat, lng, panZoom)
@@ -450,6 +468,7 @@ const setMarkerAndReverseGeocode = async (lat, lng, panZoom = null) => {
   statusMsg.value = 'Đang xác định địa chỉ...'
 
   const readable = await reverseGeocodeAddress(lat, lng)
+  if (requestId !== reverseGeocodeRequestId) return
   if (readable) {
     resolvedLabel.value = readable
     emit('update:modelValue', clampAddress(readable, lat, lng))
@@ -1357,5 +1376,12 @@ onBeforeUnmount(() => {
     width: 100%;
     min-height: 40px;
   }
+}
+
+.address-help {
+  margin: -2px 0 0;
+  color: #64748b;
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 </style>

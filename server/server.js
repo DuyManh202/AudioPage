@@ -1527,7 +1527,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
 app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const [fbResult, leadResult, ordersResult] = await Promise.all([
-      query(`SELECT c.id,c.customer_name,c.facebook_id,c.phone,c.address,c.province,c.location_lat,c.location_lng,c.interest,c.last_message,c.status,c.source_ad_name,c.updated_at,
+      query(`SELECT c.id,c.customer_name,c.facebook_id,c.phone,c.address,c.province,c.location_lat,c.location_lng,c.location_manually_set,c.interest,c.last_message,c.status,c.source_ad_name,c.updated_at,
         visits.visited_at,visits.visited_by,
         COALESCE(product_image.image_url,combo_image.image_url,'') AS interest_image, combo_image.video_url AS interest_video_url
         FROM facebook_care_customers c
@@ -1554,9 +1554,12 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
       return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : ''
     }
     const add = (row, type) => {
-      const province = findProvince(row.province) || findProvince(row.address)
-      const lat = row.location_lat == null ? province?.lat : Number(row.location_lat)
-      const lng = row.location_lng == null ? province?.lng : Number(row.location_lng)
+      // Prefer the complete address because a saved province may have been
+      // inferred incorrectly from a same-named ward in older records.
+      const province = findProvince(row.address) || findProvince(row.province)
+      const hasManualLocation = row.location_manually_set === true
+      const lat = hasManualLocation && row.location_lat != null ? Number(row.location_lat) : province?.lat
+      const lng = hasManualLocation && row.location_lng != null ? Number(row.location_lng) : province?.lng
       if (!province || !Number.isFinite(lat) || !Number.isFinite(lng)) { unlocatedCount += 1; return }
       const phoneKey = normalizePhone(row.phone)
       const previous = phoneKey ? byPhone.get(phoneKey) : null
@@ -1569,7 +1572,7 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
         address: row.address || previous?.address || '',
         province: province.displayName,
         lat, lng,
-        locationPrecision: row.location_lat == null ? 'PROVINCE' : 'PROVINCE',
+        locationPrecision: hasManualLocation ? 'EXACT' : 'PROVINCE',
         interest: row.interest || row.last_message || previous?.interest || '',
         interestImage: row.interest_image || videoThumbnail(row.interest_video_url) || previous?.interestImage || '',
         status: row.status || '',

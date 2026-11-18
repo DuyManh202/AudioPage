@@ -560,13 +560,19 @@
 
 .adm-status-select {
   height: 32px;
-  padding: 0 10px;
-  border-radius: 7px;
+  padding: 0 28px 0 12px;
+  border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 700;
   outline: none;
   cursor: pointer;
   border: 1px solid transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all 0.18s ease;
 }
 
 .adm-status-select option {
@@ -592,26 +598,72 @@
 .adm-contact-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 5px;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 0.74rem;
   font-weight: 700;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-  transition: background 0.15s;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  text-decoration: none;
+  transition: all 0.18s ease;
 }
 
 .adm-contact-chip:hover {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #15803d;
+  color: #ffffff;
+  border-color: #15803d;
 }
 
 .adm-contact-chip.zalo {
-  background: #f0f9ff;
-  color: #0369a1;
-  border-color: #bae6fd;
+  background: #0068ff;
+  color: #ffffff;
+  border-color: #0068ff;
+  box-shadow: 0 2px 6px rgba(0, 104, 255, 0.25);
+}
+
+.adm-contact-chip.zalo:hover {
+  background: #0052cc;
+  border-color: #0052cc;
+  color: #ffffff;
+}
+
+/* Global Print Mode: Hide all admin shell chrome when printing an invoice */
+@media print {
+  .admin-sidebar,
+  .admin-topbar,
+  .adm-page-head,
+  .adm-kpi-grid,
+  .adm-toolbar,
+  .adm-table-wrap,
+  .no-print,
+  .sidebar-backdrop {
+    display: none !important;
+  }
+
+  body,
+  .admin-shell,
+  .admin-main,
+  .admin-viewport {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .adm-modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .adm-modal {
+    max-width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
 }
 
 /* Modal System */

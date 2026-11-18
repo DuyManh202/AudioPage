@@ -119,7 +119,7 @@
               </div>
               <div class="selected-row">
                 <span class="row-lbl">Khu vực:</span>
-                <span class="row-val">{{ selected.address ? `${selected.address}, ` : '' }}<strong>{{ selected.province }}</strong></span>
+                <span class="row-val">{{ customerArea(selected) }}</span>
               </div>
               <div class="selected-row">
                 <span class="row-lbl">Khoảng cách:</span>
@@ -329,7 +329,7 @@
                       </span>
                     </div>
                     <p class="card-address">
-                      📍 {{ customer.province }}{{ customer.address ? ` · ${customer.address}` : '' }}
+                      📍 {{ customerArea(customer) }}
                     </p>
                     <span v-if="customer.interest" class="card-interest">{{ customer.interest }}</span>
                   </div>
@@ -364,7 +364,7 @@
                   </span>
                 </div>
                 <p class="detail-location">
-                  📍 {{ selected.province }}{{ selected.address ? ` · ${selected.address}` : '' }}
+                  📍 {{ customerArea(selected) }}
                   <b class="detail-dist">(~{{ distanceFromStore(selected) }} km)</b>
                 </p>
               </div>
@@ -505,6 +505,20 @@ watch(visibleCustomers, renderMarkers)
 watch([deliveryOrders, deliveryLocation], renderMarkers)
 
 const distanceFromStore = customer => distanceBetween(deliveryLocation.value || origin, customer)
+const normalizePlaceText = value => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+  .toLocaleLowerCase('vi')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+const customerArea = customer => {
+  const address = String(customer?.address || '').replace(/^\s*(?:đc|địa\s*chỉ)\s*[:：-]?\s*/i, '').trim().replace(/[,\s]+$/, '')
+  const province = String(customer?.province || '').trim()
+  if (!address) return province
+  if (!province || normalizePlaceText(address).includes(normalizePlaceText(province))) return address
+  return `${address}, ${province}`
+}
 const distanceBetween = (from, to) => {
   const rad = degree => degree * Math.PI / 180
   const dLat = rad(to.lat - from.lat), dLng = rad(to.lng - from.lng)
@@ -519,7 +533,7 @@ const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({ '
 
 const popupContent = customer => {
   const image = safeImage(customer.interestImage)
-  return `<div class="customer-popup">${image ? `<img src="${escapeHtml(image)}" alt="">` : ''}<strong>${escapeHtml(customer.customerName)}</strong><b>${customer.visitedAt ? `✓ Đã đi${customer.visitedBy ? ` · ${escapeHtml(customer.visitedBy)}` : ''}` : '● Chưa đi'}</b>${customer.interest ? `<span>${escapeHtml(customer.interest)}</span>` : ''}${customer.phone ? `<a href="tel:${escapeHtml(customer.phone)}">📞 ${escapeHtml(customer.phone)}</a>` : ''}${customer.address ? `<span>${escapeHtml(customer.address)}</span>` : ''}<span>${escapeHtml(customer.province)} · ~${distanceFromStore(customer)} km</span><small>Vị trí ước tính theo trung tâm tỉnh/thành</small></div>`
+  return `<div class="customer-popup">${image ? `<img src="${escapeHtml(image)}" alt="">` : ''}<strong>${escapeHtml(customer.customerName)}</strong><b>${customer.visitedAt ? `✓ Đã đi${customer.visitedBy ? ` · ${escapeHtml(customer.visitedBy)}` : ''}` : '● Chưa đi'}</b>${customer.interest ? `<span>${escapeHtml(customer.interest)}</span>` : ''}${customer.phone ? `<a href="tel:${escapeHtml(customer.phone)}">📞 ${escapeHtml(customer.phone)}</a>` : ''}<span>${escapeHtml(customerArea(customer))}</span><span>~${distanceFromStore(customer)} km</span><small>Vị trí ước tính theo trung tâm tỉnh/thành</small></div>`
 }
 
 function getActiveMapElement() {
@@ -603,8 +617,10 @@ function renderMarkers() {
       ).join('')
       marker.bindPopup(
         `<div class="customer-popup cluster-pop">
-          <strong>${escapeHtml(group[0].province)} · ${group.length} khách</strong>
-          <small>Bấm vào khách để chọn:</small>
+          <strong>${escapeHtml(group[0].province)} · cụm ${group.length} khách</strong>
+          <small>${group.every(customer => customer.locationPrecision !== 'EXACT')
+            ? 'Các khách này chỉ có vị trí ước tính theo tỉnh/thành, không phải cùng một địa chỉ nhà.'
+            : 'Có nhiều hồ sơ tại cùng vị trí. Chọn tên để xem riêng một khách.'}</small>
           <div class="cluster-customer-list">${rows}</div>
         </div>`,
         { maxWidth: 300 }
@@ -688,7 +704,13 @@ function selectCustomer(customer) {
   )
   if (marker) {
     map.setView([customer.lat, customer.lng], Math.max(map.getZoom(), 8), { animate: true })
-    if (!isMobile.value) marker.openPopup()
+    if (marker.clusterCustomers) {
+      // Selecting a person from a cluster should show that person's card,
+      // not reopen the list of everyone sharing the approximate map point.
+      map.closePopup()
+    } else if (!isMobile.value) {
+      marker.openPopup()
+    }
   }
 }
 

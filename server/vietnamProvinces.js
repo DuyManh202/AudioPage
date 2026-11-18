@@ -25,8 +25,7 @@ export const VIETNAM_PROVINCES = [
   { name: 'Lao Cai', displayName: 'Lào Cai', lat: 22.48, lng: 103.98, aliases: ['Lao Cai', 'Yen Bai'] },
   { name: 'Nghe An', displayName: 'Nghệ An', lat: 18.67, lng: 105.68, aliases: ['Nghe An'] },
   { name: 'Ninh Binh', displayName: 'Ninh Bình', lat: 20.25, lng: 105.97, aliases: ['Ninh Binh', 'Ha Nam', 'Nam Dinh'] },
-  { name: 'Phu Tho', displayName: 'Phú Thọ', lat: 21.32, lng: 105.40, aliases: ['Phu Tho', 'Viet Tri'] },
-  { name: 'Vinh Phuc', displayName: 'Vĩnh Phúc', lat: 21.31, lng: 105.60, aliases: ['Vinh Phuc', 'Vinh Yen', 'Phuc Yen'] },
+  { name: 'Phu Tho', displayName: 'Phú Thọ', lat: 21.32, lng: 105.40, aliases: ['Phu Tho', 'Viet Tri', 'Vinh Phuc', 'Vinh Yen', 'Phuc Yen'] },
   { name: 'Hoa Binh', displayName: 'Hòa Bình', lat: 20.82, lng: 105.34, aliases: ['Hoa Binh'] },
   { name: 'Quang Ngai', displayName: 'Quảng Ngãi', lat: 15.12, lng: 108.80, aliases: ['Quang Ngai', 'Kon Tum'] },
   { name: 'Quang Ninh', displayName: 'Quảng Ninh', lat: 20.96, lng: 107.04, aliases: ['Quang Ninh'] },
@@ -52,10 +51,19 @@ export function normalizeVietnamText(value) {
 export function findProvince(value, { requireContext = false } = {}) {
   const text = normalizeVietnamText(value)
   if (!text) return null
-  if (requireContext && !/(^| )(o|tai|que|tinh|thanh pho|em o|anh o|chi o|nha em|nha minh|dia chi|giao ve|ship ve)( |$)/.test(text)) return null
+  if (requireContext && !/(^| )(o|tai|que|tinh|thanh pho|em o|anh o|chi o|nha em|nha minh|dia chi|dc|giao ve|ship ve)( |$)/.test(text)) return null
   const candidates = VIETNAM_PROVINCES.flatMap(province =>
     province.aliases.map(alias => ({ province, alias: normalizeVietnamText(alias) }))
-  ).sort((a, b) => b.alias.length - a.alias.length)
-  const found = candidates.find(({ alias }) => ` ${text} `.includes(` ${alias} `))
-  return found?.province || null
+  )
+  const matches = candidates
+    .map(candidate => ({
+      ...candidate,
+      position: ` ${text} `.lastIndexOf(` ${candidate.alias} `)
+    }))
+    .filter(candidate => candidate.position >= 0)
+    // In a free-form Vietnamese address the last administrative area is
+    // usually the province/city. Prefer it over an earlier ward with the
+    // same name (for example, Vĩnh Phúc, Hà Nội).
+    .sort((a, b) => b.position - a.position || b.alias.length - a.alias.length)
+  return matches[0]?.province || null
 }

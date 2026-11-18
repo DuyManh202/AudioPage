@@ -98,8 +98,8 @@
             />
           </div>
 
-          <select v-model="categoryFilter" class="adm-select-filter">
-            <option value="ALL">Tất cả danh mục ({{ adminStore.products.length }})</option>
+          <select v-model="categoryFilter" class="adm-select-filter" aria-label="Lọc theo danh mục thiết bị">
+            <option value="ALL">Mọi danh mục ({{ adminStore.products.length }})</option>
             <option value="loa-full">Loa Full Karaoke</option>
             <option value="loa-sub">Loa Subwoofer Trầm</option>
             <option value="cuc-day">Cục Đẩy Công Suất</option>
@@ -107,33 +107,12 @@
             <option value="loa-di-dong">Loa Di Động / Kéo</option>
           </select>
 
-          <div class="adm-tabs">
-            <button
-              type="button"
-              :class="['adm-tab', { active: saleFilter === 'ALL' }]"
-              @click="saleFilter = 'ALL'"
-            >
-              Tất Cả
-              <span class="adm-tab-count">{{ adminStore.products.length }}</span>
-            </button>
-            <button
-              type="button"
-              :class="['adm-tab sale-tab', { active: saleFilter === 'ON_SALE' }]"
-              @click="saleFilter = 'ON_SALE'"
-            >
-              <AdminIcon name="flame" :size="14" />
-              Đang Chạy Sale
-              <span class="adm-tab-count">{{ saleProductsCount }}</span>
-            </button>
-            <button
-              type="button"
-              :class="['adm-tab', { active: saleFilter === 'NO_SALE' }]"
-              @click="saleFilter = 'NO_SALE'"
-            >
-              Không Sale
-              <span class="adm-tab-count">{{ adminStore.products.length - saleProductsCount }}</span>
-            </button>
-          </div>
+          <select v-model="saleFilter" class="adm-select-filter" aria-label="Lọc theo chiến dịch sale">
+            <option value="ALL">Mọi trạng thái Sale ({{ adminStore.products.length }})</option>
+            <option value="ON_SALE">Đang chạy Sale ({{ saleProductsCount }})</option>
+            <option value="NO_SALE">Bán giá niêm yết</option>
+            <option value="WARN">Cần kiểm tra kho / giá</option>
+          </select>
         </div>
       </div>
 
