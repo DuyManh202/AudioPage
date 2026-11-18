@@ -425,8 +425,17 @@ const updateStatus = async (id, status) => {
   }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 })
 }
 
-const handleDelete = (id) => {
-  if (confirm('Anh có chắc chắn muốn xóa đơn hàng này khỏi hệ thống?')) {
+const handleDelete = async (id) => {
+  const ord = adminStore.orders.find(o => o.id === id)
+  const name = ord ? `đơn hàng #${ord.id} (${ord.customerName})` : 'đơn hàng này'
+  const ok = await adminStore.confirm({
+    title: 'Xóa đơn đặt mua lẻ',
+    message: `Anh có chắc chắn muốn xóa ${name} khỏi hệ thống?`,
+    confirmText: 'Xác nhận xóa',
+    cancelText: 'Hủy bỏ',
+    type: 'danger'
+  })
+  if (ok) {
     adminStore.deleteOrder(id)
   }
 }

@@ -297,9 +297,11 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { apiRequest } from '../../utils/api'
 import { useAuthStore } from '../../stores/authStore'
+import { useAdminStore } from '../../stores/adminStore'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const auth = useAuthStore()
+const adminStore = useAdminStore()
 const currentUserId = computed(() => auth.currentUser?.id)
 
 const users = ref([])
@@ -413,7 +415,14 @@ const changeRole = async (user, role) => {
 
 const toggleUserActive = async (user, nextActive) => {
   const actionLabel = nextActive ? 'Mở khóa' : 'Khóa'
-  if (!confirm(`${actionLabel} tài khoản ${user.username}?`)) return
+  const ok = await adminStore.confirm({
+    title: `${actionLabel} tài khoản nhân sự`,
+    message: `Anh có chắc chắn muốn ${actionLabel.toLowerCase()} quyền truy cập của tài khoản "${user.username}" (${user.fullName || 'Nhân viên'})?`,
+    confirmText: `Đồng ý ${actionLabel.toLowerCase()}`,
+    cancelText: 'Hủy bỏ',
+    type: nextActive ? 'info' : 'danger'
+  })
+  if (!ok) return
   busy.value = true
   error.value = ''
   message.value = ''

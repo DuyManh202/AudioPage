@@ -274,6 +274,58 @@
         </div>
       </Transition>
 
+      <!-- Hộp Thoại Xác Nhận Tùy Chỉnh Hiện Đại (Thay thế hoàn toàn window.confirm mặc định) -->
+      <Transition name="confirm-modal-pop">
+        <div
+          v-if="adminStore.confirmModal"
+          class="adm-confirm-backdrop"
+          @click.self="adminStore.confirmModal.resolve(false)"
+        >
+          <div class="adm-confirm-dialog" role="dialog" aria-modal="true">
+            <div :class="['confirm-icon-bubble', `type-${adminStore.confirmModal.type || 'danger'}`]">
+              <svg v-if="adminStore.confirmModal.type === 'danger'" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              <svg v-else-if="adminStore.confirmModal.type === 'warning'" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </div>
+
+            <div class="confirm-body-text">
+              <h3 class="confirm-head-title">{{ adminStore.confirmModal.title }}</h3>
+              <p class="confirm-desc-msg">{{ adminStore.confirmModal.message }}</p>
+            </div>
+
+            <div class="confirm-btns-group">
+              <button
+                type="button"
+                class="confirm-action-btn cancel"
+                @click="adminStore.confirmModal.resolve(false)"
+              >
+                {{ adminStore.confirmModal.cancelText || 'Hủy bỏ' }}
+              </button>
+              <button
+                type="button"
+                :class="['confirm-action-btn', adminStore.confirmModal.type === 'danger' ? 'danger' : 'primary']"
+                @click="adminStore.confirmModal.resolve(true)"
+              >
+                {{ adminStore.confirmModal.confirmText || 'Xác nhận' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
       <!-- Nội Dung Từng Phân Hệ -->
       <main class="admin-viewport">
         <router-view v-slot="{ Component }">
@@ -337,8 +389,15 @@ const userInitials = computed(() => {
   return name.slice(0, 2).toUpperCase()
 })
 
-const handleLogout = () => {
-  if (confirm('Anh có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?')) {
+const handleLogout = async () => {
+  const ok = await adminStore.confirm({
+    title: 'Đăng xuất quản trị',
+    message: 'Anh có chắc chắn muốn đăng xuất khỏi hệ thống quản trị Tú Audio CRM?',
+    confirmText: 'Đăng xuất',
+    cancelText: 'Ở lại',
+    type: 'warning'
+  })
+  if (ok) {
     authStore.logout()
     router.push('/admin/login')
   }
@@ -966,8 +1025,143 @@ const handleLogout = () => {
 
 @media (prefers-reduced-motion: reduce) {
   .ios-toast-enter-active,
-  .ios-toast-leave-active {
+  .ios-toast-leave-active,
+  .confirm-modal-pop-enter-active,
+  .confirm-modal-pop-leave-active {
     transition: none;
   }
+}
+
+/* ========================================================
+   HỘP THOẠI XÁC NHẬN TÙY CHỈNH (CUSTOM CONFIRM MODAL)
+   ======================================================== */
+.adm-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.adm-confirm-dialog {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 420px;
+  padding: 26px 24px 22px;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  position: relative;
+}
+
+.confirm-icon-bubble {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.confirm-icon-bubble.type-danger {
+  background: #fef2f2;
+  color: #dc2626;
+  box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.12);
+}
+.confirm-icon-bubble.type-warning {
+  background: #fffbeb;
+  color: #d97706;
+  box-shadow: 0 0 0 8px rgba(217, 119, 6, 0.12);
+}
+.confirm-icon-bubble.type-info {
+  background: #eff6ff;
+  color: #2563eb;
+  box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.12);
+}
+
+.confirm-body-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.confirm-head-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.confirm-desc-msg {
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.confirm-btns-group {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+.confirm-action-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: none;
+  display: grid;
+  place-items: center;
+}
+.confirm-action-btn.cancel {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+.confirm-action-btn.cancel:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.confirm-action-btn.danger {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+.confirm-action-btn.danger:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+.confirm-action-btn.primary {
+  background: #00b1a9;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 177, 169, 0.35);
+}
+.confirm-action-btn.primary:hover {
+  background: #008080;
+  transform: translateY(-1px);
+}
+
+/* Hiệu ứng Pop-in động */
+.confirm-modal-pop-enter-active,
+.confirm-modal-pop-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.confirm-modal-pop-enter-from,
+.confirm-modal-pop-leave-to {
+  opacity: 0;
+}
+.confirm-modal-pop-enter-from .adm-confirm-dialog,
+.confirm-modal-pop-leave-to .adm-confirm-dialog {
+  transform: scale(0.92) translateY(10px);
 }
 </style>

@@ -743,7 +743,14 @@ const toggleStockQuick = async (product) => {
 }
 
 const turnOffSale = async (product) => {
-  if (!confirm(`Tắt khuyến mãi cho "${product.name}" (giữ nguyên giá bán ${formatCurrency(product.price)})?`)) return
+  const ok = await adminStore.confirm({
+    title: 'Tắt khuyến mãi Sale',
+    message: `Anh có chắc chắn muốn tắt Sale cho "${product.name}"? Giá niêm yết sẽ giữ nguyên mức ${formatCurrency(product.price)}.`,
+    confirmText: 'Tắt Sale',
+    cancelText: 'Hủy bỏ',
+    type: 'warning'
+  })
+  if (!ok) return
   try {
     await adminStore.updateProduct(product.id, { ...product, originalPrice: 0 })
     await productStore.refreshProducts()
@@ -853,7 +860,16 @@ const saveProduct = async () => {
 }
 
 const handleDelete = async (id) => {
-  if (confirm('Anh có chắc chắn muốn xóa thiết bị này khỏi kho?')) {
+  const p = adminStore.products.find(item => item.id === id)
+  const name = p ? `sản phẩm "${p.name}"` : 'thiết bị này'
+  const ok = await adminStore.confirm({
+    title: 'Xóa thiết bị khỏi kho',
+    message: `Anh có chắc chắn muốn xóa ${name} khỏi danh mục kho thiết bị?`,
+    confirmText: 'Xác nhận xóa',
+    cancelText: 'Hủy bỏ',
+    type: 'danger'
+  })
+  if (ok) {
     await adminStore.deleteProduct(id)
     await productStore.refreshProducts()
   }

@@ -309,8 +309,17 @@ const updateStatus = (id, status) => {
   adminStore.updateTradeIn(id, { status })
 }
 
-const handleDelete = (id) => {
-  if (confirm('Anh có chắc chắn muốn xóa yêu cầu thu cũ đổi mới này?')) {
+const handleDelete = async (id) => {
+  const item = adminStore.tradeIns.find(t => t.id === id)
+  const name = item?.customerName ? `yêu cầu của khách "${item.customerName}"` : 'yêu cầu thu cũ này'
+  const ok = await adminStore.confirm({
+    title: 'Xóa yêu cầu thu cũ',
+    message: `Anh có chắc chắn muốn xóa ${name} khỏi hệ thống thẩm định?`,
+    confirmText: 'Xác nhận xóa',
+    cancelText: 'Hủy bỏ',
+    type: 'danger'
+  })
+  if (ok) {
     adminStore.deleteTradeIn(id)
   }
 }

@@ -363,8 +363,17 @@ const handleStatusChange = (leadId, newStatus) => {
   adminStore.updateLeadStatus(leadId, newStatus)
 }
 
-const handleDelete = (leadId) => {
-  if (confirm('Anh có chắc chắn muốn xóa hồ sơ khách hàng này khỏi danh sách?')) {
+const handleDelete = async (leadId) => {
+  const lead = adminStore.leads.find(l => l.id === leadId)
+  const name = lead?.name ? `của khách "${lead.name}"` : 'này'
+  const ok = await adminStore.confirm({
+    title: 'Xóa hồ sơ khách hàng',
+    message: `Anh có chắc chắn muốn xóa hồ sơ ${name} khỏi danh sách? Thao tác này sẽ xóa vĩnh viễn trên hệ thống CRM.`,
+    confirmText: 'Xác nhận xóa',
+    cancelText: 'Hủy bỏ',
+    type: 'danger'
+  })
+  if (ok) {
     adminStore.deleteLead(leadId)
   }
 }

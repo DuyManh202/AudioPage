@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import { createHmac, timingSafeEqual } from 'crypto'
-import { query } from './db.js'
+import { query, withTransaction } from './db.js'
 import { findProvince } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 
@@ -15,6 +15,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
 
 const app = express()
+// Render runs Express behind a proxy; trust its forwarded client IP for rate limiting.
+app.set('trust proxy', 1)
 const PORT = process.env.PORT || 5000
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET.includes('replace-with')) {
@@ -553,6 +555,26 @@ const createdAtDateFilter = ({ from, to }, params) => {
 }
 
 const loginAttempts = new Map()
+const publicSubmissionAttempts = new Map()
+const publicSubmissionRateLimit = (req, res, next) => {
+  const now = Date.now()
+  for (const [ip, attempt] of publicSubmissionAttempts) {
+    if (attempt.expiresAt <= now) publicSubmissionAttempts.delete(ip)
+  }
+
+  const key = req.ip
+  const current = publicSubmissionAttempts.get(key)
+  if (!current || current.expiresAt <= now) {
+    publicSubmissionAttempts.set(key, { count: 1, expiresAt: now + 15 * 60 * 1000 })
+    return next()
+  }
+  if (current.count >= 20) {
+    return res.status(429).json({ success: false, message: 'Bạn gửi yêu cầu liên tục. Vui lòng chờ 15 phút rồi thử lại.' })
+  }
+  current.count += 1
+  next()
+}
+
 const loginRateLimit = (req, res, next) => {
   const now = Date.now()
   for (const [ip, attempt] of loginAttempts) if (attempt.expiresAt <= now) loginAttempts.delete(ip)
@@ -678,7 +700,7 @@ app.get('/api/v1/combos', async (req, res) => {
 })
 
 // Khách gửi yêu cầu tư vấn / thử dàn tại nhà
-app.post('/api/v1/leads', async (req, res) => {
+app.post('/api/v1/leads', publicSubmissionRateLimit, async (req, res) => {
   try {
     const { name, phone, address, interest, roomInfo, note } = req.body
     if (typeof name !== 'string' || !name.trim() || name.length > 100 || !validPhone(phone) || !validOptionalText(address, 500) || !validOptionalText(interest, 200) || !validOptionalText(roomInfo, 500) || !validOptionalText(note, 2000)) {
@@ -713,7 +735,7 @@ app.post('/api/v1/leads', async (req, res) => {
 })
 
 // Khách gửi yêu cầu Thu Cũ Đổi Mới (kèm ảnh thiết bị cũ)
-app.post('/api/v1/trade-ins', async (req, res) => {
+app.post('/api/v1/trade-ins', publicSubmissionRateLimit, async (req, res) => {
   try {
     const { customerName, customerPhone, customerAddress, oldDeviceName, oldDeviceImages, conditionNote, upgradeToItem } = req.body
     if (typeof customerName !== 'string' || !customerName.trim() || !validPhone(customerPhone) || typeof oldDeviceName !== 'string' || !oldDeviceName.trim() || oldDeviceName.length > 200 || !validOptionalText(customerAddress, 500) || !validOptionalText(oldDeviceImages, 8_000_000) || !validOptionalText(conditionNote, 2000) || !validOptionalText(upgradeToItem, 200)) {
@@ -722,27 +744,28 @@ app.post('/api/v1/trade-ins', async (req, res) => {
 
     // Tự động tạo lead để ghi nhận vào phễu CRM
     const leadId = 'LD-' + randomUUID()
-    await query(
-      `INSERT INTO leads (id, name, phone, address, interest, status, notes)
-       VALUES ($1, $2, $3, $4, $5, 'MOI', $6)`,
-      [
-        leadId, customerName, customerPhone, customerAddress || '',
-        `Thu cũ đổi mới: ${oldDeviceName} -> ${upgradeToItem || 'Lên đời dàn'}`,
-        conditionNote || ''
-      ]
-    )
+    const result = await withTransaction(async client => {
+      await client.query(
+        `INSERT INTO leads (id, name, phone, address, interest, status, notes)
+         VALUES ($1, $2, $3, $4, $5, 'MOI', $6)`,
+        [
+          leadId, customerName.trim(), customerPhone.trim(), customerAddress || '',
+          `Thu cũ đổi mới: ${oldDeviceName.trim()} -> ${upgradeToItem || 'Lên đời dàn'}`,
+          conditionNote || ''
+        ]
+      )
 
-    const sql = `
-      INSERT INTO trade_ins (
-        lead_id, customer_name, customer_phone, customer_address,
-        old_device_name, old_device_images, condition_note, upgrade_to_item, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'CHO_DINH_GIA')
-      RETURNING *
-    `
-    const result = await query(sql, [
-      leadId, customerName, customerPhone, customerAddress || '',
-      oldDeviceName, oldDeviceImages || '', conditionNote || '', upgradeToItem || 'Dàn Karaoke 29 Triệu'
-    ])
+      return client.query(`
+        INSERT INTO trade_ins (
+          lead_id, customer_name, customer_phone, customer_address,
+          old_device_name, old_device_images, condition_note, upgrade_to_item, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'CHO_DINH_GIA')
+        RETURNING *
+      `, [
+        leadId, customerName.trim(), customerPhone.trim(), customerAddress || '',
+        oldDeviceName.trim(), oldDeviceImages || '', conditionNote || '', upgradeToItem || 'Dàn Karaoke 29 Triệu'
+      ])
+    })
 
     res.status(201).json({
       success: true,
@@ -755,7 +778,7 @@ app.post('/api/v1/trade-ins', async (req, res) => {
 })
 
 // Khách đặt mua lẻ từ Giỏ Hàng (Orders)
-app.post('/api/v1/orders', async (req, res) => {
+app.post('/api/v1/orders', publicSubmissionRateLimit, async (req, res) => {
   try {
     const { customerName, customerPhone, shippingAddress, items, paymentMethod, note } = req.body
     if (typeof customerName !== 'string' || !customerName.trim() || customerName.length > 100 || !validPhone(customerPhone) || typeof shippingAddress !== 'string' || !shippingAddress.trim() || shippingAddress.length > 500 || !validOptionalText(note, 2000) || !Array.isArray(items) || items.length === 0 || items.length > 50) {
@@ -787,27 +810,30 @@ app.post('/api/v1/orders', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5::json, $6, $7, 'MOI', $8)
       RETURNING *
     `
-    const result = await query(sql, [
-      orderId, customerName.trim(), customerPhone.trim(), shippingAddress.trim(),
-      JSON.stringify(trustedItems), trustedTotal, cleanPayMethod, note || ''
-    ])
+    const result = await withTransaction(async client => {
+      const orderResult = await client.query(sql, [
+        orderId, customerName.trim(), customerPhone.trim(), shippingAddress.trim(),
+        JSON.stringify(trustedItems), trustedTotal, cleanPayMethod, note || ''
+      ])
 
-    // Tự động ghi nhận vào phễu CRM (leads) để đội ngũ tư vấn xác nhận cài sẵn thông số & chăm sóc nâng cấp
-    const itemSummary = trustedItems.map(i => `${i.quantity}x ${i.name}`).join(', ')
-    const payLabel = cleanPayMethod === 'BANK' ? 'Chuyển khoản' : 'COD'
-    await query(
-      `INSERT INTO leads (id, name, phone, address, interest, status, deal_value, notes)
-       VALUES ($1, $2, $3, $4, $5, 'MOI', $6, $7)`,
-      [
-        'LD-' + randomUUID(),
-        customerName.trim(),
-        customerPhone.trim(),
-        shippingAddress.trim(),
-        `Đặt mua giỏ hàng: ${itemSummary}`.slice(0, 250),
-        0,
-        `[Mã đơn ${orderId} - ${payLabel} - ${trustedTotal.toLocaleString('vi-VN')}đ] ${note || 'Khách đặt thiết bị lẻ từ giỏ hàng.'}`.slice(0, 2000)
-      ]
-    )
+      // Ghi đơn và lead CRM cùng transaction để tránh lưu một nửa khi có lỗi.
+      const itemSummary = trustedItems.map(i => `${i.quantity}x ${i.name}`).join(', ')
+      const payLabel = cleanPayMethod === 'BANK' ? 'Chuyển khoản' : 'COD'
+      await client.query(
+        `INSERT INTO leads (id, name, phone, address, interest, status, deal_value, notes)
+         VALUES ($1, $2, $3, $4, $5, 'MOI', $6, $7)`,
+        [
+          'LD-' + randomUUID(),
+          customerName.trim(),
+          customerPhone.trim(),
+          shippingAddress.trim(),
+          `Đặt mua giỏ hàng: ${itemSummary}`.slice(0, 250),
+          0,
+          `[Mã đơn ${orderId} - ${payLabel} - ${trustedTotal.toLocaleString('vi-VN')}đ] ${note || 'Khách đặt thiết bị lẻ từ giỏ hàng.'}`.slice(0, 2000)
+        ]
+      )
+      return orderResult
+    })
 
     res.status(201).json({
       success: true,

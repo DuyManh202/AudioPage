@@ -237,10 +237,8 @@ const dismissGreeting = () => {
 }
 
 const clearHistory = () => {
-  if (confirm('Bác có muốn làm mới cuộc trò chuyện với em Tú không ạ?')) {
-    messages.value = [initialGreeting]
-    localStorage.removeItem(STORAGE_KEY)
-  }
+  messages.value = [initialGreeting]
+  localStorage.removeItem(STORAGE_KEY)
 }
 
 const formatMessage = (text) => {

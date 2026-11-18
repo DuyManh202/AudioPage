@@ -73,7 +73,8 @@ export const useAdminStore = defineStore('admin', {
     isSyncing: false,
     dbConnected: false,
     lastSyncedAt: '',
-    adminNotice: null
+    adminNotice: null,
+    confirmModal: null
   }),
 
   getters: {
@@ -122,6 +123,28 @@ export const useAdminStore = defineStore('admin', {
     clearNotice() {
       if (noticeTimer) clearTimeout(noticeTimer)
       this.adminNotice = null
+    },
+
+    confirm({
+      title = 'Xác nhận thao tác',
+      message = 'Anh có chắc chắn muốn thực hiện hành động này?',
+      confirmText = 'Xác nhận',
+      cancelText = 'Hủy bỏ',
+      type = 'danger'
+    } = {}) {
+      return new Promise((resolve) => {
+        this.confirmModal = {
+          title,
+          message,
+          confirmText,
+          cancelText,
+          type,
+          resolve: (result) => {
+            this.confirmModal = null
+            resolve(Boolean(result))
+          }
+        }
+      })
     },
 
     _persistProducts() {

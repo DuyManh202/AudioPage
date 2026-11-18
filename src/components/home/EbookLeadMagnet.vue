@@ -29,16 +29,16 @@
           </ul>
 
           <div v-if="isSent" class="ebook-success">
-            <h4>{{ savedLocally ? '📄 Đã Mở Khóa Bản Tóm Tắt (Chế Độ Ngoại Tuyến)' : '🎉 Đã Mở Khóa Link Tải Ebook Thành Công!' }}</h4>
+            <h4>{{ savedLocally ? '📄 Đã Mở Bản Tóm Tắt (Chế Độ Ngoại Tuyến)' : '🎉 Tài Liệu Tóm Tắt Đã Sẵn Sàng!' }}</h4>
             <p v-if="savedLocally">
-              Máy chủ đang bận nên số Zalo của Bác mới lưu tạm trên trình duyệt này. Bác có thể tải ngay bản tóm tắt bên dưới hoặc nhắn Zalo <strong>{{ CONTACT_INFO.phone }}</strong> để nhận bản PDF đầy đủ.
+              Máy chủ đang bận nên thông tin của Bác mới lưu tạm trên trình duyệt này. Bác có thể tải bản tóm tắt bên dưới; để nhận tài liệu PDF đầy đủ, hãy nhắn Zalo cho Tú Audio.
             </p>
             <p v-else>
-              Bản tóm tắt đã được mở khóa. Kỹ sư Tú Audio cũng đã ghi nhận số Zalo của Bác để gửi kèm trọn bộ PDF &amp; video hướng dẫn thực tế.
+              Bác có thể tải bản tóm tắt ngay bên dưới. Muốn nhận tài liệu PDF đầy đủ, hãy nhắn Zalo cho Tú Audio.
             </p>
             <div class="ebook-success-actions">
               <button class="btn-primary" type="button" @click="downloadEbookSummary">
-                📥 Tải Xuống Ngay (Tài Liệu Tóm Tắt TXT)
+                📥 Tải Bản Tóm Tắt Ngay (TXT)
               </button>
               <a :href="CONTACT_INFO.zaloUrl" target="_blank" rel="noopener noreferrer" class="btn-outline">
                 💬 Nhắn Zalo Nhận Bản Đầy Đủ
@@ -115,15 +115,19 @@ const handleGetEbook = async () => {
 }
 
 const downloadEbookSummary = () => {
-  const content = `CAM NANG: BI MAT AM THANH KARAOKE - TU AUDIO\n\n` +
-    `1. Nguyen tac phoi ghep cong suat: Cong suat Cuc Day nen bang 1.5 den 2 lan cong suat RMS cua Loa de khong bao gio bi meo tieng hay chay treble.\n` +
-    `2. Chon bass theo dien tich phong:\n` +
-    `   - Phong < 20m2: Bass 25cm + Sub dien 30cm.\n` +
-    `   - Phong 20 - 35m2: Loa Full Bass 30cm coil 75 + Sub hoi 40cm.\n` +
-    `3. Tri hu rit hieu qua: Khong chia thang micro vao mat luoi loa, cat tan so cong huong phong bang Vang so DSP.\n\n` +
-    `Lien he ky su Phung Van Tu (Tu Audio - Vinh Yen, Phu Tho) de duoc ho tro can chinh tu xa hoac thu dan tai nha trong ban kinh 300km.`
+  const content = `CẨM NANG TÓM TẮT: BÍ MẬT ÂM THANH KARAOKE - TÚ AUDIO\n\n` +
+    `1. Phối ghép công suất\n` +
+    `Chọn cục đẩy có công suất phù hợp với loa và trở kháng thực tế. Tránh để đẩy quá yếu phải hoạt động liên tục ở mức lớn vì tín hiệu méo có thể làm hỏng loa treble. Hãy đối chiếu công suất RMS, trở kháng và khuyến nghị của nhà sản xuất trước khi ghép.\n\n` +
+    `2. Chọn cấu hình theo phòng\n` +
+    `- Phòng nhỏ dưới 20m²: thường cân nhắc loa bass 25-30cm; chỉ thêm sub khi nhu cầu nghe cần dải trầm sâu hơn.\n` +
+    `- Phòng 20-35m²: loa bass 30cm là cấu hình phổ biến; phòng thông tầng hoặc thông bếp cần được khảo sát kỹ hơn.\n` +
+    `- Phòng lớn trên 35m²: cần tính cả thể tích và độ mở của không gian, vị trí đặt loa và mức âm lượng mong muốn.\n\n` +
+    `3. Hạn chế hú rít\n` +
+    `Không hướng micro vào mặt loa; tăng âm lượng từ từ; đặt loa và micro cách nhau hợp lý. Cân chỉnh vang số để xử lý các tần số cộng hưởng vừa đủ, tránh cắt quá mạnh làm giọng hát mỏng và thiếu tự nhiên.\n\n` +
+    `Đây là tài liệu tham khảo ban đầu. Cấu hình phù hợp còn tùy diện tích, kết cấu phòng và thiết bị đang có.\n` +
+    `Liên hệ Tú Audio qua Zalo ${CONTACT_INFO.phoneDisplay} để được tư vấn và khảo sát cấu hình.`
 
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const blob = new Blob(['\uFEFF', content], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
