@@ -237,9 +237,9 @@ export const dispatchOtpEmail = async ({ toEmail, otpCode, adminName = 'Quản t
   }
 
   // 2. Nếu có cấu hình SMTP (Gmail, Zoho, Hostinger, ...)
-  const smtpHost = process.env.SMTP_HOST
-  const smtpUser = process.env.SMTP_USER
-  const smtpPass = process.env.SMTP_PASS
+  const smtpHost = process.env.SMTP_HOST?.trim()
+  const smtpUser = process.env.SMTP_USER?.trim()
+  const smtpPass = process.env.SMTP_PASS?.replace(/\s+/g, '').trim()
   const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10)
 
   if (smtpHost && smtpUser && smtpPass) {
