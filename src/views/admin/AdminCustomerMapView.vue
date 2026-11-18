@@ -534,11 +534,11 @@ function initMap() {
     zoomControl: !isMobile.value // Trên mobile ẩn zoomControl mặc định, dùng cảm ứng 2 ngón tay hoặc nút nổi
   }).setView([origin.lat, origin.lng], 6)
 
-  const attribution = '&copy; <a href="https://carto.com/" target="_blank" rel="noopener">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM</a>'
-  tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
+  const attribution = '&copy; Google Maps'
+  tileLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
     attribution,
-    subdomains: 'abcd'
+    subdomains: ['0', '1', '2', '3']
   }).addTo(map)
   tileLayer.on('tileload', () => { tileLoadCount += 1 })
   tileLayer.on('tileerror', () => {
