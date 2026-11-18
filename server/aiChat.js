@@ -61,11 +61,57 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'ADDRESS',
-      reply: 'Dạ, cửa hàng Tú Audio bên em ở phố Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, nhà có chỗ đỗ ô tô thoải mái ạ).\n\nCửa hàng mở cửa từ 8h00 đến 21h00 tất cả các ngày trong tuần. Bác ghé lúc nào cũng có sẵn phòng test âm thanh thực tế với đầy đủ các cấu hình để bác trải nghiệm trực tiếp chất âm ạ!'
+      reply: 'Dạ, cửa hàng Tú Audio bên em ở tại số 220 đường Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, nhà mặt đường rộng rãi có chỗ đỗ ô tô thoải mái ạ).\n\nCửa hàng mở cửa từ 8h00 đến 21h00 tất cả các ngày trong tuần. Bác ghé lúc nào cũng có sẵn phòng test âm thanh thực tế với đầy đủ các cấu hình để bác trải nghiệm trực tiếp chất âm ạ!'
     }
   }
 
-  // 4. Tải phần mềm vang số / driver / setup vang
+  // 4. Khách hỏi dịch vụ Căn chỉnh / Setup tận nhà / Chi phí đi lại
+  if (
+    norm.includes('setup') || norm.includes('can chinh') || norm.includes('chinh giup') ||
+    norm.includes('qua nha') || norm.includes('ve nha') || norm.includes('den nha') ||
+    norm.includes('tai nha') || norm.includes('chinh dan') || norm.includes('set up') ||
+    norm.includes('chinh ho') || norm.includes('can giup')
+  ) {
+    return {
+      type: 'SETUP_HOME',
+      reply: 'Dạ vâng em CÓ nhận qua tận nhà căn chỉnh và setup lại dàn âm thanh cho các bác ạ!\n\nEm ở ngay Vĩnh Yên và thường xuyên có các chuyến đi qua Hà Nội, Đông Anh, Mê Linh, Bắc Ninh, Bắc Giang, Hải Phòng, Thanh Hóa... Chi phí đi lại em hỗ trợ ghép chuyến nên rất hợp lý.\n\nBác nhắn giúp em số điện thoại hoặc kết bạn Zalo em 0984.259.898, chụp gửi em ảnh bộ dàn nhà mình đang dùng để em xem trước thiết bị và hẹn lịch tiện chuyến qua phục vụ bác nhé ạ!'
+    }
+  }
+
+  // 5. Khách hỏi về Lọc xì / Equalizer / Nâng tiếng
+  if (
+    norm.includes('loc xi') || norm.includes('equalizer') || norm.includes('eq') ||
+    norm.includes('nang tieng') || norm.includes('co can loc') || norm.includes('them loc')
+  ) {
+    return {
+      type: 'EQUALIZER_ADVICE',
+      reply: 'Dạ anh ơi, đã dùng Vang số chuẩn rồi thì TUYỆT ĐỐI KHÔNG CẦN ghép thêm lọc xì hay nâng tiếng đâu anh nhé!\n\nTrong vang số cao cấp (như CM x16+, PF K9...) đã tích hợp sẵn hệ thống Equalizer tham số (PEQ) cực kỳ chi tiết cho cả đường mic và đường nhạc. Thợ tư vấn lắp thêm lọc xì là họ cố vẽ ra để bán lấy tiền thôi ạ. Ghép nhiều thiết bị tín hiệu qua nhiều tầng xử lý bị méo pha và bí tiếng.\n\nNguyên nhân gốc rễ là ở cách phối ghép thiết bị và căn chỉnh vang số chứ không phải phần ngọn là lọc. Bác nhắn số Zalo qua 0984.259.898, em hỗ trợ chỉnh lại vang số là tiếng sáng đẹp ngay ạ!'
+    }
+  }
+
+  // 6. Khách hỏi Thu cũ đổi mới thiết bị
+  if (
+    norm.includes('thu cu') || norm.includes('doi moi') || norm.includes('doi vang') ||
+    norm.includes('len doi') || norm.includes('doi cac') || norm.includes('doi cu')
+  ) {
+    return {
+      type: 'TRADE_IN',
+      reply: 'Dạ bên em CÓ chính sách Thu cũ đổi mới hỗ trợ các bác lên đời thiết bị âm thanh ạ!\n\nBác đang dùng amply hoặc vang cơ, vang số đời cũ muốn lên dòng Vang số quốc dân CM x16+ (4.200.000đ) hay PF K9 (6.800.000đ) chống hú 99%, em đều hỗ trợ định giá thu lại tốt nhất.\n\nBác chụp giúp em ảnh mặt trước mặt sau thiết bị cũ gửi qua Zalo 0984.259.898 hoặc để lại số Zalo tại đây, em định giá và báo mức bù trừ cụ thể cho bác nhé ạ!'
+    }
+  }
+
+  // 7. Khách hỏi nghe thử trước khi mua / Đổi trả / Hoàn tiền
+  if (
+    norm.includes('nghe thu') || norm.includes('hat thu') || norm.includes('doi tra') ||
+    norm.includes('tra lai') || norm.includes('khong hay') || norm.includes('bao hanh')
+  ) {
+    return {
+      type: 'TRIAL_POLICY',
+      reply: 'Dạ bác hoàn toàn yên tâm 100% ạ! Phương châm làm nghề của em Tú là "Lấy chữ Tín làm đầu":\n\n1. Toàn bộ thiết bị em gửi đi đều được chính tay em Tú cắm máy đo RTA setup sẵn phần mềm chuẩn chỉ theo chất giọng của bác.\n2. Khi nhận hàng bác được mở kiểm tra, cắm hát thử thực tế ưng ý mới thanh toán tiền.\n3. Trong 7 ngày đầu trải nghiệm, nếu bác thấy chưa hợp hoặc không ưng, em hỗ trợ đổi cấu hình khác hoặc nhận lại hàng hoàn tiền đàng hoàng cho bác.\n\nBác nhắn em số Zalo 0984.259.898 em tư vấn cấu hình chuẩn cho nhà mình nhé ạ!'
+    }
+  }
+
+  // 8. Tải phần mềm vang số / driver / setup vang
   if (
     norm.includes('phan mem') || norm.includes('tai phan mem') || norm.includes('driver') ||
     norm.includes('link tai') || norm.includes('cai dat vang') || norm.includes('chinh vang')
@@ -76,7 +122,7 @@ export const checkDeterministicAiResponse = (message) => {
     }
   }
 
-  // 5. Khách hỏi số điện thoại / Hotline / Zalo của shop
+  // 9. Khách hỏi số điện thoại / Hotline / Zalo của shop
   const isAskingHotline = (
     norm.includes('xin sdt') || norm.includes('xin so dien thoai') || norm.includes('xin so dt') ||
     norm.includes('hotline') || norm.includes('cho sdt') || norm.includes('cho xin so') ||
@@ -201,12 +247,12 @@ export const handleAiChatRequest = async (req, res) => {
 
     const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của Tú Audio (thương hiệu âm thanh karaoke gia đình của anh Phùng Văn Tú tại Vĩnh Yên, Vĩnh Phúc).
 Bối cảnh & Phong cách:
-- Bạn đại diện cho anh Tú tư vấn tận tâm cho khách ghé thăm website.
+- Bạn đại diện cho em Tú tư vấn tận tâm cho khách ghé thăm website và khách nhắn từ mạng xã hội.
 - Xưng "em" hoặc "em Tú", gọi khách là "bác" hoặc "anh" (phong cách chuyên gia âm thanh miền Bắc gần gũi, chân thành, nhiệt tình, am hiểu kỹ thuật).
 - Tuyệt đối trung thực 100%, không bịa đặt số nhà hay giá ngoài danh mục dưới đây.
 
 THÔNG TIN ĐỘC QUYỀN CHÍNH XÁC:
-- Địa chỉ showroom: Phố Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, có chỗ đỗ ô tô thoải mái).
+- Địa chỉ showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, có chỗ đỗ ô tô thoải mái).
 - Hotline / Zalo: 0984.259.898.
 - Vang số tiêu biểu:
   + Vang số CM x16+ chính hãng: 4.200.000đ (dòng quốc dân, chống hú 99%, cài sẵn 4 cấu hình Echo/Reverb chuẩn).
@@ -215,19 +261,22 @@ THÔNG TIN ĐỘC QUYỀN CHÍNH XÁC:
   + Combo Gold Home (19.800.000đ): phòng 20 - 30m2.
   + Combo Luxury Home (29.900.000đ): phòng 30 - 45m2.
 
-DANH MỤC SẢN PHẨM & GÓI COMBO ĐANG CÓ TRONG KHO:
-${JSON.stringify(catalogContext)}
+BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
+1. Khách hỏi Setup / Căn chỉnh tại nhà (kể cả ở xa như Hà Nội, Đông Anh, Bắc Ninh, Hải Phòng, Thanh Hóa...): Trả lời em CÓ nhận làm tại nhà, có ghép chuyến các tỉnh nên chi phí rất hợp lý; mời khách gửi ảnh dàn máy qua Zalo 0984.259.898 hoặc để lại số Zalo để em hẹn lịch.
+2. Khách hỏi về Lọc xì / Equalizer: Khẳng định ngay là ĐÃ CÓ VANG SỐ THÌ KHÔNG CẦN LỌC XÌ. Giải thích: thợ bán cố vẽ ra để lấy tiền, tín hiệu qua nhiều tầng bị méo pha; giải pháp gốc rễ là chỉnh chuẩn EQ trong vang số.
+3. Khách hỏi Thu cũ đổi mới: Bên em có nhận thu cũ vang cơ/amply/vang X5 để lên vang số CM x16+ hoặc PF K9. Xin ảnh dàn máy cũ để định giá thu lại cao nhất.
+4. Khách hỏi nghe thử / đổi trả: Cam kết tự tay em Tú setup đo RTA trước khi gửi, nhận hàng hát thử ưng ý mới thanh toán, bao test 7 ngày không ưng hoàn tiền.
+5. Khách hỏi địa chỉ: Chỉ rõ số 220 Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc (gần Quán Tiên, có chỗ đỗ ô tô).
+6. Câu trả lời ngắn gọn, rõ ràng (khoảng 2-3 đoạn ngắn), đi thẳng vào giải pháp kỹ thuật, không nói sáo rỗng.
+7. Luôn kết thúc bằng việc mời khách kết bạn Zalo hoặc để lại số điện thoại/Zalo (0984.259.898) để em gửi video test âm thanh thực tế hoặc gọi video khám bệnh dàn máy.
 
-NGUYÊN TẮC TƯ VẤN:
-1. Hỏi diện tích phòng khách (bao nhiêu m2), phòng kín hay hở/thông tầng.
-2. Hỏi thiết bị hiện có (loa, amply/đẩy gì) để tư vấn nâng cấp tiết kiệm hoặc phối ghép đồng bộ.
-3. Câu trả lời ngắn gọn, rõ ràng (khoảng 2-4 đoạn ngắn), không dài dòng văn tự.
-4. Mời khách kết bạn Zalo hoặc để lại số điện thoại/Zalo 0984.259.898 để em gửi video test âm thanh thực tế.`
+DANH MỤC SẢN PHẨM & GÓI COMBO ĐANG CÓ TRONG KHO:
+${JSON.stringify(catalogContext)}`
 
     const recentHistory = Array.isArray(history) ? history.slice(-6).map(h => `${h.role === 'user' ? 'Khách' : 'Tú Audio'}: ${h.content}`).join('\n') : ''
 
     const apiKey = process.env.GEMINI_API_KEY
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
     const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
 
     const promptText = systemInstruction + '\n\n' + (recentHistory ? 'LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ:\n' + recentHistory + '\n\n' : '') + 'TIN NHẮN MỚI CỦA KHÁCH:\n"' + trimmedMsg + '"\n\nHãy trả lời khách tự nhiên, chuẩn phong cách Tú Audio:'
