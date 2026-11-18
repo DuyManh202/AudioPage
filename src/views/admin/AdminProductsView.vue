@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Kho Loa &amp; Chiến Dịch Chạy Sale</h1>
         <p class="adm-page-sub">
-          Đồng bộ trực tiếp giá bán, mức giảm giá %, tồn kho, thông số âm học và video test âm lên Website khách hàng.
+          Quản lý giá niêm yết, tồn kho và mức giảm giá Sale trên Website.
         </p>
       </div>
       <div class="adm-head-actions">

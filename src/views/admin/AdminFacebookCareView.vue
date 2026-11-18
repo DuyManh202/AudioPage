@@ -5,16 +5,22 @@
       <button class="adm-btn adm-btn-gold" @click="showCreate = !showCreate">＋ Thêm khách Facebook</button>
     </div>
 
-    <div :class="['connection', { online: messengerConnected }]"><span class="offline-dot"></span><div><strong>{{ messengerConnected ? 'Facebook Messenger đã cấu hình · Tự động đồng bộ' : 'Inbox Facebook chưa kết nối' }}</strong><small>{{ messengerConnected ? `Danh sách CRM tự làm mới mỗi 10 giây; Meta được quét khoảng mỗi 25 giây${lastSyncedAt ? ' · Cập nhật lúc ' + displayTime(lastSyncedAt) : ''}.` : 'Cấu hình Meta Page/API trên backend để đồng bộ inbox và gửi trả lời.' }}</small><small v-if="syncError" class="sync-warn">Lưu ý đồng bộ Meta: {{ syncError }}</small></div><button v-if="messengerConnected" class="adm-btn sync-btn" @click="forceSync" :disabled="syncBusy">{{ syncBusy ? 'Đang quét…' : '↻ Quét ngay' }}</button><span class="connection-tag">{{ messengerConnected ? 'Messenger' : 'CRM sẵn sàng' }}</span><span :class="['ai-tag', { active: aiEnabled }]">{{ aiEnabled ? 'AI đang bật' : 'AI chưa bật' }}</span></div>
+    <div :class="['connection', { online: messengerConnected }]">
+      <span class="offline-dot"></span>
+      <div>
+        <strong>{{ messengerConnected ? 'Facebook Messenger đã kết nối · Tự động đồng bộ' : 'Hệ Thống Chăm Sóc Khách Hàng Facebook (CRM)' }}</strong>
+        <small v-if="messengerConnected">{{ `Tin nhắn tự động làm mới${lastSyncedAt ? ' · Cập nhật lúc ' + displayTime(lastSyncedAt) : ''}` }}</small>
+        <small v-else>Hồ sơ khách từ Fanpage và Website sẵn sàng tiếp nhận, chăm sóc và theo dõi tiến độ chốt đơn.</small>
+      </div>
+      <button v-if="messengerConnected" class="adm-btn sync-btn" @click="forceSync" :disabled="syncBusy">{{ syncBusy ? 'Đang quét…' : '↻ Quét ngay' }}</button>
+      <span class="connection-tag">{{ messengerConnected ? 'Messenger Live' : 'CRM Sẵn Sàng' }}</span>
+    </div>
 
     <div v-if="newArrivals.length" class="new-arrivals"><strong>🔔 {{ newArrivals.length }} khách mới vừa vào</strong><button v-for="customer in newArrivals" :key="customer.id" type="button" @click="selectNewArrival(customer)">{{ customer.customerName }}{{ customer.phone ? ` · ${customer.phone}` : '' }}</button><button type="button" class="dismiss-arrivals" @click="newArrivals = []">Ẩn</button></div>
 
-    <section class="ads-card adm-card">
+    <section v-if="adsConfigured && ads.length > 0" class="ads-card adm-card">
       <div class="ads-head"><div><h2>Quảng cáo đang chạy</h2><p>Số liệu hiệu quả trong 30 ngày gần nhất</p></div><button class="adm-btn" @click="loadAds" :disabled="adsBusy">{{ adsBusy ? 'Đang tải…' : '↻ Làm mới' }}</button></div>
-      <p v-if="adsError" class="ads-error">{{ adsError }}</p>
-      <div v-else-if="!adsConfigured" class="ads-empty">Cần cấu hình tài khoản quảng cáo và quyền đọc dữ liệu trên backend để hiển thị quảng cáo.</div>
-      <div v-else-if="!ads.length" class="ads-empty">Không tìm thấy quảng cáo đang hoạt động.</div>
-      <div v-else class="ads-table-wrap"><table class="ads-table"><thead><tr><th>Quảng cáo</th><th>Chiến dịch</th><th>Hiển thị</th><th>Nhấp</th><th>Chi tiêu (30 ngày)</th></tr></thead><tbody><tr v-for="ad in ads" :key="ad.id"><td><strong>{{ ad.name }}</strong><small>{{ ad.adsetName || ad.id }}</small></td><td>{{ ad.campaignName || '—' }}</td><td>{{ formatNumber(ad.impressions) }}</td><td>{{ formatNumber(ad.clicks) }}</td><td>{{ formatMoney(ad.spend) }}</td></tr></tbody></table></div>
+      <div class="ads-table-wrap"><table class="ads-table"><thead><tr><th>Quảng cáo</th><th>Chiến dịch</th><th>Hiển thị</th><th>Nhấp</th><th>Chi tiêu (30 ngày)</th></tr></thead><tbody><tr v-for="ad in ads" :key="ad.id"><td><strong>{{ ad.name }}</strong><small>{{ ad.adsetName || ad.id }}</small></td><td>{{ ad.campaignName || '—' }}</td><td>{{ formatNumber(ad.impressions) }}</td><td>{{ formatNumber(ad.clicks) }}</td><td>{{ formatMoney(ad.spend) }}</td></tr></tbody></table></div>
     </section>
 
     <form v-if="showCreate" class="adm-card create-form" @submit.prevent="createCustomer">

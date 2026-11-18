@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Cấu Hình Gói Dàn Karaoke Trọn Bộ</h1>
         <p class="adm-page-sub">
-          Quản lý sản phẩm chủ lực (Core Offer) hiển thị ngay đầu Trang Chủ — chỉnh sửa giá trọn gói, video hát thử thực tế, danh mục thiết bị và quà tặng đi kèm.
+          Quản lý các gói dàn karaoke chủ lực hiển thị tại Trang Chủ.
         </p>
       </div>
       <div class="adm-head-actions">

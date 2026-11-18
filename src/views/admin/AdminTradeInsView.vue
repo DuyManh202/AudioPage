@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Thẩm Định Thu Cũ Đổi Mới</h1>
         <p class="adm-page-sub">
-          Kiểm tra ảnh thiết bị cũ khách gửi, nhập mức định giá thu hồi để hỗ trợ khách bù chênh lệch nâng cấp lên gói dàn mới.
+          Thẩm định thiết bị âm thanh cũ và định giá hỗ trợ khách nâng cấp dàn mới.
         </p>
       </div>
       <div class="adm-head-actions">

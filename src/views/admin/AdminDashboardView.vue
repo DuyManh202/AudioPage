@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Bảng Điều Khiển Điều Hành</h1>
         <p class="adm-page-sub">
-          Tổng hợp số liệu kinh doanh thực tế — {{ todayFormatted }} • Showroom Phú Thọ &amp; Lắp đặt tận nơi bán kính 300km
+          Tổng quan số liệu kinh doanh &amp; tình trạng đơn hàng — {{ todayFormatted }}
         </p>
       </div>
       <div class="adm-head-actions">

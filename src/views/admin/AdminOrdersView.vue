@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Quản Lý Đơn Đặt Mua Lẻ (Giỏ Hàng)</h1>
         <p class="adm-page-sub">
-          Theo dõi đơn hàng thiết bị lẻ đặt qua Website, kiểm tra thanh toán COD / VietQR, cài sẵn cấu hình vang số và in phiếu giao vận.
+          Theo dõi đơn hàng giỏ hàng từ Website, kiểm tra thanh toán COD / VietQR và in phiếu vận chuyển.
         </p>
       </div>
       <div class="adm-head-actions">

@@ -1,104 +1,185 @@
 <template>
   <div class="adm-page customer-map-page" :class="{ 'mobile-app-mode': isMobile }">
     <!-- ========================================================
-         GIAO DIỆN DESKTOP (MÀN HÌNH MÁY TÍNH > 860PX)
+         GIAO DIỆN DESKTOP (MÀN HÌNH MÁY TÍNH > 860PX) - HIỆN ĐẠI, TINH GỌN
          ======================================================== -->
     <template v-if="!isMobile">
       <div class="adm-page-head">
-        <div>
-          <h1 class="adm-page-title">Bản đồ khách hàng</h1>
-          <p class="adm-page-sub">Khách từ Fanpage và CRM, ghim theo tỉnh/thành được nhắc trong hội thoại hoặc hồ sơ.</p>
-        </div>
-        <button class="adm-btn" :disabled="busy" @click="loadData">
-          {{ busy ? 'Đang cập nhật…' : '↻ Làm mới' }}
-        </button>
-      </div>
-
-      <div class="map-notice">
-        <strong>Khoảng cách là ước tính:</strong> Điểm ghim tính theo trung tâm tỉnh/thành; số km tính đường chim bay từ cửa hàng hoặc vị trí GPS của bạn.
-      </div>
-
-      <section v-if="deliveryLocation" class="delivery-next adm-card">
-        <div class="delivery-next-head">
-          <div>
-            <strong>Đơn giao tiếp theo gần bạn</strong>
-            <small>
-              <i :class="['gps-indicator', { active: trackingLocation }]"></i>
-              {{ trackingLocation ? 'Đang theo dõi GPS' : 'Đã dừng theo dõi' }} · cập nhật {{ deliveryLocation.updatedAt ? formatVisitTime(deliveryLocation.updatedAt) : '' }}
-            </small>
+        <div class="head-title-wrap">
+          <div class="title-row">
+            <h1 class="adm-page-title">Bản đồ khách hàng</h1>
+            <div class="map-stats-badges">
+              <span class="stat-pill total"><b>{{ visibleCustomers.length }}</b> khách có vị trí</span>
+              <span class="stat-pill unvisited">● <b>{{ unvisitedCount }}</b> chưa đi</span>
+              <span class="stat-pill visited">✓ <b>{{ visitedCount }}</b> đã đi</span>
+              <span v-if="unlocatedCount > 0" class="stat-pill unlocated">{{ unlocatedCount }} chưa ghim tỉnh</span>
+            </div>
           </div>
-          <button class="adm-btn" :disabled="locationBusy" @click="toggleLocationTracking">
-            {{ trackingLocation ? 'Tạm dừng theo dõi' : 'Bật theo dõi vị trí' }}
+          <p class="adm-page-sub">Ghim vị trí theo tỉnh/thành khách hàng từ Fanpage &amp; CRM để tối ưu tuyến đường giao hàng và thử dàn.</p>
+        </div>
+        <div class="head-actions">
+          <button
+            type="button"
+            :class="['adm-gps-toggle-btn', { active: trackingLocation }]"
+            :disabled="locationBusy"
+            @click="toggleLocationTracking"
+            :title="trackingLocation ? 'Đang theo dõi vị trí GPS của bạn' : 'Bật theo dõi vị trí GPS'"
+          >
+            <span class="gps-dot"></span>
+            <span>{{ trackingLocation ? 'GPS: Đang theo dõi' : 'Bật theo dõi GPS' }}</span>
+          </button>
+          <button class="adm-btn adm-btn-refresh" :disabled="busy" @click="loadData">
+            {{ busy ? 'Đang cập nhật…' : '↻ Làm mới' }}
           </button>
         </div>
-        <div v-if="nearestOrders.length" class="delivery-next-list">
-          <button v-for="(order, index) in nearestOrders" :key="order.id" class="delivery-next-item" @click="focusOrder(order)">
-            <b>{{ index + 1 }}</b>
-            <span>
-              <strong>{{ order.customerName }} · ~{{ order.distanceKm }} km</strong>
-              <small>{{ order.address }} · {{ order.status === 'DANG_GIAO' ? 'Đang giao' : 'Đã xác nhận' }}</small>
+      </div>
+
+      <!-- Khối đơn giao tiếp theo: CHỈ hiển thị khi có đơn thực tế cần giao -->
+      <section v-if="nearestOrders.length > 0" class="delivery-strip-box adm-card">
+        <div class="delivery-strip-head">
+          <span class="strip-icon">🚚</span>
+          <strong>Đơn giao tiếp theo gần bạn:</strong>
+        </div>
+        <div class="delivery-strip-list">
+          <button
+            v-for="(order, index) in nearestOrders"
+            :key="order.id"
+            class="delivery-strip-item"
+            @click="focusOrder(order)"
+          >
+            <span class="strip-num">{{ index + 1 }}</span>
+            <span class="strip-info">
+              <strong>{{ order.customerName }}</strong>
+              <small>{{ order.address }} · ~{{ order.distanceKm }} km</small>
             </span>
+            <span class="strip-badge">{{ order.status === 'DANG_GIAO' ? 'Đang giao' : 'Đã duyệt' }}</span>
           </button>
         </div>
-        <p v-else class="map-empty">Không có đơn đã xác nhận hoặc đang giao có tỉnh/thành để gợi ý.</p>
       </section>
 
-      <div class="map-toolbar">
-        <span><b>{{ visibleCustomers.length }}</b> khách có vị trí</span>
-        <span><b>{{ visitedCount }}</b> đã đi · <b>{{ unvisitedCount }}</b> chưa đi</span>
-        <span>{{ unlocatedCount }} khách chưa có tỉnh/thành</span>
-        <select v-model="visitFilter" aria-label="Lọc theo lượt ghé">
-          <option value="ALL">Tất cả điểm</option>
-          <option value="NOT_VISITED">Chưa đi</option>
-          <option value="VISITED">Đã đi</option>
-        </select>
-        <input v-model="keyword" placeholder="Tìm tên, số điện thoại, tỉnh, sản phẩm…">
-      </div>
-
+      <!-- Khung Không Gian Bản Đồ Desktop Tinh Gọn -->
       <section class="map-workspace adm-card">
         <aside class="map-customer-list">
-          <div v-if="selected" class="map-selected">
-            <div class="selected-head">
-              <strong>{{ selected.customerName }}</strong>
-              <button type="button" aria-label="Đóng thông tin" @click="selected = null">×</button>
+          <!-- Thanh tìm kiếm & Bộ lọc Tab chuẩn App -->
+          <div class="map-sidebar-filter">
+            <div class="search-input-wrap">
+              <span class="search-ico">🔍</span>
+              <input
+                v-model="keyword"
+                type="search"
+                placeholder="Tìm tên, SĐT, tỉnh/thành, sản phẩm..."
+              />
+              <button v-if="keyword" type="button" class="clear-btn" @click="keyword = ''">✕</button>
             </div>
-            <img v-if="safeImage(selected.interestImage)" :src="safeImage(selected.interestImage)" :alt="selected.interest || 'Sản phẩm khách quan tâm'">
-            <span v-if="selected.interest" class="selected-interest">{{ selected.interest }}</span>
-            <span v-if="selected.phone"><b>SĐT:</b> <a :href="`tel:${selected.phone}`">{{ selected.phone }}</a></span>
-            <span><b>Khu vực:</b> {{ selected.address ? `${selected.address}, ` : '' }}{{ selected.province }}</span>
-            <span><b>Khoảng cách:</b> ~{{ distanceFromStore(selected).toLocaleString('vi-VN') }} km</span>
-            <a class="google-maps-link" :href="googleMapsUrl(selected)" target="_blank" rel="noopener">🧭 Mở vị trí trên Google Maps ↗</a>
-            <span v-if="selected.sourceAdName"><b>Quảng cáo:</b> {{ selected.sourceAdName }}</span>
-            <span class="visit-state" :class="{ visited: selected.visitedAt }">
-              {{ selected.visitedAt ? `✓ Đã đi · ${formatVisitTime(selected.visitedAt)}` : '● Chưa đi' }}
-            </span>
-            <button class="adm-btn visit-toggle" :disabled="visitBusy" @click="toggleVisited(selected)">
-              {{ visitBusy ? 'Đang lưu…' : selected.visitedAt ? '↶ Đánh dấu chưa đi' : '✓ Đánh dấu đã đi' }}
+            <div class="filter-chip-tabs">
+              <button
+                type="button"
+                :class="['filter-tab', { active: visitFilter === 'ALL' }]"
+                @click="visitFilter = 'ALL'"
+              >
+                Tất cả ({{ customers.length }})
+              </button>
+              <button
+                type="button"
+                :class="['filter-tab warn', { active: visitFilter === 'NOT_VISITED' }]"
+                @click="visitFilter = 'NOT_VISITED'"
+              >
+                ● Chưa đi ({{ unvisitedCount }})
+              </button>
+              <button
+                type="button"
+                :class="['filter-tab done', { active: visitFilter === 'VISITED' }]"
+                @click="visitFilter = 'VISITED'"
+              >
+                ✓ Đã đi ({{ visitedCount }})
+              </button>
+            </div>
+          </div>
+
+          <!-- Chi tiết hồ sơ khách khi bấm chọn -->
+          <div v-if="selected" class="map-selected-card">
+            <div class="selected-head">
+              <div class="selected-avatar">
+                {{ selected.customerName?.charAt(0) || 'K' }}
+              </div>
+              <div class="selected-info">
+                <strong>{{ selected.customerName }}</strong>
+                <span :class="['selected-status', { visited: selected.visitedAt }]">
+                  {{ selected.visitedAt ? '✓ Đã hoàn tất ghé' : '● Chưa ghé' }}
+                </span>
+              </div>
+              <button type="button" class="selected-close" aria-label="Đóng" @click="selected = null">✕</button>
+            </div>
+
+            <div class="selected-body">
+              <div v-if="selected.phone" class="selected-row">
+                <span class="row-lbl">Điện thoại:</span>
+                <a :href="`tel:${selected.phone}`" class="row-phone">📞 {{ selected.phone }}</a>
+                <a :href="`https://zalo.me/${selected.phone.replace(/[^0-9]/g, '')}`" target="_blank" rel="noopener" class="row-zalo">Zalo</a>
+              </div>
+              <div class="selected-row">
+                <span class="row-lbl">Khu vực:</span>
+                <span class="row-val">{{ selected.address ? `${selected.address}, ` : '' }}<strong>{{ selected.province }}</strong></span>
+              </div>
+              <div class="selected-row">
+                <span class="row-lbl">Khoảng cách:</span>
+                <span class="row-km">~{{ distanceFromStore(selected).toLocaleString('vi-VN') }} km</span>
+              </div>
+              <div v-if="selected.interest" class="selected-row">
+                <span class="row-lbl">Quan tâm:</span>
+                <span class="row-interest">{{ selected.interest }}</span>
+              </div>
+            </div>
+
+            <div class="selected-actions">
+              <button
+                type="button"
+                class="adm-btn visit-toggle"
+                :class="{ visited: selected.visitedAt }"
+                :disabled="visitBusy"
+                @click="toggleVisited(selected)"
+              >
+                {{ visitBusy ? 'Đang lưu…' : selected.visitedAt ? '↶ Đổi sang chưa đi' : '✓ Đánh dấu đã đi' }}
+              </button>
+              <a class="adm-btn adm-btn-gmaps" :href="googleMapsUrl(selected)" target="_blank" rel="noopener">
+                🧭 Google Maps
+              </a>
+              <button type="button" class="adm-btn adm-btn-gold open-crm" @click="openCrm(selected)">
+                Hồ sơ CRM
+              </button>
+            </div>
+          </div>
+
+          <!-- Danh sách khách hàng cuộn mượt -->
+          <div class="map-customer-scroll">
+            <button
+              v-for="customer in visibleCustomers"
+              :key="`${customer.recordType}:${customer.id}`"
+              :class="['map-customer-item', { active: selected?.id === customer.id && selected?.recordType === customer.recordType }]"
+              @click="selectCustomer(customer)"
+            >
+              <div :class="['customer-pin-dot', { visited: customer.visitedAt }]"></div>
+              <div class="customer-item-main">
+                <div class="item-title-row">
+                  <span class="item-name">{{ customer.customerName }}</span>
+                  <span v-if="customer.visitedAt" class="item-visited-badge">Đã đi</span>
+                </div>
+                <div class="item-sub-row">
+                  <span class="item-province">{{ customer.province }}</span>
+                  <span class="item-km">~{{ distanceFromStore(customer).toLocaleString('vi-VN') }} km</span>
+                </div>
+                <span v-if="customer.phone || customer.interest" class="item-detail">
+                  {{ customer.phone ? `📞 ${customer.phone}` : customer.interest }}
+                </span>
+              </div>
             </button>
-            <button class="adm-btn adm-btn-gold open-crm" @click="openCrm(selected)">Mở hồ sơ khách hàng</button>
+            <p v-if="!visibleCustomers.length" class="map-empty-state">
+              Không tìm thấy khách hàng phù hợp.
+            </p>
           </div>
-
-          <div class="map-search">
-            <input v-model="keyword" placeholder="Tìm trong danh sách…">
-            <small>Gần {{ deliveryLocation ? 'vị trí hiện tại' : 'cửa hàng' }} trước · {{ visibleCustomers.length }} khách</small>
-          </div>
-
-          <button
-            v-for="customer in visibleCustomers"
-            :key="`${customer.recordType}:${customer.id}`"
-            :class="['map-customer-row', { active: selected?.id === customer.id && selected?.recordType === customer.recordType }]"
-            @click="selectCustomer(customer)"
-          >
-            <span :class="['red-dot', { visited: customer.visitedAt }]"></span>
-            <span class="row-main">
-              <strong>{{ customer.customerName }} <em v-if="customer.visitedAt" class="visited-badge">Đã đi</em></strong>
-              <small>{{ customer.province }} · ~{{ distanceFromStore(customer).toLocaleString('vi-VN') }} km</small>
-              <small>{{ customer.phone || customer.interest || 'Chưa có số điện thoại' }}</small>
-            </span>
-          </button>
-          <p v-if="!visibleCustomers.length" class="map-empty">Chưa có khách nào có tỉnh/thành để hiển thị.</p>
         </aside>
 
+        <!-- Bản đồ chiếm toàn bộ không gian còn lại bên phải -->
         <div ref="mapElementDesktop" class="map-canvas" aria-label="Bản đồ vị trí khách hàng"></div>
       </section>
       <p v-if="error" class="map-error">{{ error }}</p>
@@ -453,15 +534,23 @@ function initMap() {
     zoomControl: !isMobile.value // Trên mobile ẩn zoomControl mặc định, dùng cảm ứng 2 ngón tay hoặc nút nổi
   }).setView([origin.lat, origin.lng], 6)
 
-  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM</a>'
-  tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution, subdomains: 'abc' }).addTo(map)
+  const attribution = '&copy; <a href="https://carto.com/" target="_blank" rel="noopener">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM</a>'
+  tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution,
+    subdomains: 'abcd'
+  }).addTo(map)
   tileLayer.on('tileload', () => { tileLoadCount += 1 })
   tileLayer.on('tileerror', () => {
     tileErrorCount += 1
     if (!usingFallbackTiles && tileErrorCount >= 3 && tileLoadCount === 0) {
       usingFallbackTiles = true
       tileLayer.remove()
-      tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', { maxZoom: 19, attribution, subdomains: 'abc' }).addTo(map)
+      tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+        subdomains: 'abc'
+      }).addTo(map)
     }
   })
   markerLayer = L.layerGroup().addTo(map)
@@ -795,270 +884,501 @@ onBeforeUnmount(() => {
 .adm-page-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.head-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.title-row {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 .adm-page-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: #0f172a;
   margin: 0;
+  letter-spacing: -0.02em;
 }
-.adm-page-sub {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin: 3px 0 0;
-}
-.map-notice {
-  padding: 11px 14px;
-  margin-bottom: 12px;
-  border: 1px solid #fed7aa;
-  background: #fff7ed;
-  border-radius: 9px;
-  color: #9a3412;
-  font-size: 0.78rem;
-}
-.map-toolbar {
+.map-stats-badges {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
-  color: #64748b;
-  font-size: 0.8rem;
+  gap: 6px;
   flex-wrap: wrap;
 }
-.map-toolbar b {
-  color: #172033;
+.stat-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
-.map-toolbar input,
-.map-search input {
-  border: 1px solid #dbe2ec;
+.stat-pill.total {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+.stat-pill.unvisited {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.stat-pill.visited {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.stat-pill.unlocated {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+.adm-page-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.adm-gps-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.adm-gps-toggle-btn:hover {
+  border-color: #00b1a9;
+  color: #008080;
+}
+.adm-gps-toggle-btn.active {
+  background: #e6fffa;
+  border-color: #00b1a9;
+  color: #008080;
+}
+.gps-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+.adm-gps-toggle-btn.active .gps-dot {
+  background: #00b1a9;
+  box-shadow: 0 0 0 3px rgba(0, 177, 169, 0.25);
+}
+.adm-btn-refresh {
+  padding: 8px 14px;
   border-radius: 8px;
-  padding: 9px 10px;
-  font: inherit;
+  font-size: 0.78rem;
 }
-.map-toolbar input {
-  margin-left: auto;
-  min-width: 250px;
-}
-.map-toolbar select {
-  border: 1px solid #dbe2ec;
-  border-radius: 8px;
-  padding: 9px 10px;
-  background: #fff;
-  color: #172033;
-  font: inherit;
-}
-.map-workspace {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  height: min(74vh, 760px);
-  min-height: 500px;
-  padding: 0;
-  overflow: hidden;
+
+/* Delivery Strip (Chỉ hiện khi có đơn thực tế) */
+.delivery-strip-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  background: #fff;
 }
-.map-customer-list {
-  border-right: 1px solid #e2e8f0;
-  overflow-y: auto;
-  background: #fff;
-}
-.map-search {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: white;
-  padding: 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-.map-search input {
-  width: 100%;
-}
-.map-search small {
-  display: block;
-  margin-top: 5px;
-  color: #64748b;
-  font-size: 0.68rem;
-}
-.map-customer-row {
+.delivery-strip-head {
   display: flex;
-  width: 100%;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border: 0;
-  border-bottom: 1px solid #f1f5f9;
-  background: white;
-  text-align: left;
-  cursor: pointer;
-  color: #172033;
-}
-.map-customer-row:hover,
-.map-customer-row.active {
-  background: #eff6ff;
-}
-.red-dot {
-  width: 12px;
-  height: 12px;
-  flex: none;
-  margin-top: 4px;
-  border-radius: 50%;
-  background: #ef4444;
-  border: 2px solid #991b1b;
-}
-.red-dot.visited {
-  background: #22c55e;
-  border-color: #166534;
-}
-.row-main {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.row-main strong {
-  font-size: 0.82rem;
-}
-.row-main small {
-  font-size: 0.72rem;
-  color: #64748b;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #0f172a;
   white-space: nowrap;
 }
-.map-canvas {
-  height: 100%;
-  min-width: 0;
-  z-index: 0;
-}
-.map-selected {
-  display: grid;
+.delivery-strip-list {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 14px;
+  overflow-x: auto;
+  flex: 1;
+}
+.delivery-strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
   font-size: 0.76rem;
+  transition: all 0.15s ease;
 }
-.selected-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #172033;
-  font-size: 0.9rem;
+.delivery-strip-item:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
 }
-.selected-head button {
-  border: 0;
-  background: transparent;
-  font-size: 1.4rem;
-  cursor: pointer;
-  color: #64748b;
-}
-.map-selected > img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: white;
-}
-.selected-interest {
-  color: #334155;
-  font-weight: 650;
-}
-.google-maps-link {
-  color: #1d4ed8;
-  font-weight: 700;
-  text-decoration: none;
-}
-.visit-state {
-  font-weight: 700;
-  color: #b91c1c;
-}
-.visit-state.visited {
-  color: #15803d;
-}
-.visit-toggle {
-  color: #166534;
-  border-color: #86efac;
-  background: #f0fdf4;
-}
-.delivery-next {
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-}
-.delivery-next-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.delivery-next-head > div {
-  display: grid;
-  gap: 3px;
-}
-.delivery-next-head strong {
-  font-size: 0.84rem;
-  color: #172033;
-}
-.delivery-next-head small {
-  font-size: 0.7rem;
-  color: #64748b;
-}
-.delivery-next-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 7px;
-  margin-top: 10px;
-}
-.delivery-next-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: white;
-  text-align: left;
-  cursor: pointer;
-}
-.delivery-next-item > b {
-  display: grid;
-  place-items: center;
-  width: 23px;
-  height: 23px;
-  flex: none;
+.strip-num {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #ffedd5;
   color: #c2410c;
-}
-.delivery-next-item > span {
+  font-size: 0.7rem;
+  font-weight: 700;
   display: grid;
-  gap: 3px;
-  min-width: 0;
+  place-items: center;
 }
-.delivery-next-item strong {
-  font-size: 0.73rem;
-  color: #172033;
+.strip-badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
 }
-.delivery-next-item small {
-  font-size: 0.68rem;
+
+/* Map Workspace 2 Cột Desktop */
+.map-workspace {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  height: calc(100vh - 170px);
+  min-height: 600px;
+  max-height: 880px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+}
+.map-customer-list {
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+}
+.map-sidebar-filter {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  transition: all 0.2s;
+}
+.search-input-wrap:focus-within {
+  background: #ffffff;
+  border-color: #00b1a9;
+  box-shadow: 0 0 0 3px rgba(0, 177, 169, 0.15);
+}
+.search-input-wrap input {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  outline: none;
+  font-size: 0.82rem;
+  width: 100%;
+  color: #0f172a;
+}
+.search-ico {
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+.clear-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.filter-chip-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  padding: 3px;
+  border-radius: 8px;
+}
+.filter-tab {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
   color: #64748b;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.filter-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+.filter-tab.warn.active {
+  color: #dc2626;
+}
+.filter-tab.done.active {
+  color: #16a34a;
+}
+
+/* Thẻ Chi Tiết Khách Được Chọn */
+.map-selected-card {
+  padding: 14px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.selected-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.selected-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #00b1a9;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.selected-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.selected-info strong {
+  font-size: 0.92rem;
+  color: #0f172a;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gps-indicator {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 5px;
+.selected-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+.selected-status.visited {
+  color: #16a34a;
+}
+.selected-close {
+  border: none;
+  background: #e2e8f0;
   border-radius: 50%;
-  background: #94a3b8;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+.selected-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.76rem;
+  color: #334155;
+  background: #ffffff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.selected-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.row-lbl {
+  color: #64748b;
+  width: 75px;
+  flex: none;
+}
+.row-phone {
+  color: #008080;
+  font-weight: 700;
+  text-decoration: none;
+}
+.row-zalo {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #0068ff;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  margin-left: 6px;
+}
+.row-km {
+  font-weight: 800;
+  color: #00b1a9;
+}
+.selected-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.selected-actions .adm-btn {
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+}
+.adm-btn-gmaps {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Danh Sách Khách Hàng Cuộn */
+.map-customer-scroll {
+  flex: 1;
+  overflow-y: auto;
+  background: #ffffff;
+}
+.map-customer-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.map-customer-item:hover {
+  background: #f8fafc;
+}
+.map-customer-item.active {
+  background: #e6fffa;
+  border-left: 4px solid #00b1a9;
+}
+.customer-pin-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  flex: none;
+}
+.customer-pin-dot.visited {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+.customer-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.item-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.item-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item-visited-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  flex: none;
+}
+.item-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+.item-province {
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item-km {
+  font-weight: 700;
+  color: #00b1a9;
+  flex: none;
+}
+.item-detail {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-empty-state {
+  padding: 30px 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+.map-canvas {
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  z-index: 0;
 }
 .gps-indicator.active {
   background: #16a34a;

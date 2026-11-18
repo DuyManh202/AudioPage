@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Tài Khoản Nhân Sự &amp; Phân Quyền</h1>
         <p class="adm-page-sub">
-          Cấp tài khoản đăng nhập cho chuyên viên kinh doanh hoặc thủ kho, phân quyền truy cập, khóa tạm thời hoặc đặt lại mật khẩu bảo mật (&ge; 12 ký tự).
+          Quản lý tài khoản đăng nhập nhân viên và phân quyền truy cập hệ thống.
         </p>
       </div>
       <div class="adm-head-actions">

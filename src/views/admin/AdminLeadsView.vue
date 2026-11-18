@@ -5,7 +5,7 @@
       <div>
         <h1 class="adm-page-title">Khách Tư Vấn &amp; Lịch Hẹn Thử Dàn</h1>
         <p class="adm-page-sub">
-          Quản lý phễu khách hàng đăng ký tư vấn từ Website, Zalo và Hotline — ghi chú đặc điểm phòng khách và hẹn lịch chở dàn thử tận nhà.
+          Quản lý phễu khách hàng tư vấn từ Website, Zalo và Hotline — theo dõi lịch hẹn thử dàn và tiến độ chốt đơn.
         </p>
       </div>
       <div class="adm-head-actions">
