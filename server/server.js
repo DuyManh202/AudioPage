@@ -172,7 +172,7 @@ const validPhone = (phone) => /^\+?[0-9][0-9\s().-]{7,19}$/.test(String(phone ||
 const validEmail = (email) => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 const validMoney = (value) => (typeof value === 'number' || typeof value === 'string' && value.trim() !== '') && Number.isSafeInteger(Number(value)) && Number(value) >= 0
 const validOptionalText = (value, maxLength) => value === undefined || value === null || typeof value === 'string' && value.length <= maxLength
-const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY'])
+const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY', 'PENDING'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
 
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
@@ -856,6 +856,64 @@ app.post('/api/v1/ai-chat', handleAiChatRequest)
 // 2. ADMIN APIS (QUẢN TRỊ BẢO MẬT BẰNG JWT)
 // ==========================================
 
+// Đăng ký tài khoản nhân sự từ bên ngoài (Tự động vào trạng thái CHỜ DUYỆT & PHÂN QUYỀN)
+app.post('/api/v1/admin/auth/register', loginRateLimit, async (req, res) => {
+  try {
+    const { username, password, fullName, phone, email } = req.body
+    const cleanUsername = typeof username === 'string' ? username.trim().toLowerCase() : ''
+    if (!/^[a-z0-9._-]{3,50}$/.test(cleanUsername)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm hoặc gạch nối (3–50 ký tự, viết liền không khoảng trắng).'
+      })
+    }
+    if (typeof fullName !== 'string' || !fullName.trim() || fullName.trim().length > 100) {
+      return res.status(400).json({ success: false, message: 'Họ tên nhân sự không được để trống và tối đa 100 ký tự.' })
+    }
+    const cleanPhone = String(phone || '').trim()
+    if (!validPhone(cleanPhone) || cleanPhone.length > 20) {
+      return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ (từ 8 đến 15 chữ số).' })
+    }
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    if (!cleanEmail || !validEmail(cleanEmail)) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp địa chỉ email hợp lệ để nhận mã xác minh OTP.' })
+    }
+    if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu cần dài từ 12 đến 128 ký tự để đảm bảo an toàn.' })
+    }
+
+    // Kiểm tra tên đăng nhập đã được sử dụng chưa
+    const existingUser = await query('SELECT id FROM admins WHERE LOWER(username) = $1', [cleanUsername])
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ success: false, message: `Tên đăng nhập "${cleanUsername}" đã tồn tại. Vui lòng chọn tên khác.` })
+    }
+
+    // Kiểm tra email đã được liên kết chưa
+    const existingEmail = await query('SELECT id FROM admins WHERE LOWER(email) = $1', [cleanEmail])
+    if (existingEmail.rows.length > 0) {
+      return res.status(409).json({ success: false, message: `Email "${cleanEmail}" đã được liên kết với một tài khoản khác.` })
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12)
+    const newId = randomUUID()
+    await query(
+      `INSERT INTO admins (id, username, password_hash, full_name, email, phone, role, is_active, auth_version)
+       VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', FALSE, 0)`,
+      [newId, cleanUsername, passwordHash, fullName.trim(), cleanEmail, cleanPhone]
+    )
+
+    return res.status(201).json({
+      success: true,
+      message: 'Nộp đơn đăng ký tài khoản thành công! Hồ sơ của bạn đang ở trạng thái CHỜ DUYỆT & PHÂN QUYỀN bởi Quản Trị Viên (anh Tú).'
+    })
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ success: false, message: 'Tên đăng nhập hoặc email đã tồn tại trong hệ thống.' })
+    }
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // Đăng nhập Admin (Kiểm tra trực tiếp từ bảng admins trên Aiven PostgreSQL, hỗ trợ OTP Email 2 bước)
 app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
   try {
@@ -866,12 +924,24 @@ app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu' })
     }
 
-    const result = await query('SELECT * FROM admins WHERE LOWER(username) = $1 AND is_active = TRUE', [cleanUser])
+    const result = await query('SELECT * FROM admins WHERE LOWER(username) = $1', [cleanUser])
     if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Tài khoản quản trị không tồn tại hoặc đã bị khóa' })
+      return res.status(401).json({ success: false, message: 'Tài khoản quản trị không tồn tại trên hệ thống.' })
     }
 
     const admin = result.rows[0]
+
+    // Kiểm tra trạng thái tài khoản
+    if (!admin.is_active) {
+      if (admin.role === 'PENDING') {
+        return res.status(403).json({
+          success: false,
+          message: 'Tài khoản của bạn vừa đăng ký thành công và đang ở trạng thái CHỜ PHÊ DUYỆT & PHÂN QUYỀN. Vui lòng liên hệ Quản trị viên (anh Tú) để được kích hoạt.'
+        })
+      }
+      return res.status(403).json({ success: false, message: 'Tài khoản này hiện đang tạm khóa hoặc đã bị ngưng hoạt động.' })
+    }
+
     const isMatch = await bcrypt.compare(password, admin.password_hash)
 
     if (!isMatch) {
@@ -1224,6 +1294,30 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     }
     const { auth_version: _av, ...publicAdmin } = updatedRow
     res.json({ success: true, data: publicAdmin, ...(refreshedToken ? { newToken: refreshedToken } : {}) })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Xóa hoặc từ chối tài khoản nhân sự (Chỉ SUPER_ADMIN được phép)
+app.delete('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params
+    if (id === req.admin.id) {
+      return res.status(400).json({ success: false, message: 'Không thể tự xóa tài khoản đang đăng nhập.' })
+    }
+    const target = await query('SELECT role, is_active FROM admins WHERE id = $1', [id])
+    if (target.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản nhân sự này.' })
+    }
+    if (target.rows[0].role === 'SUPER_ADMIN') {
+      const superCount = await query("SELECT COUNT(*)::int AS count FROM admins WHERE role = 'SUPER_ADMIN' AND id <> $1", [id])
+      if (superCount.rows[0].count === 0) {
+        return res.status(400).json({ success: false, message: 'Cần giữ lại ít nhất một Quản trị viên cấp cao.' })
+      }
+    }
+    await query('DELETE FROM admins WHERE id = $1', [id])
+    res.json({ success: true, message: 'Đã xóa tài khoản khỏi hệ thống thành công.' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

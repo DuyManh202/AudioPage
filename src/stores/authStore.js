@@ -103,6 +103,21 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
+     * Nộp đơn đăng ký tài khoản nhân sự từ bên ngoài (Chờ duyệt)
+     */
+    async register(userData) {
+      try {
+        const res = await apiRequest('/admin/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(userData)
+        })
+        return res
+      } catch (err) {
+        throw err
+      }
+    },
+
+    /**
      * Gửi lại mã OTP tới email
      */
     async resendOtp(tempToken) {
