@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { query } from './db.js'
 import { findProvince } from './vietnamProvinces.js'
-import { handleAiChatRequest } from './aiChat.js'
+import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
@@ -173,7 +173,7 @@ const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micr
 
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
 const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
-const isFacebookAiEnabled = () => process.env.META_AI_ENABLED === 'true' && Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL)
+const isFacebookAiEnabled = () => Boolean(process.env.GEMINI_API_KEY)
 const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && process.env.META_ADS_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 
 const fetchFacebookProfileName = async (psid) => {
@@ -363,41 +363,74 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
   try {
     const [customerResult, historyResult, productsResult, combosResult] = await Promise.all([
       query('SELECT customer_name, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
-      query(`SELECT direction, body FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 12`, [customerId]),
-      query(`SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs
-        FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24`),
-      query(`SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC`)
+      query('SELECT direction, body FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 12', [customerId]),
+      query('SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24'),
+      query('SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC')
     ])
     const customer = customerResult.rows[0]
     if (!customer || customer.status === 'CHO_PHAN_HOI') return
-    const productContext = {
-      products: productsResult.rows.map(p => ({ ...p, price: Number(p.price), original_price: Number(p.original_price) })),
-      combos: combosResult.rows.map(c => ({ ...c, price: Number(c.price), fast_action_price: Number(c.fast_action_price) }))
+
+    const msgs = historyResult.rows.reverse()
+    const latestInbound = msgs.filter(m => m.direction === 'IN').slice(-1)[0]
+    const latestText = latestInbound?.body || ''
+
+    // 1. Kiểm tra Guardrail chuẩn xác 100% trước
+    const deterministic = checkDeterministicAiResponse(latestText)
+    let reply = ''
+
+    if (deterministic) {
+      reply = deterministic.reply
+    } else {
+      // 2. Gọi Gemini 2.5 Flash
+      const productContext = {
+        products: productsResult.rows.map(p => ({ ...p, price: Number(p.price), original_price: Number(p.original_price) })),
+        combos: combosResult.rows.map(c => ({ ...c, price: Number(c.price), fast_action_price: Number(c.fast_action_price) }))
+      }
+      const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
+
+      const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của Tú Audio (thương hiệu âm thanh karaoke gia đình của anh Phùng Văn Tú tại Vĩnh Yên, Vĩnh Phúc).
+Bối cảnh & Phong cách:
+- Bạn đại diện cho anh Tú tư vấn tận tâm cho khách nhắn tin qua Fanpage Facebook.
+- Xưng "em" hoặc "em Tú", gọi khách là "bác" hoặc "anh" (phong cách chuyên gia âm thanh miền Bắc gần gũi, chân thành, nhiệt tình, am hiểu kỹ thuật).
+- Tuyệt đối trung thực 100%, không bịa đặt số nhà hay giá ngoài danh mục.
+THÔNG TIN CỐ ĐỊNH:
+- Showroom: Phố Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, có chỗ đỗ ô tô thoải mái).
+- Hotline / Zalo: 0984.259.898.
+- Vang số tiêu biểu: CM x16+ (4.200.000đ), PF K9 (6.800.000đ).
+- Dàn Karaoke: Combo Gold Home (19.800.000đ), Combo Luxury Home (29.900.000đ).
+DANH MỤC SẢN PHẨM: ${JSON.stringify(productContext)}
+NGUYÊN TẮC:
+- Hỏi diện tích phòng, thiết bị hiện có.
+- Trả lời ngắn gọn, tự nhiên như tin nhắn Facebook Messenger (2-4 câu).
+- Khéo léo mời khách để lại SĐT/Zalo để em Tú gửi video test dàn thực tế.`
+
+      const apiKey = process.env.GEMINI_API_KEY
+      const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+      const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
+
+      const geminiRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời:' }] }],
+          generationConfig: { temperature: 0.35, maxOutputTokens: 350 }
+        }),
+        signal: AbortSignal.timeout(20000)
+      })
+
+      const geminiData = await geminiRes.json().catch(() => ({}))
+      reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      if (!reply) {
+        reply = 'Dạ em Tú Audio đây ạ! Bác đang quan tâm đến vang số hay cả bộ dàn cho phòng khách bao nhiêu m2 thế ạ? Bác nhắn em tư vấn cấu hình chuẩn nhất cho bác nhé ạ!'
+      }
     }
-    const history = historyResult.rows.reverse().map(m => ({ role: m.direction === 'IN' ? 'user' : 'assistant', content: m.body }))
-    const instructions = `Bạn là trợ lý tư vấn khách hàng của Tú Audio, chuyên loa và dàn karaoke gia đình tại Việt Nam. Trả lời bằng tiếng Việt tự nhiên, lịch sự, ngắn gọn như nhân viên tư vấn.\n\nDỮ LIỆU SẢN PHẨM ĐANG CÓ (nguồn duy nhất để báo tên, giá, tồn kho, cấu hình): ${JSON.stringify(productContext)}\n\nQuy tắc:\n- Chỉ tư vấn sản phẩm có trong dữ liệu trên; không tự tạo giá, khuyến mại, tồn kho, bảo hành, thông số hoặc chính sách. Nếu thiếu dữ liệu, nói rõ và mời nhân viên xác nhận.\n- Hỏi từng ý cần thiết: diện tích phòng, phòng kín/thông tầng, ngân sách và thiết bị đang có. Dùng thông tin khách đã nói trong lịch sử, đừng hỏi lại.\n- Ưu tiên các gói karaoke phù hợp trong dữ liệu; nếu ngân sách chưa phù hợp, hỏi ngân sách hoặc gợi ý thiết bị có trong danh mục. Không bịa chính sách thu cũ đổi mới.\n- Ưu tiên gợi ý phù hợp phòng; giải thích ngắn gọn. Không ép mua. Giá gói lấy đúng trường price; chỉ nêu fast_action_price nếu khách hỏi ưu đãi và nói rõ điều kiện cần nhân viên xác nhận.\n- Không yêu cầu khách gửi mật khẩu, mã OTP, số thẻ hoặc dữ liệu nhạy cảm.\n- Nếu khách yêu cầu người thật, hỏi bảo hành/sửa chữa/đổi trả/đơn hàng cụ thể, khiếu nại, hoặc câu trả lời cần xác nhận chính sách, dòng đầu tiên phải là [[HANDOFF]]. Sau đó viết một câu ngắn cho khách rằng Tú Audio sẽ chuyển nhân viên hỗ trợ.\n- Nếu không biết, không đoán: hỏi lại hoặc chuyển nhân viên bằng [[HANDOFF]].`
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.OPENAI_MODEL, instructions, input: history, max_output_tokens: 260, store: false }),
-      signal: AbortSignal.timeout(25000)
-    })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(payload.error?.message || `OpenAI API error (${response.status})`)
-    const answer = (payload.output || []).flatMap(item => item.content || []).filter(part => part.type === 'output_text').map(part => part.text).join('\n').trim()
-    if (!answer) throw new Error('AI không trả về nội dung')
-    const handoff = answer.startsWith('[[HANDOFF]]')
-    const reply = answer.replace(/^\[\[HANDOFF\]\]\s*/, '').slice(0, 1900)
-    if (!reply) throw new Error('AI trả nội dung trống')
+
     const sentPayload = await sendFacebookText(psid, reply)
-    await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
-      VALUES ($1,$2,$3,'OUT','AI Tú Audio',$4) ON CONFLICT (platform_message_id) DO NOTHING`, [randomUUID(), customerId, reply, sentPayload?.message_id || null])
-    await query(`UPDATE facebook_care_customers SET last_message=$1,
-      status=CASE WHEN $2 THEN 'CHO_PHAN_HOI' ELSE status END, updated_at=CURRENT_TIMESTAMP WHERE id=$3`, [reply, handoff, customerId])
+    await query('INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id) VALUES ($1,$2,$3,\'OUT\',\'AI Tú Audio\',$4) ON CONFLICT (platform_message_id) DO NOTHING', [randomUUID(), customerId, reply, sentPayload?.message_id || null])
+    await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [reply, customerId])
   } catch (err) {
     console.error('[Facebook AI] Auto reply failed:', err.message)
-    await query(`UPDATE facebook_care_customers SET status='CHO_PHAN_HOI',
-      notes=CONCAT(COALESCE(notes,''), CASE WHEN COALESCE(notes,'')='' THEN '' ELSE E'\\n' END, '[AI chưa trả lời được; cần nhân viên xử lý]'), updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [customerId]).catch(dbErr => console.error('[Facebook AI] Handoff update failed:', dbErr.message))
+    await query("UPDATE facebook_care_customers SET status='CHO_PHAN_HOI', notes=CONCAT(COALESCE(notes,''), CASE WHEN COALESCE(notes,'')='' THEN '' ELSE E'\\n' END, '[AI chưa trả lời được; cần nhân viên xử lý]'), updated_at=CURRENT_TIMESTAMP WHERE id=$1", [customerId]).catch(() => {})
   }
 }
 
