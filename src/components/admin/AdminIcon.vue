@@ -61,6 +61,12 @@
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </template>
 
+    <!-- Mail / Email -->
+    <template v-else-if="name === 'mail' || name === 'email'">
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </template>
+
     <!-- Globe / Storefront -->
     <template v-else-if="name === 'map'">
       <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z" />

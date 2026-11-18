@@ -10,6 +10,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { query, withTransaction } from './db.js'
 import { findProvince } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
+import { dispatchOtpEmail, maskEmail } from './emailService.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
@@ -168,6 +169,7 @@ const authorizeRoles = (...roles) => (req, res, next) => {
 }
 
 const validPhone = (phone) => /^\+?[0-9][0-9\s().-]{7,19}$/.test(String(phone || '').trim())
+const validEmail = (email) => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 const validMoney = (value) => (typeof value === 'number' || typeof value === 'string' && value.trim() !== '') && Number.isSafeInteger(Number(value)) && Number(value) >= 0
 const validOptionalText = (value, maxLength) => value === undefined || value === null || typeof value === 'string' && value.length <= maxLength
 const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY'])
@@ -854,10 +856,10 @@ app.post('/api/v1/ai-chat', handleAiChatRequest)
 // 2. ADMIN APIS (QUẢN TRỊ BẢO MẬT BẰNG JWT)
 // ==========================================
 
-// Đăng nhập Admin (Kiểm tra trực tiếp từ bảng admins trên Aiven PostgreSQL)
+// Đăng nhập Admin (Kiểm tra trực tiếp từ bảng admins trên Aiven PostgreSQL, hỗ trợ OTP Email 2 bước)
 app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
   try {
-    const { username, password } = req.body
+    const { username, password, rememberMe } = req.body
     const cleanUser = username?.trim().toLowerCase()
 
     if (!cleanUser || !password) {
@@ -877,15 +879,242 @@ app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
     }
     loginAttempts.delete(req.ip)
 
+    // Nếu tài khoản đã cài đặt Email -> Kích hoạt xác thực 2 bước qua mã OTP
+    if (admin.email && admin.email.trim()) {
+      await query("DELETE FROM admin_otp_codes WHERE admin_id = $1 OR expires_at < CURRENT_TIMESTAMP", [admin.id])
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
+      const otpId = randomUUID()
+      await query(
+        "INSERT INTO admin_otp_codes (id, admin_id, code, purpose, expires_at) VALUES ($1, $2, $3, 'LOGIN', CURRENT_TIMESTAMP + INTERVAL '5 minutes')",
+        [otpId, admin.id, otpCode]
+      )
+
+      const tempToken = jwt.sign(
+        { id: admin.id, purpose: 'ADMIN_OTP_VERIFY', rememberMe: Boolean(rememberMe) },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      )
+
+      const emailResult = await dispatchOtpEmail({
+        toEmail: admin.email,
+        otpCode,
+        adminName: admin.full_name || admin.username
+      })
+
+      return res.json({
+        success: true,
+        requireOtp: true,
+        tempToken,
+        maskedEmail: maskEmail(admin.email),
+        expiresInSeconds: 300,
+        ...((!emailResult.sent && emailResult.devOtp) ? { devOtp: emailResult.devOtp, note: 'Máy chủ chưa cấu hình SMTP. Mã OTP đã hiển thị sẵn để thử nghiệm thuận tiện.' } : {})
+      })
+    }
+
+    // Tài khoản chưa cài Email: Cho phép đăng nhập trực tiếp và nhắc nhở bổ sung Email bảo mật
     const token = jwt.sign(
       { id: admin.id, username: admin.username, role: admin.role, name: admin.full_name, authVersion: Number(admin.auth_version ?? 0) },
       JWT_SECRET,
-      { expiresIn: '8h' }
+      { expiresIn: rememberMe ? '30d' : '8h' }
     )
     return res.json({
       success: true,
+      requireOtp: false,
       token,
-      user: { id: admin.id, username: admin.username, full_name: admin.full_name, role: admin.role }
+      user: { id: admin.id, username: admin.username, full_name: admin.full_name, role: admin.role, email: admin.email || null },
+      warning: 'Tài khoản chưa cập nhật Email bảo mật. Vui lòng thêm Email trong mục Phân Quyền để kích hoạt mã OTP 2 bước.'
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Xác thực mã OTP 6 số để nhận JWT Token chính thức
+app.post('/api/v1/admin/auth/verify-otp', async (req, res) => {
+  try {
+    const { tempToken, otp } = req.body
+    if (!tempToken || !otp) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ phiên xác thực và mã OTP 6 số.' })
+    }
+
+    let decoded
+    try {
+      decoded = jwt.verify(tempToken, JWT_SECRET)
+    } catch {
+      return res.status(401).json({ success: false, message: 'Phiên xác thực đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại từ đầu.' })
+    }
+
+    if (decoded.purpose !== 'ADMIN_OTP_VERIFY') {
+      return res.status(403).json({ success: false, message: 'Phiên làm việc không hợp lệ cho tác vụ này.' })
+    }
+
+    const otpResult = await query(
+      "SELECT * FROM admin_otp_codes WHERE admin_id = $1 AND purpose = 'LOGIN' AND expires_at > CURRENT_TIMESTAMP ORDER BY created_at DESC LIMIT 1",
+      [decoded.id]
+    )
+
+    if (otpResult.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Mã xác thực OTP đã hết hạn (5 phút). Vui lòng nhấn Gửi lại mã mới.' })
+    }
+
+    const otpRecord = otpResult.rows[0]
+    const cleanCode = String(otp).trim()
+
+    if (otpRecord.code !== cleanCode) {
+      const newAttempts = Number(otpRecord.attempts || 0) + 1
+      if (newAttempts >= 5) {
+        await query('DELETE FROM admin_otp_codes WHERE id = $1', [otpRecord.id])
+        return res.status(400).json({ success: false, message: 'Bạn đã nhập sai mã quá 5 lần. Mã đã bị hủy vì lý do an toàn, vui lòng yêu cầu mã mới.' })
+      }
+      await query('UPDATE admin_otp_codes SET attempts = $1 WHERE id = $2', [newAttempts, otpRecord.id])
+      return res.status(400).json({ success: false, message: `Mã OTP không chính xác. Bạn còn ${5 - newAttempts} lần thử.` })
+    }
+
+    // OTP chính xác: Xóa mã đã sử dụng
+    await query('DELETE FROM admin_otp_codes WHERE id = $1', [otpRecord.id])
+
+    // Lấy thông tin tài khoản admin mới nhất
+    const adminResult = await query('SELECT * FROM admins WHERE id = $1 AND is_active = TRUE', [decoded.id])
+    if (adminResult.rows.length === 0) {
+      return res.status(401).json({ success: false, message: 'Tài khoản quản trị không tồn tại hoặc đã bị khóa.' })
+    }
+
+    const admin = adminResult.rows[0]
+    const token = jwt.sign(
+      { id: admin.id, username: admin.username, role: admin.role, name: admin.full_name, authVersion: Number(admin.auth_version ?? 0) },
+      JWT_SECRET,
+      { expiresIn: decoded.rememberMe ? '30d' : '8h' }
+    )
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: admin.id,
+        username: admin.username,
+        full_name: admin.full_name,
+        role: admin.role,
+        email: admin.email || null
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Gửi lại mã OTP tới email (Cooldown 60s)
+app.post('/api/v1/admin/auth/resend-otp', async (req, res) => {
+  try {
+    const { tempToken } = req.body
+    if (!tempToken) {
+      return res.status(400).json({ success: false, message: 'Phiên xác thực không tồn tại.' })
+    }
+
+    let decoded
+    try {
+      decoded = jwt.verify(tempToken, JWT_SECRET)
+    } catch {
+      return res.status(401).json({ success: false, message: 'Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại.' })
+    }
+
+    const adminResult = await query('SELECT * FROM admins WHERE id = $1 AND is_active = TRUE', [decoded.id])
+    if (adminResult.rows.length === 0) {
+      return res.status(401).json({ success: false, message: 'Tài khoản quản trị không tồn tại hoặc đã bị khóa.' })
+    }
+    const admin = adminResult.rows[0]
+    if (!admin.email) {
+      return res.status(400).json({ success: false, message: 'Tài khoản chưa có email nhận mã OTP.' })
+    }
+
+    // Kiểm tra cooldown 60 giây
+    const lastOtp = await query(
+      "SELECT created_at FROM admin_otp_codes WHERE admin_id = $1 AND purpose = 'LOGIN' ORDER BY created_at DESC LIMIT 1",
+      [admin.id]
+    )
+    if (lastOtp.rows.length > 0) {
+      const elapsedSeconds = (Date.now() - new Date(lastOtp.rows[0].created_at).getTime()) / 1000
+      if (elapsedSeconds < 60) {
+        const waitMore = Math.ceil(60 - elapsedSeconds)
+        return res.status(429).json({ success: false, message: `Vui lòng đợi ${waitMore} giây trước khi yêu cầu gửi lại mã mới.` })
+      }
+    }
+
+    // Sinh mã mới và gửi
+    await query("DELETE FROM admin_otp_codes WHERE admin_id = $1 AND purpose = 'LOGIN'", [admin.id])
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
+    const otpId = randomUUID()
+    await query(
+      "INSERT INTO admin_otp_codes (id, admin_id, code, purpose, expires_at) VALUES ($1, $2, $3, 'LOGIN', CURRENT_TIMESTAMP + INTERVAL '5 minutes')",
+      [otpId, admin.id, otpCode]
+    )
+
+    const emailResult = await dispatchOtpEmail({
+      toEmail: admin.email,
+      otpCode,
+      adminName: admin.full_name || admin.username
+    })
+
+    return res.json({
+      success: true,
+      message: 'Mã xác thực mới đã được gửi tới email của bạn.',
+      ...((!emailResult.sent && emailResult.devOtp) ? { devOtp: emailResult.devOtp } : {})
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Cập nhật thông tin hồ sơ của chính nhân viên / admin đang đăng nhập
+app.patch('/api/v1/admin/auth/profile', authenticateAdmin, async (req, res) => {
+  try {
+    const { fullName, phone, email, password } = req.body
+    if (fullName !== undefined && (typeof fullName !== 'string' || !fullName.trim() || fullName.length > 100)) {
+      return res.status(400).json({ success: false, message: 'Họ tên không hợp lệ.' })
+    }
+    if (phone !== undefined && (!validPhone(phone) || String(phone).trim().length > 20)) {
+      return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ.' })
+    }
+    if (email !== undefined && email !== null && String(email).trim() !== '') {
+      if (!validEmail(String(email).trim())) {
+        return res.status(400).json({ success: false, message: 'Định dạng email không hợp lệ.' })
+      }
+    }
+    if (password !== undefined && (typeof password !== 'string' || password.length < 12 || password.length > 128)) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu cần dài từ 12 đến 128 ký tự.' })
+    }
+
+    const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim().toLowerCase() : null) : undefined
+    const passwordHash = password ? await bcrypt.hash(password, 12) : null
+
+    const result = await query(
+      `UPDATE admins SET
+        full_name = COALESCE($1, full_name),
+        phone = COALESCE($2, phone),
+        email = COALESCE($3, email),
+        password_hash = COALESCE($4, password_hash),
+        auth_version = COALESCE(auth_version, 0) + 1,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 RETURNING id, username, full_name, email, phone, role, is_active, auth_version, created_at`,
+      [fullName?.trim() ?? null, phone?.trim() ?? null, cleanEmail, passwordHash, req.admin.id]
+    )
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' })
+    const updated = result.rows[0]
+    const newToken = jwt.sign(
+      { id: updated.id, username: updated.username, role: updated.role, name: updated.full_name, authVersion: Number(updated.auth_version ?? 0) },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    )
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        username: updated.username,
+        full_name: updated.full_name,
+        email: updated.email,
+        phone: updated.phone,
+        role: updated.role
+      },
+      newToken
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -895,7 +1124,7 @@ app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
 // Quản lý tài khoản nhân viên: chỉ SUPER_ADMIN được phép
 app.get('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const result = await query('SELECT id, username, full_name, phone, role, is_active, created_at FROM admins ORDER BY created_at DESC')
+    const result = await query('SELECT id, username, full_name, email, phone, role, is_active, created_at FROM admins ORDER BY created_at DESC')
     res.json({ success: true, data: result.rows })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -904,7 +1133,7 @@ app.get('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN'),
 
 app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const { username, password, fullName, phone, role } = req.body
+    const { username, password, fullName, phone, role, email } = req.body
     const cleanUsername = typeof username === 'string' ? username.trim().toLowerCase() : ''
     if (!/^[a-z0-9._-]{3,50}$/.test(cleanUsername)) {
       return res.status(400).json({ success: false, message: 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm hoặc gạch nối (3–50 ký tự, viết liền không khoảng trắng).' })
@@ -915,6 +1144,14 @@ app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN')
     const cleanPhone = String(phone || '').trim()
     if (!validPhone(cleanPhone) || cleanPhone.length > 20) {
       return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ (từ 8 đến 15 chữ số).' })
+    }
+    let cleanEmail = null
+    if (email !== undefined && email !== null && String(email).trim() !== '') {
+      const em = String(email).trim().toLowerCase()
+      if (!validEmail(em)) {
+        return res.status(400).json({ success: false, message: 'Định dạng email nhận mã OTP không hợp lệ.' })
+      }
+      cleanEmail = em
     }
     if (!validRoles.has(role) || (role === 'SUPER_ADMIN' && req.admin.role !== 'SUPER_ADMIN')) {
       return res.status(400).json({ success: false, message: 'Vai trò được chọn không hợp lệ.' })
@@ -928,8 +1165,8 @@ app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN')
     }
     const passwordHash = await bcrypt.hash(password, 12)
     const result = await query(
-      'INSERT INTO admins (id, username, password_hash, full_name, phone, role, is_active, auth_version) VALUES ($1, $2, $3, $4, $5, $6, TRUE, 0) RETURNING id, username, full_name, phone, role, is_active, created_at',
-      [randomUUID(), cleanUsername, passwordHash, fullName.trim(), cleanPhone, role]
+      'INSERT INTO admins (id, username, password_hash, full_name, email, phone, role, is_active, auth_version) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, 0) RETURNING id, username, full_name, email, phone, role, is_active, created_at',
+      [randomUUID(), cleanUsername, passwordHash, fullName.trim(), cleanEmail, cleanPhone, role]
     )
     res.status(201).json({ success: true, data: result.rows[0] })
   } catch (err) {
@@ -941,13 +1178,23 @@ app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN')
 app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params
-    const { role, isActive, fullName, phone, password } = req.body
+    const { role, isActive, fullName, phone, password, email } = req.body
     if (id === req.admin.id && isActive === false) {
       return res.status(400).json({ success: false, message: 'Không thể tự khóa tài khoản đang đăng nhập.' })
     }
     if (role !== undefined && !validRoles.has(role)) return res.status(400).json({ success: false, message: 'Vai trò không hợp lệ.' })
     if (fullName !== undefined && (typeof fullName !== 'string' || !fullName.trim() || fullName.length > 100)) return res.status(400).json({ success: false, message: 'Họ tên không hợp lệ.' })
     if (phone !== undefined && (!validPhone(phone) || String(phone).trim().length > 20)) return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ.' })
+    let cleanEmail = undefined
+    if (email !== undefined) {
+      if (email !== null && String(email).trim() !== '') {
+        const em = String(email).trim().toLowerCase()
+        if (!validEmail(em)) return res.status(400).json({ success: false, message: 'Định dạng email nhận mã OTP không hợp lệ.' })
+        cleanEmail = em
+      } else {
+        cleanEmail = null
+      }
+    }
     if (password !== undefined && (typeof password !== 'string' || password.length < 12 || password.length > 128)) return res.status(400).json({ success: false, message: 'Mật khẩu cần dài từ 12 đến 128 ký tự.' })
     if (isActive === false || role && role !== 'SUPER_ADMIN') {
       const superCount = await query("SELECT COUNT(*)::int AS count FROM admins WHERE role = 'SUPER_ADMIN' AND is_active = TRUE AND id <> $1", [id])
@@ -960,9 +1207,10 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
     const result = await query(
       `UPDATE admins SET role = COALESCE($1, role), is_active = COALESCE($2, is_active),
         full_name = COALESCE($3, full_name), phone = COALESCE($4, phone),
-        password_hash = COALESCE($5, password_hash), auth_version = COALESCE(auth_version, 0) + 1, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6 RETURNING id, username, full_name, phone, role, is_active, auth_version, created_at`,
-      [role ?? null, isActive ?? null, fullName?.trim() ?? null, phone?.trim() ?? null, passwordHash, id]
+        email = COALESCE($5, email),
+        password_hash = COALESCE($6, password_hash), auth_version = COALESCE(auth_version, 0) + 1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7 RETURNING id, username, full_name, email, phone, role, is_active, auth_version, created_at`,
+      [role ?? null, isActive ?? null, fullName?.trim() ?? null, phone?.trim() ?? null, cleanEmail, passwordHash, id]
     )
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' })
     const updatedRow = result.rows[0]
@@ -1747,7 +1995,18 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
 const ensureDatabaseSchema = async () => {
   try {
     await query('ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0')
+    await query('ALTER TABLE admins ADD COLUMN IF NOT EXISTS email VARCHAR(255)')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_username_lower ON admins (LOWER(username))')
+    await query(`CREATE TABLE IF NOT EXISTS admin_otp_codes (
+      id VARCHAR(50) PRIMARY KEY,
+      admin_id VARCHAR(50) NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+      code VARCHAR(10) NOT NULL,
+      purpose VARCHAR(30) NOT NULL DEFAULT 'LOGIN',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    )`)
+    await query('CREATE INDEX IF NOT EXISTS idx_admin_otp_lookup ON admin_otp_codes(admin_id, purpose, expires_at)')
     await query(`CREATE TABLE IF NOT EXISTS facebook_care_customers (
       id VARCHAR(50) PRIMARY KEY, customer_name VARCHAR(150) NOT NULL, facebook_id VARCHAR(100), phone VARCHAR(30),
       interest TEXT, status VARCHAR(30) NOT NULL DEFAULT 'MOI', assigned_to VARCHAR(100), follow_up_at TIMESTAMP NULL,

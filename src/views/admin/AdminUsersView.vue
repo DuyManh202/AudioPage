@@ -96,6 +96,17 @@
           </div>
 
           <div class="adm-field">
+            <label>Email nhận mã OTP bảo mật</label>
+            <input
+              v-model="form.email"
+              type="email"
+              required
+              placeholder="vd: manh.sales@tuaudio.vn"
+            />
+            <span class="adm-hint">Mã OTP 6 số sẽ được gửi về hòm thư này khi đăng nhập</span>
+          </div>
+
+          <div class="adm-field">
             <label>Số điện thoại liên hệ</label>
             <input v-model="form.phone" required type="tel" placeholder="vd: 0984259898" />
           </div>
@@ -165,6 +176,7 @@
             <tr>
               <th>Tài Khoản</th>
               <th>Họ Tên Nhân Sự</th>
+              <th>Email Nhận Mã OTP</th>
               <th>Số Điện Thoại</th>
               <th>Cấp Độ Phân Quyền</th>
               <th>Trạng Thái</th>
@@ -183,6 +195,13 @@
                 </div>
               </td>
               <td>{{ user.full_name }}</td>
+              <td>
+                <div v-if="user.email" class="user-email-pill">
+                  <AdminIcon name="mail" :size="13" />
+                  <span>{{ user.email }}</span>
+                </div>
+                <span v-else class="adm-badge adm-badge-amber">Chưa cài Email OTP</span>
+              </td>
               <td>{{ user.phone || '—' }}</td>
               <td>
                 <select
@@ -238,20 +257,20 @@
               </td>
             </tr>
             <tr v-if="!filteredUsers.length">
-              <td colspan="6" class="adm-empty">Không tìm thấy tài khoản nhân sự phù hợp.</td>
+              <td colspan="7" class="adm-empty">Không tìm thấy tài khoản nhân sự phù hợp.</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Modal Đặt Lại Mật Khẩu -->
+    <!-- Modal Đặt Lại Mật Khẩu & Cập Nhật Email Bảo Mật -->
     <div v-if="pwdModalUser" class="adm-modal-backdrop" @click.self="pwdModalUser = null">
       <div class="adm-modal pwd-modal">
         <div class="adm-modal-head">
           <div>
-            <h3>Cấp Lại Mật Khẩu: {{ pwdModalUser.username }}</h3>
-            <p>Mật khẩu mới bắt buộc từ 12 ký tự trở lên để đảm bảo an toàn</p>
+            <h3>Cập Nhật Bảo Mật: {{ pwdModalUser.username }}</h3>
+            <p>Đổi mật khẩu mới hoặc thay đổi Email nhận mã OTP xác thực khi đăng nhập</p>
           </div>
           <button type="button" class="adm-modal-close" @click="pwdModalUser = null">
             <AdminIcon name="x" :size="18" />
@@ -261,22 +280,31 @@
         <form @submit.prevent="submitPasswordReset">
           <div class="adm-modal-body">
             <div class="adm-field">
-              <label>Mật khẩu mới (&ge; 12 ký tự)</label>
+              <label>Email nhận mã OTP bảo mật</label>
+              <input
+                type="email"
+                v-model="resetEmail"
+                placeholder="vd: employee@tuaudio.vn"
+              />
+              <span class="adm-hint">Mã xác thực 2 bước sẽ gửi về hòm thư này</span>
+            </div>
+
+            <div class="adm-field">
+              <label>Mật khẩu mới (&ge; 12 ký tự) (Để trống nếu chỉ đổi Email)</label>
               <div class="pwd-box">
                 <input
                   :type="showResetPwd ? 'text' : 'password'"
                   v-model="newPassword"
                   minlength="12"
                   maxlength="128"
-                  required
-                  placeholder="Nhập mật khẩu mới..."
+                  placeholder="Nhập ít nhất 12 ký tự..."
                   autocomplete="new-password"
                 />
                 <button type="button" class="pwd-eye" @click="showResetPwd = !showResetPwd">
                   <AdminIcon :name="showResetPwd ? 'eye-off' : 'eye'" :size="16" />
                 </button>
               </div>
-              <span class="adm-hint">Đã nhập: {{ newPassword.length }}/12+ ký tự</span>
+              <span class="adm-hint" v-if="newPassword">Đã nhập: {{ newPassword.length }}/12+ ký tự</span>
             </div>
           </div>
 
@@ -284,7 +312,7 @@
             <button type="button" class="adm-btn adm-btn-ghost" @click="pwdModalUser = null">Hủy</button>
             <button type="submit" class="adm-btn adm-btn-gold" :disabled="busy">
               <AdminIcon name="check" :size="16" />
-              <span>Cập Nhật Mật Khẩu</span>
+              <span>Lưu Cập Nhật Bảo Mật</span>
             </button>
           </div>
         </form>
@@ -316,6 +344,7 @@ const showResetPwd = ref(false)
 const form = reactive({
   username: '',
   fullName: '',
+  email: '',
   phone: '',
   password: '',
   role: 'SALES'
@@ -323,6 +352,7 @@ const form = reactive({
 
 const pwdModalUser = ref(null)
 const newPassword = ref('')
+const resetEmail = ref('')
 
 const countByRole = (role) => users.value.filter(u => u.role === role).length
 
@@ -340,6 +370,7 @@ const filteredUsers = computed(() => {
     u =>
       u.username?.toLowerCase().includes(kw) ||
       u.full_name?.toLowerCase().includes(kw) ||
+      u.email?.toLowerCase().includes(kw) ||
       u.phone?.includes(kw)
   )
 })
@@ -359,6 +390,11 @@ const createUser = async () => {
     error.value = 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm hoặc gạch nối (3–50 ký tự, viết liền không khoảng trắng).'
     return
   }
+  const cleanEmail = form.email.trim().toLowerCase()
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    error.value = 'Vui lòng cung cấp địa chỉ email hợp lệ để nhận mã OTP bảo mật.'
+    return
+  }
   if (form.password.length < 12) {
     error.value = `Mật khẩu cần ít nhất 12 ký tự (hiện tại ${form.password.length} ký tự).`
     return
@@ -373,6 +409,7 @@ const createUser = async () => {
       body: JSON.stringify({
         username: cleanUsername,
         fullName: form.fullName.trim(),
+        email: cleanEmail,
         phone: form.phone.trim(),
         password: form.password,
         role: form.role
@@ -380,6 +417,7 @@ const createUser = async () => {
     })
     form.username = ''
     form.fullName = ''
+    form.email = ''
     form.phone = ''
     form.password = ''
     form.role = 'SALES'
@@ -442,6 +480,7 @@ const toggleUserActive = async (user, nextActive) => {
 
 const openPasswordReset = (user) => {
   pwdModalUser.value = user
+  resetEmail.value = user.email || ''
   newPassword.value = ''
   showResetPwd.value = false
   error.value = ''
@@ -449,24 +488,44 @@ const openPasswordReset = (user) => {
 }
 
 const submitPasswordReset = async () => {
-  if (!pwdModalUser.value || newPassword.value.length < 12) {
-    error.value = 'Mật khẩu phải từ 12 ký tự trở lên.'
+  if (!pwdModalUser.value) return
+  const cleanEmail = resetEmail.value.trim().toLowerCase()
+  if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    error.value = 'Địa chỉ email nhận mã OTP không hợp lệ.'
     return
   }
+  if (!newPassword.value && cleanEmail === (pwdModalUser.value.email || '').toLowerCase()) {
+    error.value = 'Vui lòng nhập mật khẩu mới hoặc thay đổi email nhận mã OTP.'
+    return
+  }
+  if (newPassword.value && newPassword.value.length < 12) {
+    error.value = 'Mật khẩu mới phải từ 12 ký tự trở lên.'
+    return
+  }
+
   busy.value = true
   error.value = ''
   message.value = ''
   try {
+    const payload = {}
+    if (newPassword.value) payload.password = newPassword.value
+    if (cleanEmail !== (pwdModalUser.value.email || '').toLowerCase()) {
+      payload.email = cleanEmail || null
+    }
+
     const response = await apiRequest(`/admin/users/${pwdModalUser.value.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ password: newPassword.value })
+      body: JSON.stringify(payload)
     })
     if (response.newToken) auth.updateSessionToken(response.newToken, response.data)
-    message.value = `Đã đổi mật khẩu cho tài khoản ${pwdModalUser.value.username}.`
+    Object.assign(pwdModalUser.value, response.data)
+    message.value = `Đã cập nhật bảo mật cho tài khoản ${pwdModalUser.value.username} thành công.`
     pwdModalUser.value = null
     newPassword.value = ''
+    resetEmail.value = ''
+    await loadUsers()
   } catch (err) {
-    error.value = err.message || 'Không đổi được mật khẩu.'
+    error.value = err.message || 'Không cập nhật được thông tin bảo mật.'
   } finally {
     busy.value = false
   }
@@ -582,6 +641,30 @@ onMounted(loadUsers)
   justify-content: flex-end;
   gap: 6px;
   white-space: nowrap;
+}
+
+.user-email-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-weight: 600;
+}
+
+.adm-badge-amber {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
 }
 
 .pwd-modal {
