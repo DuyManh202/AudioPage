@@ -36,7 +36,8 @@
     <RoomCalculator />
 
     <!-- Thu Cũ Đổi Mới -->
-    <section class="trade-in-section" id="trade-in">
+    <section class="trade-in-section" id="thu-cu-doi-moi">
+      <div id="trade-in" aria-hidden="true"></div>
       <div class="container">
         <div class="trade-in-box" v-reveal>
           <div class="trade-ring-decor" aria-hidden="true"></div>

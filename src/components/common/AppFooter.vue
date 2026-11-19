@@ -333,7 +333,7 @@ import BrandLogo from './BrandLogo.vue'
 @media (max-width: 768px) {
   .app-footer {
     padding-top: 42px;
-    padding-bottom: 84px;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
     margin-top: 48px;
   }
 }

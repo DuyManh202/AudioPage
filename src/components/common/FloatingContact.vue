@@ -127,15 +127,16 @@ const isMobileOpen = ref(false)
 
 .contact-link {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-width: 144px;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
   height: 44px;
-  padding: 5px 14px 5px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid #CBD5E1;
@@ -143,38 +144,22 @@ const isMobileOpen = ref(false)
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
-  transition: transform 0.28s var(--ease-spring), border-color 0.25s, box-shadow 0.28s, background 0.25s;
-}
-
-.contact-link::after {
-  content: '';
-  position: absolute;
-  top: -60%;
-  left: -75%;
-  width: 48%;
-  height: 220%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-  transform: skewX(-24deg);
-  transition: left 0.6s var(--ease-spring);
-  pointer-events: none;
-}
-
-.contact-link:hover::after {
-  left: 130%;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
+  transition: transform 0.25s var(--ease-spring), border-color 0.25s, box-shadow 0.25s, background 0.25s;
 }
 
 .contact-link:hover {
-  transform: translateX(-5px) scale(1.02);
+  transform: scale(1.1);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
 }
 
 .contact-link:active {
-  transform: translateX(-2px) scale(0.97);
+  transform: scale(0.95);
 }
 
 .link-icon {
-  width: 31px;
-  height: 31px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -183,15 +168,38 @@ const isMobileOpen = ref(false)
 }
 
 .link-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   fill: currentColor;
 }
 
+/* Tooltip nhãn trượt ngang mượt mà khi hover chuột trên Desktop */
 .link-copy {
+  position: absolute;
+  right: 52px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 5px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  font-weight: 700;
   display: flex;
-  flex-direction: column;
-  line-height: 1.15;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.contact-link:hover .link-copy {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 /* Hotline (Amber-Gold Pulse) */
@@ -297,10 +305,24 @@ const isMobileOpen = ref(false)
   }
 
   .contact-link {
+    width: auto;
     min-width: 148px;
     height: 44px;
     padding: 5px 14px 5px 7px;
     justify-content: flex-start;
+    border-radius: 999px;
+  }
+
+  .link-copy {
+    position: static;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    box-shadow: none;
+    border: none;
   }
 
   .mobile-contact-toggle {
