@@ -79,84 +79,126 @@
 
     <!-- TAB 2: BÁO CÁO PHÂN TÍCH HIỆU QUẢ QUẢNG CÁO & ROI -->
     <div v-else-if="currentTab === 'ANALYTICS'" class="analytics-tab-content">
-      <!-- 8 Thẻ Thống Kê Theo Phương Pháp Chu Minh Hạnh -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">💳</span><span class="kpi-label">Tổng Ngân Sách QC ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</span></div>
-          <div class="kpi-val text-red">{{ formatMoney(analyticsSummary.totalSpend) }}</div>
-          <div class="kpi-sub">Theo dữ liệu Meta Ads Manager</div>
+      <!-- 4 THẺ CHỈ SỐ QUẢN TRỊ CAO CẤP (FUTURISTIC HERO METRICS) -->
+      <div class="cockpit-hero-grid">
+        <!-- Thẻ 1: Ngân Sách -->
+        <div class="cockpit-card card-spend">
+          <div class="card-glow glow-red"></div>
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-icon">💳</span>
+              <span class="card-title">NGÂN SÁCH ĐÃ TIÊU</span>
+            </div>
+            <span class="period-badge">{{ analyticsSummary.periodLabel || 'Hôm nay' }}</span>
+          </div>
+          <div class="card-main-val text-neon-red">{{ formatMoney(analyticsSummary.totalSpend) }}</div>
+          <div class="card-foot">
+            <span class="live-dot-pulse"></span>
+            <span>{{ analyticsData.filter(a => a.isMetaActive).length }} chiến dịch đang cắn tiền phân phối</span>
+          </div>
         </div>
 
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">💬</span><span class="kpi-label">Tin Nhắn / Khách Hàng</span></div>
-          <div class="kpi-val text-blue">{{ analyticsSummary.totalLeads }} khách</div>
-          <div class="kpi-sub">{{ analyticsSummary.totalCampaigns }} chiến dịch ghi nhận</div>
+        <!-- Thẻ 2: Tin Nhắn & CPL -->
+        <div class="cockpit-card card-leads">
+          <div class="card-glow glow-blue"></div>
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-icon">💬</span>
+              <span class="card-title">TIN NHẮN & GIÁ / TIN (CPL)</span>
+            </div>
+            <span class="rate-badge">{{ analyticsSummary.avgCpl > 0 ? formatMoney(analyticsSummary.avgCpl) + ' / tin' : 'Chưa phát sinh' }}</span>
+          </div>
+          <div class="card-main-val text-neon-blue">
+            {{ analyticsSummary.totalLeads }} <span class="val-sub">tin / khách</span>
+          </div>
+          <div class="card-foot">
+            <span>Chi phí tin nhắn: <strong class="text-amber">{{ analyticsSummary.avgCpl > 0 ? formatMoney(analyticsSummary.avgCpl) : '—' }}</strong></span>
+          </div>
         </div>
 
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">🏷️</span><span class="kpi-label">Giá Mỗi Khách (CPL)</span></div>
-          <div class="kpi-val text-amber">{{ analyticsSummary.avgCpl > 0 ? formatMoney(analyticsSummary.avgCpl) : '—' }}</div>
-          <div class="kpi-sub">Chi phí để có 1 tin nhắn khách</div>
+        <!-- Thẻ 3: Độ Hút Content (CTR & CPM) -->
+        <div class="cockpit-card card-content">
+          <div class="card-glow glow-green"></div>
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-icon">🎯</span>
+              <span class="card-title">SỨC HÚT CONTENT & CPM</span>
+            </div>
+            <span :class="['ctr-badge', (analyticsSummary.avgCtr || 0) >= 2 ? 'badge-super' : 'badge-normal']">
+              {{ (analyticsSummary.avgCtr || 0) >= 2 ? '🔥 Content Cực Hút' : 'Cần Tối Ưu' }}
+            </span>
+          </div>
+          <div class="card-main-val text-neon-green">
+            {{ analyticsSummary.avgCtr || 0 }}% <span class="val-sub">CTR</span>
+          </div>
+          <div class="card-foot">
+            <span>CPM trung bình: <strong>{{ formatMoney(analyticsSummary.avgCpm || 0) }}</strong></span>
+          </div>
         </div>
 
-        <div class="kpi-card highlight-kpi">
-          <div class="kpi-header"><span class="kpi-icon">🎯</span><span class="kpi-label">Độ Hút Content (CTR TB)</span></div>
-          <div :class="['kpi-val', (analyticsSummary.avgCtr || 0) >= 2 ? 'text-green' : 'text-amber']">{{ analyticsSummary.avgCtr || 0 }}%</div>
-          <div class="kpi-sub">Chuẩn: &gt; 2.0% là bài hút khách</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">📡</span><span class="kpi-label">Độ Cạnh Tranh (CPM TB)</span></div>
-          <div class="kpi-val text-purple">{{ formatMoney(analyticsSummary.avgCpm || 0) }}</div>
-          <div class="kpi-sub">Giá / 1.000 lượt hiển thị</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">🎯</span><span class="kpi-label">Đơn Hàng Đã Chốt</span></div>
-          <div class="kpi-val text-green">{{ analyticsSummary.totalClosed }} đơn</div>
-          <div class="kpi-sub">Tỷ lệ chốt thành công: <strong>{{ analyticsSummary.overallCr }}%</strong></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">💰</span><span class="kpi-label">Doanh Thu Mang Về</span></div>
-          <div class="kpi-val text-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</div>
-          <div class="kpi-sub">Ước tính từ đơn chốt dàn karaoke</div>
-        </div>
-
-        <div class="kpi-card highlight-kpi">
-          <div class="kpi-header"><span class="kpi-icon">🚀</span><span class="kpi-label">Hệ Số Hoàn Vốn (ROAS)</span></div>
-          <div class="kpi-val text-purple">{{ analyticsSummary.avgRoas }}x</div>
-          <div class="kpi-sub">1đ chi phí ➔ {{ analyticsSummary.avgRoas }}đ doanh thu</div>
+        <!-- Thẻ 4: Doanh Thu & ROAS -->
+        <div class="cockpit-card card-roas">
+          <div class="card-glow glow-purple"></div>
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-icon">🚀</span>
+              <span class="card-title">DOANH THU & HOÀN VỐN (ROAS)</span>
+            </div>
+            <span class="roas-top-badge">{{ analyticsSummary.avgRoas }}x ROAS</span>
+          </div>
+          <div class="card-main-val text-neon-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</div>
+          <div class="card-foot">
+            <span>Đã chốt: <strong class="text-green">{{ analyticsSummary.totalClosed }} đơn</strong> (Tỷ lệ: {{ analyticsSummary.overallCr }}%)</span>
+          </div>
         </div>
       </div>
 
-      <!-- Hộp Bắt Bệnh & Ra Quyết Định Nhanh (Chu Minh Hạnh Framework) -->
-      <div class="ai-insight-box">
-        <div class="insight-icon">🩺</div>
-        <div class="insight-content">
-          <h4>Bắt Bệnh Chiến Dịch & Ra Quyết Định Nhanh (Phương Pháp Chu Minh Hạnh)</h4>
-          <p>
-            Phân tích đa chiều giữa <strong>Độ hút Content (CTR)</strong>, 
-            <strong>Độ bão hòa tệp (Tần suất / Frequency)</strong>, 
-            <strong>Chi phí tiếp cận (CPM)</strong> và 
-            <strong>Tỷ lệ chốt đơn thực tế</strong> để đưa ra chỉ dẫn dứt khoát: 
-            khi nào <strong>Tắt camp đốt tiền</strong>, khi nào <strong>Sửa 3s đầu video</strong>, 
-            và khi nào <strong>Vít tiền chiến dịch Win</strong>!
-          </p>
+      <!-- HUD CHẨN ĐOÁN AI & PHƯƠNG PHÁP CHU MINH HẠNH -->
+      <div class="cyber-radar-hud">
+        <div class="radar-scan-effect"></div>
+        <div class="hud-left">
+          <div class="hud-radar-icon">
+            <span class="radar-core"></span>
+            <span class="radar-ring"></span>
+          </div>
+          <div class="hud-info">
+            <div class="hud-tag">AI CHẨN ĐOÁN & RA QUYẾT ĐỊNH · CHU MINH HẠNH METHOD</div>
+            <h3 class="hud-title">Bắt Mạch Chiến Dịch Quảng Cáo & Đề Xuất Tối Ưu Tức Thì</h3>
+            <p class="hud-desc">
+              Phân tích chéo giữa <strong>Độ hút Content (CTR)</strong>, <strong>Độ bão hòa tệp (Tần suất)</strong>, 
+              <strong>Chi phí tiếp cận (CPM)</strong> và <strong>Tỷ lệ chốt đơn</strong> để quyết định: Tắt camp đốt tiền, sửa 3s đầu video hay Vít ngân sách.
+            </p>
+          </div>
         </div>
-        <div class="insight-actions">
-          <button type="button" class="adm-btn adm-btn-sm adm-btn-gold" @click="autoMatchAds" :disabled="autoMatchingBusy || resetMatchingBusy">
-            {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp Nguồn QC' }}
-          </button>
+        <div class="hud-right">
+          <div class="quick-status-pills">
+            <span v-if="(analyticsSummary.avgCtr || 0) >= 2" class="status-pill pill-success">
+              ✓ Content 3s đầu rất tốt (CTR {{ analyticsSummary.avgCtr }}%)
+            </span>
+            <span v-if="(analyticsSummary.avgCpm || 0) <= 70000 && (analyticsSummary.avgCpm || 0) > 0" class="status-pill pill-success">
+              ✓ Giá thầu CPM rẻ ({{ formatMoney(analyticsSummary.avgCpm) }})
+            </span>
+            <span v-if="analyticsSummary.totalLeads > 0 && analyticsSummary.totalClosed === 0" class="status-pill pill-warning">
+              ⚠️ Tập trung tối ưu kịch bản chốt sale
+            </span>
+          </div>
+          <div class="hud-actions-row">
+            <button type="button" class="adm-btn adm-btn-sm cyber-btn-gold" @click="autoMatchAds" :disabled="autoMatchingBusy || resetMatchingBusy">
+              {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp Nguồn QC' }}
+            </button>
+            <button type="button" class="adm-btn adm-btn-sm cyber-btn-outline" @click="resetMatchedAds" :disabled="autoMatchingBusy || resetMatchingBusy">
+              {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ Khớp Nguồn' }}
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Bảng xếp hạng chi tiết từng quảng cáo -->
+      <!-- Bảng xếp hạng chi tiết từng quảng cáo (Futuristic 7-Column Layout) -->
       <div class="adm-card analytics-table-card">
         <div class="table-card-head">
           <div>
             <h3>Bảng Bắt Bệnh & Hiệu Quả Từng Quảng Cáo (ROI & Technical Ranking)</h3>
-            <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Trọn đời' }}) với các chỉ số kỹ thuật CTR, CPM, Freq và doanh thu thực tế</p>
+            <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Hôm nay' }}) với các chỉ số kỹ thuật CTR, CPM, Freq và doanh thu thực tế</p>
           </div>
           <div class="head-actions">
             <div class="period-btn-group">
@@ -165,7 +207,7 @@
                 :class="['period-btn', { active: analyticsPeriod === 'today' }]"
                 @click="changePeriod('today')"
               >
-                Hôm nay
+                ⚡ Hôm nay
               </button>
               <button
                 type="button"
@@ -186,15 +228,9 @@
                 :class="['period-btn', { active: analyticsPeriod === 'maximum' }]"
                 @click="changePeriod('maximum')"
               >
-                Trọn đời
+                🌐 Trọn đời
               </button>
             </div>
-            <button type="button" class="adm-btn adm-btn-sm auto-match-btn" :disabled="autoMatchingBusy || resetMatchingBusy" @click="autoMatchAds">
-              {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC chuẩn ngày' }}
-            </button>
-            <button type="button" class="adm-btn adm-btn-sm adm-btn-outline" :disabled="autoMatchingBusy || resetMatchingBusy" @click="resetMatchedAds">
-              {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp / Xóa gán ảo' }}
-            </button>
             <button type="button" class="adm-btn adm-btn-sm" @click="loadAnalytics()" :disabled="analyticsBusy">
               {{ analyticsBusy ? 'Đang tải...' : '↻ Làm Mới' }}
             </button>
@@ -202,82 +238,110 @@
         </div>
 
         <div class="analytics-table-wrap">
-          <table class="analytics-table">
+          <table class="analytics-table futuristic-table">
             <thead>
               <tr>
-                <th>Chiến Dịch & Tên Quảng Cáo</th>
-                <th>Trạng Thái Meta</th>
-                <th>Chi Phí ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</th>
-                <th>Chỉ Số Đo (CTR / CPM / Freq)</th>
-                <th>Tin Nhắn (Meta)</th>
-                <th>Khách CRM</th>
-                <th>Giá / Tin (CPL)</th>
-                <th>Đơn Chốt</th>
-                <th>Tỷ Lệ Chốt</th>
-                <th>Doanh Thu Ước Tính</th>
-                <th>ROAS</th>
-                <th>Bắt Bệnh & Ra Quyết Định (Chu Minh Hạnh)</th>
-                <th>Thao Tác</th>
+                <th>Chiến Dịch & Trạng Thái</th>
+                <th>Chi Phí & Giá / Tin</th>
+                <th>Chỉ Số Content (CTR · CPM)</th>
+                <th>Tin Nhắn & Khách CRM</th>
+                <th>Đơn Chốt & Doanh Thu</th>
+                <th>Bắt Bệnh & Quyết Định (Chu Minh Hạnh)</th>
+                <th class="text-right">Thao Tác</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in analyticsData" :key="item.id" :class="`row-grade-${item.grade.toLowerCase()}`">
-                <td>
-                  <strong>{{ item.name }}</strong>
-                  <small>{{ item.campaignName || item.id }}</small>
-                </td>
-                <td>
-                  <span :class="['meta-status-pill', item.isMetaActive ? 'pill-active' : 'pill-paused']">
-                    {{ item.statusLabel }}
-                  </span>
-                </td>
-                <td class="font-bold text-red">{{ formatMoney(item.spend) }}</td>
-                <td>
-                  <div class="tech-metrics">
-                    <span :class="['metric-pill', (item.ctr || 0) >= 2 ? 'metric-good' : ((item.ctr || 0) < 1.2 && item.spend > 100000 ? 'metric-bad' : 'metric-neutral')]">
-                      CTR: <b>{{ item.ctr || 0 }}%</b>
-                    </span>
-                    <span class="metric-sub">CPM: {{ formatMoney(item.cpm || 0) }}</span>
-                    <span class="metric-sub">Tần suất: {{ item.frequency || 1 }}x</span>
+              <tr v-for="item in analyticsData" :key="item.id" :class="`row-status-${item.isMetaActive ? 'active' : 'paused'}`">
+                <!-- Cột 1: Chiến Dịch & Trạng Thái -->
+                <td class="col-campaign">
+                  <div class="campaign-cell">
+                    <div class="campaign-status-row">
+                      <span :class="['cyber-dot', item.isMetaActive ? 'dot-active' : 'dot-paused']"></span>
+                      <span :class="['meta-status-text', item.isMetaActive ? 'text-active' : 'text-paused']">
+                        {{ item.isMetaActive ? 'ĐANG CHẠY TRÊN META' : 'ĐÃ TẠM DỪNG' }}
+                      </span>
+                    </div>
+                    <strong class="campaign-title">{{ item.name }}</strong>
+                    <span class="campaign-sub">{{ item.campaignName || ('ID: ' + item.id) }}</span>
                   </div>
                 </td>
-                <td>
-                  <span class="badge-meta-msg">{{ item.metaMessages || 0 }} tin</span>
-                </td>
-                <td>
-                  <span class="badge-leads">{{ item.totalCustomers }} khách</span>
-                </td>
-                <td class="text-amber font-semibold">{{ item.cpl > 0 ? formatMoney(item.cpl) : '—' }}</td>
-                <td class="font-bold text-green">{{ item.closedCustomers }} đơn</td>
-                <td>
-                  <div class="cr-wrap">
-                    <span>{{ item.conversionRate }}%</span>
-                    <div class="cr-bar"><div class="cr-fill" :style="{ width: `${Math.min(item.conversionRate * 5, 100)}%` }"></div></div>
+
+                <!-- Cột 2: Chi Phí & Giá / Tin (CPL) -->
+                <td class="col-spend">
+                  <div class="spend-cell">
+                    <div class="spend-val font-bold text-red">{{ formatMoney(item.spend) }}</div>
+                    <div class="cpl-sub">
+                      Giá/tin: <strong class="text-amber">{{ item.cpl > 0 ? formatMoney(item.cpl) : '—' }}</strong>
+                    </div>
                   </div>
                 </td>
-                <td class="font-bold text-gold">{{ formatMoney(item.effectiveRevenue) }}</td>
-                <td>
-                  <span :class="['roas-pill', item.roas >= 3 ? 'roas-high' : item.roas > 0 ? 'roas-mid' : 'roas-zero']">
-                    {{ item.roas }}x
-                  </span>
+
+                <!-- Cột 3: Chỉ Số Content (CTR, CPM, Tần suất) -->
+                <td class="col-metrics">
+                  <div class="metrics-cell">
+                    <div class="ctr-badge-row">
+                      <span :class="['metric-pill', (item.ctr || 0) >= 2 ? 'metric-good' : ((item.ctr || 0) < 1.2 && item.spend > 100000 ? 'metric-bad' : 'metric-neutral')]">
+                        CTR: <b>{{ item.ctr || 0 }}%</b>
+                      </span>
+                      <span v-if="(item.ctr || 0) >= 2" class="tag-hot">HÚT</span>
+                    </div>
+                    <div class="meta-sub-metrics">
+                      <span>CPM: {{ formatMoney(item.cpm || 0) }}</span>
+                      <span>·</span>
+                      <span>Freq: {{ item.frequency || 1 }}x</span>
+                    </div>
+                  </div>
                 </td>
-                <td>
+
+                <!-- Cột 4: Tin Nhắn & Khách CRM -->
+                <td class="col-leads">
+                  <div class="leads-cell">
+                    <div class="leads-badge-row">
+                      <span class="badge-meta-msg">⚡ {{ item.metaMessages || 0 }} tin Meta</span>
+                    </div>
+                    <div class="crm-lead-sub">
+                      👥 {{ item.totalCustomers || 0 }} khách trong CRM
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Cột 5: Đơn Chốt & Doanh Thu -->
+                <td class="col-revenue">
+                  <div class="rev-cell">
+                    <div class="orders-row">
+                      <span class="font-bold text-green">{{ item.closedCustomers }} đơn</span>
+                      <span class="text-gold font-bold">({{ formatMoney(item.effectiveRevenue) }})</span>
+                    </div>
+                    <div class="roas-row">
+                      <span :class="['roas-pill', item.roas >= 3 ? 'roas-high' : item.roas > 0 ? 'roas-mid' : 'roas-zero']">
+                        ROAS: {{ item.roas }}x
+                      </span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Cột 6: Bắt Bệnh & Ra Quyết Định (Chu Minh Hạnh) -->
+                <td class="col-diagnosis">
                   <div class="diagnosis-box">
-                    <span :class="['action-badge', `action-${(item.diagnosis?.action || 'HOLD').toLowerCase()}`]">
-                      {{ item.diagnosis?.actionLabel || item.gradeLabel }}
-                    </span>
+                    <div class="action-badge-row">
+                      <span :class="['action-badge', `action-${(item.diagnosis?.action || 'HOLD').toLowerCase()}`]">
+                        {{ item.diagnosis?.actionLabel || item.gradeLabel }}
+                      </span>
+                    </div>
                     <strong class="disease-title">{{ item.diagnosis?.disease || item.gradeLabel }}</strong>
                     <p class="rec-text">{{ item.diagnosis?.advice || item.recommendation }}</p>
                   </div>
                 </td>
-                <td>
-                  <button type="button" class="adm-btn adm-btn-sm adm-btn-outline" @click="filterByCampaign(item.id)">
+
+                <!-- Cột 7: Thao Tác -->
+                <td class="col-action text-right">
+                  <button type="button" class="adm-btn adm-btn-sm cyber-btn-outline" @click="filterByCampaign(item.id)">
                     Xem khách
                   </button>
                 </td>
               </tr>
               <tr v-if="!analyticsData.length">
-                <td colspan="13" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
+                <td colspan="7" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
               </tr>
             </tbody>
           </table>
@@ -484,77 +548,136 @@ onBeforeUnmount(() => {
 .tab-badge-hot{font-size:.64rem;background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:999px;font-weight:800}
 
 /* KPI GRID PHÂN TÍCH HIỆU QUẢ QUẢNG CÁO */
-.analytics-tab-content{display:flex;flex-direction:column;gap:16px}
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-.kpi-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:4px}
-.kpi-card.highlight-kpi{background:#faf5ff;border-color:#e9d5ff}
-.kpi-header{display:flex;align-items:center;gap:6px}
-.kpi-icon{font-size:1.1rem}
-.kpi-label{font-size:.73rem;font-weight:700;color:#64748b}
-.kpi-val{font-size:1.35rem;font-weight:900;line-height:1.2;margin:4px 0}
-.kpi-sub{font-size:.68rem;color:#94a3b8}
+.analytics-tab-content{display:flex;flex-direction:column;gap:18px}
 
-/* KHUYẾN NGHỊ THÔNG MINH AI */
-.ai-insight-box{display:flex;align-items:center;gap:14px;padding:14px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;color:#92400e}
-.insight-icon{font-size:1.8rem;flex:none}
-.insight-content{flex:1;min-width:0}
-.insight-content h4{font-size:.88rem;margin:0 0 3px;color:#78350f;font-weight:800}
-.insight-content p{font-size:.78rem;margin:0;line-height:1.45;color:#92400e}
+/* FUTURISTIC COCKPIT HERO GRID */
+.cockpit-hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.cockpit-card{position:relative;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;padding:20px;overflow:hidden;box-shadow:0 4px 20px -2px rgba(0,0,0,0.05);transition:all .3s ease;display:flex;flex-direction:column;justify-content:space-between;min-height:148px}
+.cockpit-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px -4px rgba(0,0,0,0.08);border-color:#cbd5e1}
+.card-glow{position:absolute;top:-40px;right:-40px;width:110px;height:110px;border-radius:50%;filter:blur(36px);opacity:.2;pointer-events:none}
+.glow-red{background:#ef4444}
+.glow-blue{background:#3b82f6}
+.glow-green{background:#10b981}
+.glow-purple{background:#8b5cf6}
+
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.card-title-wrap{display:flex;align-items:center;gap:8px}
+.card-icon{font-size:1.1rem}
+.card-title{font-size:.73rem;font-weight:800;letter-spacing:.5px;color:#64748b}
+.period-badge{font-size:.65rem;background:#f1f5f9;color:#475569;padding:3px 8px;border-radius:999px;font-weight:700}
+.rate-badge{font-size:.65rem;background:#eff6ff;color:#2563eb;padding:3px 8px;border-radius:999px;font-weight:700}
+.ctr-badge{font-size:.65rem;padding:3px 8px;border-radius:999px;font-weight:800}
+.badge-super{background:#dcfce7;color:#15803d}
+.badge-normal{background:#fef3c7;color:#b45309}
+.roas-top-badge{font-size:.65rem;background:#faf5ff;color:#7e22ce;border:1px solid #e9d5ff;padding:3px 8px;border-radius:999px;font-weight:800}
+
+.card-main-val{font-size:1.75rem;font-weight:900;letter-spacing:-.5px;margin:8px 0 6px;line-height:1.15}
+.val-sub{font-size:.85rem;font-weight:600;color:#94a3b8}
+.text-neon-red{color:#dc2626}
+.text-neon-blue{color:#2563eb}
+.text-neon-green{color:#059669}
+.text-neon-gold{color:#d97706}
+
+.card-foot{display:flex;align-items:center;gap:6px;font-size:.72rem;color:#64748b}
+.live-dot-pulse{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;flex-shrink:0;animation:pulseLive 2s infinite}
+@keyframes pulseLive{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+
+/* CYBER RADAR HUD BANNER */
+.cyber-radar-hud{position:relative;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);border-radius:18px;padding:22px 26px;color:#f8fafc;display:flex;justify-content:space-between;align-items:center;gap:24px;overflow:hidden;box-shadow:0 10px 30px -5px rgba(15,23,42,0.3);flex-wrap:wrap}
+.radar-scan-effect{position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 15% 50%,rgba(99,102,241,0.15) 0%,transparent 60%);pointer-events:none}
+.hud-left{display:flex;align-items:flex-start;gap:18px;max-width:680px;position:relative;z-index:2}
+.hud-radar-icon{position:relative;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:grid;place-items:center;flex-shrink:0}
+.radar-core{width:10px;height:10px;border-radius:50%;background:#38bdf8;box-shadow:0 0 12px #38bdf8}
+.radar-ring{position:absolute;inset:6px;border:1px dashed rgba(56,189,248,0.5);border-radius:50%;animation:spinRadar 12s linear infinite}
+@keyframes spinRadar{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.hud-info{display:flex;flex-direction:column;gap:5px}
+.hud-tag{font-size:.65rem;font-weight:800;letter-spacing:1px;color:#38bdf8;text-transform:uppercase}
+.hud-title{font-size:1.05rem;font-weight:800;margin:0;color:#fff}
+.hud-desc{font-size:.78rem;color:#cbd5e1;margin:0;line-height:1.5}
+.hud-desc strong{color:#f8fafc}
+
+.hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;position:relative;z-index:2}
+.quick-status-pills{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.status-pill{font-size:.72rem;padding:4px 10px;border-radius:999px;font-weight:700}
+.pill-success{background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3)}
+.pill-warning{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3)}
+.hud-actions-row{display:flex;gap:8px}
+.cyber-btn-gold{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border:none;font-weight:800;border-radius:8px;padding:7px 14px;box-shadow:0 4px 12px rgba(245,158,11,0.3);cursor:pointer}
+.cyber-btn-gold:hover{background:linear-gradient(135deg,#fbbf24 0%,#b45309 100%)}
+.cyber-btn-outline{background:rgba(255,255,255,0.08);color:#e2e8f0;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer}
+.cyber-btn-outline:hover{background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.4)}
 
 /* BẢNG XẾP HẠNG QUẢNG CÁO */
-.analytics-table-card{padding:18px 20px}
-.table-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.table-card-head h3{font-size:.95rem;margin:0;color:#0f172a;font-weight:800}
-.table-card-head p{font-size:.74rem;color:#64748b;margin:3px 0 0}
-.head-actions{display:flex;gap:8px}
+.analytics-table-card{padding:22px;border-radius:18px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 4px 20px -2px rgba(0,0,0,0.05)}
+.table-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.table-card-head h3{font-size:1rem;margin:0;color:#0f172a;font-weight:800}
+.table-card-head p{font-size:.76rem;color:#64748b;margin:3px 0 0}
+.head-actions{display:flex;gap:8px;align-items:center}
 .analytics-table-wrap{overflow-x:auto}
-.meta-status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700;white-space:nowrap}
-.pill-active{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
-.pill-paused{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
-.period-btn-group{display:inline-flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
-.period-btn{padding:5px 10px;font-size:.73rem;font-weight:700;border:none;background:#f8fafc;color:#475569;cursor:pointer;transition:all .15s}
+.period-btn-group{display:inline-flex;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;background:#f8fafc}
+.period-btn{padding:6px 12px;font-size:.74rem;font-weight:700;border:none;background:transparent;color:#475569;cursor:pointer;transition:all .15s}
 .period-btn:hover{background:#e2e8f0}
 .period-btn.active{background:#2563eb;color:#fff}
 
-.tech-metrics{display:flex;flex-direction:column;gap:3px;font-size:.72rem}
-.metric-pill{display:inline-block;padding:2px 6px;border-radius:4px;font-weight:600;width:fit-content}
+/* FUTURISTIC SMART TABLE */
+.futuristic-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.8rem}
+.futuristic-table th{background:#f8fafc;color:#475569;font-weight:800;font-size:.73rem;letter-spacing:.3px;padding:12px 14px;border-bottom:2px solid #e2e8f0;text-align:left;white-space:nowrap}
+.futuristic-table th:first-child{border-top-left-radius:10px}
+.futuristic-table th:last-child{border-top-right-radius:10px}
+.futuristic-table td{padding:14px;border-bottom:1px solid #edf2f7;vertical-align:middle}
+.futuristic-table tr:hover td{background:#f8fafc}
+
+/* Table Cells */
+.campaign-cell{display:flex;flex-direction:column;gap:3px;max-width:280px}
+.campaign-status-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.cyber-dot{width:7px;height:7px;border-radius:50%}
+.dot-active{background:#22c55e;box-shadow:0 0 8px #22c55e}
+.dot-paused{background:#94a3b8}
+.meta-status-text{font-size:.65rem;font-weight:800;letter-spacing:.5px}
+.text-active{color:#15803d}
+.text-paused{color:#64748b}
+.campaign-title{font-size:.86rem;color:#0f172a;line-height:1.35;font-weight:800}
+.campaign-sub{font-size:.7rem;color:#94a3b8}
+
+.spend-cell{display:flex;flex-direction:column;gap:3px}
+.spend-val{font-size:.95rem;color:#dc2626;font-weight:900}
+.cpl-sub{font-size:.72rem;color:#64748b}
+
+.metrics-cell{display:flex;flex-direction:column;gap:4px}
+.ctr-badge-row{display:flex;align-items:center;gap:5px}
+.metric-pill{display:inline-block;padding:2px 7px;border-radius:4px;font-weight:700;width:fit-content;font-size:.72rem}
 .metric-good{background:#dcfce7;color:#15803d}
 .metric-bad{background:#fee2e2;color:#b91c1c}
 .metric-neutral{background:#f1f5f9;color:#475569}
-.metric-sub{color:#64748b;font-size:.68rem}
+.tag-hot{font-size:.6rem;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:4px;font-weight:900}
+.meta-sub-metrics{font-size:.69rem;color:#64748b;display:flex;gap:5px}
 
-.diagnosis-box{display:flex;flex-direction:column;gap:4px;max-width:280px}
-.action-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:.72rem;letter-spacing:.3px;width:fit-content}
-.action-scale{background:#7c3aed;color:#fff}
-.action-kill{background:#dc2626;color:#fff}
-.action-optimize_sale{background:#f59e0b;color:#fff}
-.action-change_content{background:#f97316;color:#fff}
-.action-change_target{background:#2563eb;color:#fff}
-.action-hold{background:#16a34a;color:#fff}
-.action-paused{background:#94a3b8;color:#fff}
-.disease-title{font-size:.76rem;color:#0f172a;line-height:1.3;font-weight:800}
+.leads-cell{display:flex;flex-direction:column;gap:3px}
+.badge-meta-msg{display:inline-block;padding:3px 9px;background:#f3e8ff;color:#7e22ce;border-radius:999px;font-weight:800;font-size:.75rem;width:fit-content}
+.crm-lead-sub{font-size:.72rem;color:#0369a1;font-weight:600}
 
-.analytics-table{width:100%;border-collapse:collapse;font-size:.78rem}
-.analytics-table th{background:#f8fafc;padding:10px 11px;text-align:left;color:#475569;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap}
-.analytics-table td{padding:12px 11px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
-.analytics-table tr:hover td{background:#f8fafc}
-.badge-leads{display:inline-block;padding:3px 8px;background:#e0f2fe;color:#0369a1;border-radius:999px;font-weight:700;font-size:.74rem}
-.badge-meta-msg{display:inline-block;padding:3px 8px;background:#ede9fe;color:#6d28d9;border-radius:999px;font-weight:700;font-size:.74rem}
-.cr-wrap{display:flex;flex-direction:column;gap:3px}
-.cr-bar{width:56px;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden}
-.cr-fill{height:100%;background:#16a34a;border-radius:3px}
-.roas-pill{display:inline-block;padding:3px 9px;border-radius:999px;font-weight:800;font-size:.76rem}
+.rev-cell{display:flex;flex-direction:column;gap:3px}
+.orders-row{display:flex;gap:6px;align-items:baseline}
+.roas-row{margin-top:2px}
+.roas-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:800;font-size:.72rem}
 .roas-high{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
 .roas-mid{background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe}
 .roas-zero{background:#f1f5f9;color:#64748b}
-.rec-wrap{display:flex;flex-direction:column;gap:3px;max-width:260px}
-.grade-tag{display:inline-block;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:4px;width:fit-content}
-.grade-star{background:#dcfce7;color:#15803d}
-.grade-good{background:#dbeafe;color:#1d4ed8}
-.grade-warning{background:#fef3c7;color:#b45309}
-.grade-bad{background:#fee2e2;color:#b91c1c}
-.grade-neutral{background:#f1f5f9;color:#475569}
-.rec-text{font-size:.7rem;color:#475569;margin:0;line-height:1.35}
+
+.diagnosis-box{display:flex;flex-direction:column;gap:4px;max-width:320px}
+.action-badge-row{margin-bottom:2px}
+.action-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-weight:900;font-size:.7rem;letter-spacing:.4px;text-transform:uppercase}
+.action-scale{background:#7c3aed;color:#fff;box-shadow:0 2px 8px rgba(124,58,237,0.3)}
+.action-kill{background:#dc2626;color:#fff;box-shadow:0 2px 8px rgba(220,38,38,0.3)}
+.action-optimize_sale{background:#d97706;color:#fff;box-shadow:0 2px 8px rgba(217,119,6,0.3)}
+.action-change_content{background:#ea580c;color:#fff}
+.action-change_target{background:#2563eb;color:#fff}
+.action-hold{background:#16a34a;color:#fff}
+.action-paused{background:#64748b;color:#fff}
+.disease-title{font-size:.78rem;color:#0f172a;font-weight:800}
+.rec-text{font-size:.71rem;color:#475569;margin:0;line-height:1.4}
+
 .font-bold{font-weight:700}
 .text-red{color:#dc2626}
 .text-blue{color:#2563eb}
@@ -562,12 +685,15 @@ onBeforeUnmount(() => {
 .text-green{color:#16a34a}
 .text-gold{color:#b45309}
 .text-purple{color:#7e22ce}
-.adm-btn-outline{background:#fff;border:1px solid #cbd5e1;color:#334155}
-.adm-btn-outline:hover{background:#f1f5f9;border-color:#94a3b8}
+.text-right{text-align:right}
 
-@media(max-width:768px){
-  .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  .view-tabs{overflow-x:auto}
-  .ai-insight-box{flex-direction:column;align-items:flex-start}
+@media(max-width:1100px){
+  .cockpit-hero-grid{grid-template-columns:repeat(2,1fr)}
+  .cyber-radar-hud{flex-direction:column;align-items:flex-start}
+  .hud-right{align-items:flex-start}
+  .quick-status-pills{align-items:flex-start}
+}
+@media(max-width:600px){
+  .cockpit-hero-grid{grid-template-columns:1fr}
 }
 </style>

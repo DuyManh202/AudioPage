@@ -2717,7 +2717,6 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
             const statusLabel = isMetaActive ? '🟢 Đang chạy trên Meta' : (isMetaPaused ? '⏸️ Đã tạm dừng trên Meta' : '📦 Đã tắt / Lưu trữ')
 
             let metaMessages = 0
-            let metaCpl = 0
             if (Array.isArray(insight.actions)) {
               const msgAction = insight.actions.find(a =>
                 a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
@@ -2728,19 +2727,17 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
               )
               if (msgAction) metaMessages = Number(msgAction.value || 0)
             }
-            if (Array.isArray(insight.cost_per_action_type)) {
+
+            const spend = Number(insight.spend || 0)
+            let metaCpl = (spend > 0 && metaMessages > 0) ? Math.round(spend / metaMessages) : 0
+            if (metaCpl === 0 && Array.isArray(insight.cost_per_action_type)) {
               const cplAction = insight.cost_per_action_type.find(a =>
                 a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
-                a.action_type === 'onsite_conversion.total_messaging_connection' ||
-                a.action_type === 'messaging_conversation_started_7d' ||
-                a.action_type?.includes('messaging') ||
-                a.action_type === 'lead'
+                a.action_type === 'messaging_conversation_started_7d'
               )
-              if (cplAction) metaCpl = Number(cplAction.value || 0)
-            }
-            const spend = Number(insight.spend || 0)
-            if (metaCpl === 0 && spend > 0 && metaMessages > 0) {
-              metaCpl = Math.round(spend / metaMessages)
+              if (cplAction && Number(cplAction.value) > 0 && Number(cplAction.value) <= spend) {
+                metaCpl = Math.round(Number(cplAction.value))
+              }
             }
 
             return {
