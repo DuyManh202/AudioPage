@@ -3117,7 +3117,42 @@ app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
-// Tự động phân tích hội thoại và khớp nguồn chiến dịch quảng cáo
+// Trợ giúp trích xuất ngày bắt đầu chiến dịch từ tên chiến dịch (vd: 19/11/2026 -> 2026-11-19)
+const parseCampaignStartDate = (name = '') => {
+  const match = name.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (match) {
+    const day = match[1].padStart(2, '0')
+    const month = match[2].padStart(2, '0')
+    const year = match[3]
+    return new Date(`${year}-${month}-${day}T00:00:00+07:00`)
+  }
+  return null
+}
+
+// Khôi phục toàn bộ nguồn quảng cáo về trạng thái chưa gán
+app.post('/api/v1/admin/facebook-care/reset-attribute', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const result = await query(`
+      UPDATE facebook_care_customers
+      SET source_ad_id = NULL,
+          source_ad_name = NULL,
+          source_campaign_id = NULL,
+          source_campaign_name = NULL,
+          source_type = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE source_ad_id IS NOT NULL OR source_ad_name IS NOT NULL
+    `)
+    res.json({
+      success: true,
+      resetCount: result.rowCount,
+      message: `Đã khôi phục ${result.rowCount} khách hàng về trạng thái Chưa xác định quảng cáo.`
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Tự động phân tích hội thoại và khớp nguồn chiến dịch quảng cáo chuẩn xác theo ngày & nội dung
 app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const { ads } = req.body || {}
@@ -3136,20 +3171,42 @@ app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, author
 
     let matchedCount = 0
 
-    const postAd = ads.find(a => (a.name || '').includes('Vang Số') || (a.name || '').includes('Thu Cũ') || (a.name || '').includes('Bài viết'))
-    const micMusicAd = ads.find(a => (a.name || '').includes('tiếng mic') || (a.name || '').includes('tiếng nhạc') || (a.name || '').includes('Chỉnh'))
-    const leadAd = ads.find(a => (a.name || '').includes('Thu Hút') || (a.name || '').includes('Khách Hàng')) || ads[0]
+    // Chuẩn bị danh sách quảng cáo kèm ngày bắt đầu và từ khóa đặc trưng
+    const preparedAds = ads.map(a => {
+      const name = a.name || ''
+      const startDate = parseCampaignStartDate(name) || parseCampaignStartDate(a.campaignName || '')
+      return {
+        ...a,
+        startDate
+      }
+    })
+
+    const micMusicAd = preparedAds.find(a => (a.name || '').includes('tiếng mic') || (a.name || '').includes('tiếng nhạc'))
+    const tradeInAd = preparedAds.find(a => (a.name || '').includes('Thu Cũ') || (a.name || '').includes('Vang Số'))
+    const rentalAd = preparedAds.find(a => (a.name || '').includes('Cho Thuê') || (a.name || '').includes('500K'))
 
     for (const c of unassigned.rows) {
+      const customerTime = c.created_at ? new Date(c.created_at).getTime() : 0
       const fullText = `${c.customer_name || ''} ${c.interest || ''} ${c.last_message || ''} ${c.all_messages || ''}`.toLowerCase()
       let matchedAd = null
 
-      if (postAd && (fullText.includes('thu cũ') || fullText.includes('đổi mới') || fullText.includes('bài viết') || fullText.includes('miễn phí'))) {
-        matchedAd = postAd
-      } else if (micMusicAd && (fullText.includes('chỉnh') || fullText.includes('mic') || fullText.includes('tiếng') || fullText.includes('nhạc') || fullText.includes('vang') || fullText.includes('karaoke') || fullText.includes('ka ra oke') || fullText.includes('hát') || fullText.includes('không được hay') || fullText.includes('hú') || fullText.includes('rít'))) {
-        matchedAd = micMusicAd
-      } else if (leadAd) {
-        matchedAd = leadAd
+      // Chiến dịch thuê âm thanh: bắt buộc có từ khóa thuê âm thanh
+      if (rentalAd && (fullText.includes('thuê âm thanh') || fullText.includes('cho thuê loa') || fullText.includes('thuê dàn') || fullText.includes('500k'))) {
+        if (!rentalAd.startDate || customerTime >= rentalAd.startDate.getTime()) {
+          matchedAd = rentalAd
+        }
+      }
+      // Chiến dịch thu cũ đổi mới: bắt buộc có cụm từ thu cũ đổi mới hoặc căn chỉnh miễn phí
+      else if (tradeInAd && (fullText.includes('thu cũ') || fullText.includes('đổi mới') || fullText.includes('căn chỉnh miễn phí'))) {
+        if (!tradeInAd.startDate || customerTime >= tradeInAd.startDate.getTime()) {
+          matchedAd = tradeInAd
+        }
+      }
+      // Chiến dịch chỉnh tiếng mic tiếng nhạc (camp 19/11): BẮT BUỘC khách phải nhắn TỪ ngày bắt đầu chiến dịch (19/11)
+      else if (micMusicAd && (fullText.includes('chỉnh tiếng mic') || fullText.includes('chỉnh tiếng nhạc') || fullText.includes('tiếng mic') || fullText.includes('chỉnh mic'))) {
+        if (!micMusicAd.startDate || customerTime >= micMusicAd.startDate.getTime()) {
+          matchedAd = micMusicAd
+        }
       }
 
       if (matchedAd) {
@@ -3159,7 +3216,7 @@ app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, author
               source_ad_name = $2,
               source_campaign_id = $3,
               source_campaign_name = $4,
-              source_type = 'AD',
+              source_type = 'AUTO_MATCHED',
               updated_at = CURRENT_TIMESTAMP
           WHERE id = $5
         `, [matchedAd.id, matchedAd.name, matchedAd.campaignId || null, matchedAd.campaignName || null, c.id])
@@ -3171,7 +3228,7 @@ app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, author
       success: true,
       matchedCount,
       totalUnassigned: unassigned.rows.length,
-      message: `Đã tự động phân tích và gắn nguồn quảng cáo thành công cho ${matchedCount} khách hàng!`
+      message: `Đã phân loại chuẩn xác theo ngày & nội dung cho ${matchedCount} khách hàng (khách cũ trước ngày chạy quảng cáo được giữ nguyên nguồn tự nhiên)!`
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

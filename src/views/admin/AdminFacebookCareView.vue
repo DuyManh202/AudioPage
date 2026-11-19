@@ -57,7 +57,7 @@
       </form>
       <datalist id="fb-province-options"><option v-for="p in VIETNAM_PROVINCES" :key="p.name" :value="p.displayName" /></datalist>
 
-      <div class="stats"><button v-for="item in statusOptions" :key="item.key" :class="['stat', { selected: filter === item.key }]" @click="filter = item.key"><span>{{ item.label }}</span><b>{{ item.key === 'ALL' ? customers.length : customers.filter(c => c.status === item.key).length }}</b></button><label class="ad-filter">Nguồn quảng cáo<select v-model="adFilter"><option value="ALL">Tất cả nguồn</option><option value="NONE">Chưa xác định quảng cáo</option><option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} · {{ ad.count }}</option></select></label><button type="button" class="adm-btn adm-btn-sm adm-btn-gold auto-match-btn" :disabled="autoMatchingBusy" @click="autoMatchAds" title="Tự động phân tích hội thoại và gắn nguồn quảng cáo theo chiến dịch Meta">{{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC tự động' }}</button><div class="search"><input v-model="keyword" placeholder="Tìm tên, số điện thoại, nhu cầu…"></div></div>
+      <div class="stats"><button v-for="item in statusOptions" :key="item.key" :class="['stat', { selected: filter === item.key }]" @click="filter = item.key"><span>{{ item.label }}</span><b>{{ item.key === 'ALL' ? customers.length : customers.filter(c => c.status === item.key).length }}</b></button><label class="ad-filter">Nguồn quảng cáo<select v-model="adFilter"><option value="ALL">Tất cả nguồn</option><option value="NONE">Chưa xác định quảng cáo</option><option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} · {{ ad.count }}</option></select></label><button type="button" class="adm-btn adm-btn-sm adm-btn-gold auto-match-btn" :disabled="autoMatchingBusy || resetMatchingBusy" @click="autoMatchAds" title="Tự động phân tích hội thoại theo ngày và nội dung cụ thể để gắn nguồn quảng cáo">{{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC' }}</button><button type="button" class="adm-btn adm-btn-sm adm-btn-outline" :disabled="autoMatchingBusy || resetMatchingBusy" @click="resetMatchedAds" title="Khôi phục toàn bộ khách hàng về trạng thái Chưa xác định nguồn quảng cáo">{{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp nguồn' }}</button><div class="search"><input v-model="keyword" placeholder="Tìm tên, số điện thoại, nhu cầu…"></div></div>
 
       <div class="workspace adm-card">
         <div class="customer-list"><div class="list-title">Danh sách khách <span>{{ visibleCustomers.length }}</span></div><button v-for="c in visibleCustomers" :key="c.id" :class="['customer-row', { active: selected?.id === c.id }]" @click="select(c)"><strong>{{ c.customerName }}</strong><small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small><small>{{ c.phone || c.facebookId || c.id }}</small><small v-if="c.sourceAdName || c.sourceAdId" class="source-small">Nguồn quảng cáo: {{ c.sourceAdName || c.sourceAdId }}</small><small v-else-if="c.sourceType">Nguồn: {{ c.sourceType }}</small><span :class="['status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span><em v-if="c.followUpAt">Nhắc: {{ displayDate(c.followUpAt) }}</em></button><p v-if="!visibleCustomers.length" class="empty">Chưa có khách. Hệ thống tự động đồng bộ tin nhắn từ Fanpage.</p></div>
@@ -160,8 +160,11 @@
                 30 ngày gần nhất
               </button>
             </div>
-            <button type="button" class="adm-btn adm-btn-sm auto-match-btn" :disabled="autoMatchingBusy" @click="autoMatchAds">
-              {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC tự động' }}
+            <button type="button" class="adm-btn adm-btn-sm auto-match-btn" :disabled="autoMatchingBusy || resetMatchingBusy" @click="autoMatchAds">
+              {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC chuẩn ngày' }}
+            </button>
+            <button type="button" class="adm-btn adm-btn-sm adm-btn-outline" :disabled="autoMatchingBusy || resetMatchingBusy" @click="resetMatchedAds">
+              {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp / Xóa gán ảo' }}
             </button>
             <button type="button" class="adm-btn adm-btn-sm" @click="loadAnalytics()" :disabled="analyticsBusy">
               {{ analyticsBusy ? 'Đang tải...' : '↻ Làm Mới' }}
@@ -243,7 +246,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiRequest } from '../../utils/api'
 import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
-const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref('')
+const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
 const currentTab = ref('CARE')
 const analyticsData = ref([])
 const analyticsPeriod = ref('maximum')
@@ -316,6 +319,24 @@ async function loadAds() { adsBusy.value = true; adsError.value = ''; try { cons
 function select(c) { selected.value = c; if (c) Object.assign(edit, { status: c.status, interest: c.interest, phone: c.phone, address: c.address || '', province: c.province || '', notes: c.notes, followUpAt: c.followUpAt, assignedTo: c.assignedTo, sourceAdId: c.sourceAdId || '' }) }
 function onSourceAdChange() { const chosen = ads.value.find(a => a.id === edit.sourceAdId); if (chosen) { Object.assign(edit, { sourceAdName: chosen.name, sourceCampaignId: chosen.campaignId || '', sourceCampaignName: chosen.campaignName || '', sourceType: 'AD' }) } else { Object.assign(edit, { sourceAdName: '', sourceCampaignId: '', sourceCampaignName: '', sourceType: '' }) }; save() }
 async function autoMatchAds() { if (!ads.value.length) await loadAds(); if (!ads.value.length) { error.value = 'Chưa tải được danh sách chiến dịch quảng cáo từ Meta.'; return } autoMatchingBusy.value = true; autoMatchNotice.value = ''; try { const r = await apiRequest('/admin/facebook-care/auto-attribute', { method: 'POST', body: JSON.stringify({ ads: ads.value }) }); if (r.success) { autoMatchNotice.value = r.message; await load({ force: true }); if (currentTab.value === 'ANALYTICS') await loadAnalytics() } } catch (e) { error.value = e.message } finally { autoMatchingBusy.value = false } }
+async function resetMatchedAds() {
+  if (!confirm('Bạn có muốn xóa gán ảo và đưa toàn bộ khách hàng về trạng thái Chưa xác định nguồn quảng cáo không?')) return
+  resetMatchingBusy.value = true
+  error.value = ''
+  autoMatchNotice.value = ''
+  try {
+    const r = await apiRequest('/admin/facebook-care/reset-attribute', { method: 'POST' })
+    if (r.success) {
+      autoMatchNotice.value = r.message
+      await load({ force: true })
+      if (currentTab.value === 'ANALYTICS') await loadAnalytics()
+    }
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    resetMatchingBusy.value = false
+  }
+}
 async function loadAnalytics(period) {
   if (period) analyticsPeriod.value = period
   analyticsBusy.value = true
