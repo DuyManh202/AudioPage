@@ -9,6 +9,10 @@
         </p>
       </div>
       <div class="adm-head-actions">
+        <button type="button" class="adm-btn adm-btn-ghost btn-monitor" @click="showOnlineMonitorModal = true">
+          <span class="live-pulse-dot"></span>
+          <span>Giám Sát Vị Trí ({{ onlineCount }} Online)</span>
+        </button>
         <button type="button" class="adm-btn adm-btn-ghost" :disabled="busy" @click="loadUsers">
           <AdminIcon name="sync" :size="15" />
           <span>Tải Lại Danh Sách</span>
@@ -20,8 +24,22 @@
       </div>
     </div>
 
-    <!-- 4 Thẻ Phân Loại Trạng Thái Nhân Sự -->
-    <div class="adm-kpi-grid">
+    <!-- 5 Thẻ Phân Loại Trạng Thái Nhân Sự & Trực Tuyến -->
+    <div class="adm-kpi-grid kpi-grid-5">
+      <div class="adm-kpi-card card-online-kpi" @click="showOnlineMonitorModal = true" style="cursor: pointer;" title="Bấm để xem chi tiết vị trí và trang các tài khoản đang truy cập">
+        <div class="adm-kpi-info">
+          <span class="adm-kpi-label">Đang Trực Tuyến</span>
+          <span class="adm-kpi-value text-green">
+            <span class="live-pulse-dot"></span>
+            {{ onlineCount }} tài khoản
+          </span>
+          <span class="adm-kpi-meta">{{ onlineCount > 0 ? 'Có người đang thao tác hệ thống' : 'Chưa có phiên hoạt động' }}</span>
+        </div>
+        <div class="adm-kpi-icon tone-green">
+          <AdminIcon name="map" :size="20" />
+        </div>
+      </div>
+
       <div class="adm-kpi-card">
         <div class="adm-kpi-info">
           <span class="adm-kpi-label">Quản Trị Cấp Cao</span>
@@ -187,7 +205,7 @@
             />
           </div>
 
-          <!-- Bộ lọc trạng thái hồ sơ -->
+          <!-- Bộ lọc trạng thái hồ sơ & trực tuyến -->
           <div class="filter-chips">
             <button
               type="button"
@@ -195,6 +213,14 @@
               @click="statusFilter = 'ALL'"
             >
               Tất Cả ({{ users.length }})
+            </button>
+            <button
+              type="button"
+              :class="['filter-chip chip-green', statusFilter === 'ONLINE' ? 'active' : '']"
+              @click="statusFilter = 'ONLINE'"
+            >
+              <span class="live-pulse-dot-sm"></span>
+              Đang Online ({{ onlineCount }})
             </button>
             <button
               type="button"
@@ -285,9 +311,28 @@
                 </div>
               </td>
               <td>
-                <span :class="['adm-badge', user.role === 'PENDING' ? 'adm-badge-amber' : (user.is_active ? 'adm-badge-green' : 'adm-badge-red')]">
-                  {{ user.role === 'PENDING' ? 'Chờ duyệt' : (user.is_active ? 'Đang hoạt động' : 'Đã khóa') }}
-                </span>
+                <div class="user-status-cell">
+                  <!-- Trạng thái Online / Offline / Khóa -->
+                  <div class="status-indicator-row">
+                    <span :class="['online-dot', getOnlineDotClass(user)]"></span>
+                    <strong :class="['status-title', getOnlineTextClass(user)]">
+                      {{ getOnlineStatusLabel(user) }}
+                    </strong>
+                  </div>
+
+                  <!-- Thông tin vị trí & thiết bị nếu đang có phiên -->
+                  <div v-if="getUserSession(user)" class="session-meta">
+                    <span class="session-loc" :title="'IP mạng: ' + (getUserSession(user).ipAddress || '—')">
+                      📍 {{ getUserSession(user).city || 'Việt Nam' }} • {{ getUserSession(user).deviceType || 'PC' }}
+                    </span>
+                    <span v-if="getUserSession(user).currentPageTitle" class="session-page" :title="getUserSession(user).currentPage">
+                      👁 {{ getUserSession(user).currentPageTitle }}
+                    </span>
+                  </div>
+                  <div v-else-if="!user.is_active" class="locked-hint">
+                    Tài khoản đã bị khóa
+                  </div>
+                </div>
               </td>
               <td>
                 <div class="action-group">
@@ -594,11 +639,113 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal Giám Sát Trực Tuyến & Vị Trí Nhân Sự -->
+    <div v-if="showOnlineMonitorModal" class="adm-modal-backdrop" @click.self="showOnlineMonitorModal = false">
+      <div class="adm-modal monitor-modal">
+        <div class="adm-modal-head">
+          <div>
+            <h3>Giám Sát Nhân Sự Trực Tuyến &amp; Vị Trí Hoạt Động</h3>
+            <p>Theo dõi thời gian thực ai đang online, vị trí địa lý (IP/Tỉnh thành), thiết bị và trang web đang truy cập</p>
+          </div>
+          <button type="button" class="adm-modal-close" @click="showOnlineMonitorModal = false">
+            <AdminIcon name="x" :size="18" />
+          </button>
+        </div>
+
+        <div class="adm-modal-body monitor-modal-body">
+          <div class="monitor-summary-bar">
+            <div class="m-stat">
+              <span class="live-pulse-dot"></span>
+              <strong>{{ onlineCount }}</strong> tài khoản đang online
+            </div>
+            <div class="m-stat">
+              <span class="away-dot"></span>
+              <strong>{{ awayCount }}</strong> tài khoản tạm vắng (&lt; 15p)
+            </div>
+            <button type="button" class="adm-btn adm-btn-sm adm-btn-ghost" @click="fetchOnlineUsers">
+              <AdminIcon name="sync" :size="13" />
+              <span>Cập nhật ngay</span>
+            </button>
+          </div>
+
+          <div class="online-cards-grid">
+            <div
+              v-for="user in onlineUsersList"
+              :key="user.id"
+              :class="['online-user-card', user.status === 'ONLINE' ? 'card-status-online' : (user.status === 'AWAY' ? 'card-status-away' : 'card-status-offline')]"
+            >
+              <div class="card-head-row">
+                <div class="c-user-info">
+                  <div class="c-avatar" :class="getAvatarClass(user.role)">
+                    {{ getInitials(user.fullName || user.username) }}
+                  </div>
+                  <div>
+                    <strong class="c-name">{{ user.fullName || user.username }}</strong>
+                    <div class="c-role-row">
+                      <span class="c-username">@{{ user.username }}</span>
+                      <span class="c-role-tag">{{ formatUserRole(user.role) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="c-status-badge">
+                  <span :class="['dot-indicator', user.status === 'ONLINE' ? 'dot-green' : (user.status === 'AWAY' ? 'dot-amber' : 'dot-gray')]"></span>
+                  <span>{{ user.statusLabel }}</span>
+                </div>
+              </div>
+
+              <div class="c-details-list">
+                <div class="c-detail-item">
+                  <span class="c-label">Vị trí địa lý:</span>
+                  <span class="c-val text-gold">📍 {{ user.city || 'Việt Nam' }} <small v-if="user.ipAddress">({{ user.ipAddress }})</small></span>
+                </div>
+                <div class="c-detail-item">
+                  <span class="c-label">Thiết bị &amp; Môi trường:</span>
+                  <span class="c-val">💻 {{ user.deviceType }} • {{ user.browser }}</span>
+                </div>
+                <div class="c-detail-item">
+                  <span class="c-label">Đang xem phân hệ:</span>
+                  <span class="c-val text-blue">👁 <strong>{{ user.currentPageTitle || 'Trang Quản Trị' }}</strong> <small>({{ user.currentPage || '/admin' }})</small></span>
+                </div>
+                <div class="c-detail-item">
+                  <span class="c-label">Hoạt động gần nhất:</span>
+                  <span class="c-val text-muted">{{ formatTimeAgo(user.secondsAgo) }}</span>
+                </div>
+              </div>
+
+              <div class="c-actions-row">
+                <button
+                  type="button"
+                  class="adm-btn adm-btn-sm adm-btn-ghost"
+                  @click="openPermissionModal(findUserById(user.id))"
+                >
+                  <AdminIcon name="shield" :size="13" />
+                  <span>Sửa quyền tài khoản này</span>
+                </button>
+                <router-link
+                  to="/admin/audit-logs"
+                  class="adm-btn adm-btn-sm adm-btn-ghost"
+                  @click="showOnlineMonitorModal = false"
+                >
+                  <AdminIcon name="history" :size="13" />
+                  <span>Xem lịch sử thao tác</span>
+                </router-link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-modal-foot">
+          <button type="button" class="adm-btn adm-btn-ghost" @click="showOnlineMonitorModal = false">Đóng</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { apiRequest } from '../../utils/api'
 import { useAuthStore } from '../../stores/authStore'
 import { useAdminStore } from '../../stores/adminStore'
@@ -611,13 +758,90 @@ const currentUserId = computed(() => auth.currentUser?.id)
 
 const users = ref([])
 const searchQuery = ref('')
-const statusFilter = ref('ALL') // 'ALL' | 'PENDING' | 'ACTIVE' | 'LOCKED'
+const statusFilter = ref('ALL') // 'ALL' | 'ONLINE' | 'PENDING' | 'ACTIVE' | 'LOCKED'
 const showCreateForm = ref(false)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
 const showCreatePwd = ref(false)
 const showResetPwd = ref(false)
+
+// Theo Dõi Nhân Sự Trực Tuyến & Vị Trí
+const showOnlineMonitorModal = ref(false)
+const onlineUsersList = ref([])
+const onlineSessionsMap = ref({})
+let onlinePollingTimer = null
+
+const fetchOnlineUsers = async () => {
+  try {
+    const res = await apiRequest('/admin/online-users')
+    if (res.success) {
+      onlineUsersList.value = res.data || []
+      const map = {}
+      res.data.forEach(item => {
+        map[item.id] = item
+      })
+      onlineSessionsMap.value = map
+    }
+  } catch (err) {
+    console.error('Lỗi khi tải phiên online:', err)
+  }
+}
+
+const onlineCount = computed(() => onlineUsersList.value.filter(u => u.status === 'ONLINE').length)
+const awayCount = computed(() => onlineUsersList.value.filter(u => u.status === 'AWAY').length)
+
+const getUserSession = (user) => {
+  return onlineSessionsMap.value[user.id] || null
+}
+
+const getOnlineDotClass = (user) => {
+  if (!user.is_active) return 'dot-red'
+  if (user.role === 'PENDING') return 'dot-amber'
+  const session = getUserSession(user)
+  if (session?.status === 'ONLINE') return 'dot-green dot-pulse'
+  if (session?.status === 'AWAY') return 'dot-amber'
+  return 'dot-gray'
+}
+
+const getOnlineTextClass = (user) => {
+  if (!user.is_active) return 'text-danger'
+  if (user.role === 'PENDING') return 'text-amber'
+  const session = getUserSession(user)
+  if (session?.status === 'ONLINE') return 'text-green'
+  if (session?.status === 'AWAY') return 'text-amber'
+  return 'text-muted'
+}
+
+const getOnlineStatusLabel = (user) => {
+  if (!user.is_active) return 'Đã khóa'
+  if (user.role === 'PENDING') return 'Chờ duyệt'
+  const session = getUserSession(user)
+  if (session?.status === 'ONLINE') return 'Đang Online'
+  if (session?.status === 'AWAY') return `Tạm vắng (${formatTimeAgo(session.secondsAgo)})`
+  return 'Ngoại tuyến'
+}
+
+const formatTimeAgo = (seconds) => {
+  if (seconds === null || seconds === undefined) return 'Chưa có phiên'
+  if (seconds < 60) return 'Vừa xong'
+  const mins = Math.floor(seconds / 60)
+  if (mins < 60) return `${mins} phút trước`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} giờ trước`
+  return `${Math.floor(hours / 24)} ngày trước`
+}
+
+const findUserById = (userId) => {
+  return users.value.find(u => u.id === userId) || { id: userId, username: 'Nhân viên' }
+}
+
+const getAvatarClass = (role) => {
+  if (role === 'SUPER_ADMIN') return 'av-gold'
+  if (role === 'SALES') return 'av-blue'
+  if (role === 'INVENTORY') return 'av-green'
+  return 'av-gray'
+}
 
 const form = reactive({
   username: '',
@@ -649,7 +873,12 @@ const getInitials = (str) => {
 
 const filteredUsers = computed(() => {
   let list = users.value
-  if (statusFilter.value === 'PENDING') {
+  if (statusFilter.value === 'ONLINE') {
+    list = list.filter(u => {
+      const s = onlineSessionsMap.value[u.id]
+      return s?.status === 'ONLINE'
+    })
+  } else if (statusFilter.value === 'PENDING') {
     list = list.filter(u => u.role === 'PENDING')
   } else if (statusFilter.value === 'ACTIVE') {
     list = list.filter(u => u.is_active && u.role !== 'PENDING')
@@ -672,6 +901,7 @@ const loadUsers = async () => {
   try {
     const response = await apiRequest('/admin/users')
     users.value = response.data || []
+    await fetchOnlineUsers()
   } catch (err) {
     error.value = err.message || 'Không tải được danh sách tài khoản.'
   }
@@ -1046,7 +1276,14 @@ const getPermsTooltip = (user) => {
   return 'Sử dụng bộ quyền mặc định theo vai trò'
 }
 
-onMounted(loadUsers)
+onMounted(() => {
+  loadUsers()
+  onlinePollingTimer = setInterval(fetchOnlineUsers, 15000)
+})
+
+onUnmounted(() => {
+  if (onlinePollingTimer) clearInterval(onlinePollingTimer)
+})
 </script>
 
 <style scoped>
@@ -1620,5 +1857,313 @@ onMounted(loadUsers)
 .perm-desc {
   font-size: 0.72rem;
   color: #64748b;
+}
+
+/* KPI 5 Cột */
+.kpi-grid-5 {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+}
+
+.card-online-kpi:hover {
+  border-color: #22c55e !important;
+  box-shadow: 0 6px 20px -4px rgba(34, 197, 94, 0.2) !important;
+}
+
+/* Nút Giám Sát */
+.btn-monitor {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #15803d !important;
+  font-weight: 700 !important;
+}
+
+.btn-monitor:hover {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+}
+
+/* Chấm xanh nhấp nháy Pulse */
+.live-pulse-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: livePulse 1.8s infinite;
+  vertical-align: middle;
+}
+
+.live-pulse-dot-sm {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: livePulse 1.8s infinite;
+  margin-right: 4px;
+}
+
+@keyframes livePulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.chip-green.active {
+  background: #15803d !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
+}
+
+/* User Status Cell Trong Bảng */
+.user-status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-indicator-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-green { background-color: #22c55e; }
+.dot-amber { background-color: #f59e0b; }
+.dot-red { background-color: #ef4444; }
+.dot-gray { background-color: #94a3b8; }
+
+.dot-pulse {
+  animation: livePulse 1.8s infinite;
+}
+
+.status-title {
+  font-size: 0.8rem;
+}
+
+.session-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.session-loc {
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.session-page {
+  font-size: 0.72rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.locked-hint {
+  font-size: 0.72rem;
+  color: #dc2626;
+}
+
+.offline-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* Modal Giám Sát Trực Tuyến */
+.monitor-modal {
+  max-width: 860px;
+  width: 95vw;
+}
+
+.monitor-modal-body {
+  max-height: 72vh;
+  overflow-y: auto;
+}
+
+.monitor-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.m-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: #334155;
+}
+
+.away-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+}
+
+.online-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 14px;
+}
+
+.online-user-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.15s;
+}
+
+.card-status-online {
+  border-color: #86efac;
+  background: #fcfdfc;
+  box-shadow: 0 4px 12px -2px rgba(34, 197, 94, 0.12);
+}
+
+.card-status-away {
+  border-color: #fde68a;
+  background: #fffdf9;
+}
+
+.card-status-offline {
+  border-color: #e2e8f0;
+  opacity: 0.8;
+}
+
+.card-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.c-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.c-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.c-name {
+  font-size: 0.9rem;
+  color: #0f172a;
+  display: block;
+}
+
+.c-role-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.c-username {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.c-role-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.c-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.dot-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.c-details-list {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.c-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.c-detail-item .c-label {
+  color: #64748b;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.c-detail-item .c-val {
+  color: #1e293b;
+  text-align: right;
+  word-break: break-word;
+}
+
+.c-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: auto;
 }
 </style>

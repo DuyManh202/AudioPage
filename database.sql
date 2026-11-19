@@ -51,6 +51,27 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id)
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action_type ON admin_audit_logs(action_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target_type ON admin_audit_logs(target_type);
 
+-- BẢNG PHIÊN HOẠT ĐỘNG TRỰC TUYẾN & VỊ TRÍ NHÂN VIÊN
+CREATE TABLE IF NOT EXISTS admin_active_sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    admin_id VARCHAR(36) REFERENCES admins(id) ON DELETE CASCADE,
+    username VARCHAR(50) NOT NULL,
+    full_name VARCHAR(100),
+    role VARCHAR(50),
+    current_page VARCHAR(100),
+    current_page_title VARCHAR(150),
+    ip_address VARCHAR(100),
+    city VARCHAR(100),
+    country VARCHAR(50) DEFAULT 'Việt Nam',
+    device_type VARCHAR(50),
+    browser VARCHAR(100),
+    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_admin_active_session UNIQUE (admin_id)
+);
+CREATE INDEX IF NOT EXISTS idx_active_sessions_last_active ON admin_active_sessions(last_active_at DESC);
+CREATE INDEX IF NOT EXISTS idx_active_sessions_admin_id ON admin_active_sessions(admin_id);
+
 -- 2. BẢNG DANH MỤC THIẾT BỊ (CATEGORIES)
 CREATE TABLE IF NOT EXISTS categories (
     id VARCHAR(50) PRIMARY KEY,

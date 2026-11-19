@@ -349,11 +349,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
 import { canAccessMenu } from '../../utils/permissions'
+import { apiRequest } from '../../utils/api'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import '../../assets/styles/admin.css'
 
@@ -375,8 +376,35 @@ const roleLabel = computed(() => {
   return map[authStore.currentUser?.role] || 'Nhân sự hệ thống'
 })
 
+let heartbeatTimer = null
+
+const sendHeartbeat = async () => {
+  if (!authStore.isAuthenticated) return
+  try {
+    await apiRequest('/admin/heartbeat', {
+      method: 'POST',
+      body: JSON.stringify({
+        page: route.path,
+        pageTitle: currentRouteTitle.value
+      })
+    })
+  } catch {
+    // Giữ kết nối im lặng
+  }
+}
+
 onMounted(() => {
   adminStore.fetchAllAdminData()
+  sendHeartbeat()
+  heartbeatTimer = setInterval(sendHeartbeat, 30000)
+})
+
+onUnmounted(() => {
+  if (heartbeatTimer) clearInterval(heartbeatTimer)
+})
+
+watch(() => route.path, () => {
+  sendHeartbeat()
 })
 
 const currentRouteTitle = computed(() => {

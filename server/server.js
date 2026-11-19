@@ -1575,6 +1575,200 @@ app.get('/api/v1/admin/audit-logs', authenticateAdmin, async (req, res) => {
   }
 })
 
+/**
+ * Phân tích User-Agent để xác định thiết bị và trình duyệt
+ */
+const parseUserAgent = (uaString = '') => {
+  const ua = String(uaString || '').toLowerCase()
+  let deviceType = 'Desktop'
+  if (/mobile|android|iphone|ipod/.test(ua)) {
+    deviceType = 'Điện thoại'
+  } else if (/ipad|tablet/.test(ua)) {
+    deviceType = 'Máy tính bảng'
+  } else {
+    deviceType = 'Máy tính (PC/Laptop)'
+  }
+
+  let browser = 'Trình duyệt Web'
+  if (/edg\//.test(ua)) browser = 'Microsoft Edge'
+  else if (/chrome\//.test(ua)) browser = 'Google Chrome'
+  else if (/safari\//.test(ua) && !/chrome/.test(ua)) browser = 'Apple Safari'
+  else if (/firefox\//.test(ua)) browser = 'Mozilla Firefox'
+
+  let os = ''
+  if (/windows/.test(ua)) os = 'Windows'
+  else if (/macintosh|mac os/.test(ua)) os = 'macOS'
+  else if (/iphone|ipad/.test(ua)) os = 'iOS'
+  else if (/android/.test(ua)) os = 'Android'
+  else if (/linux/.test(ua)) os = 'Linux'
+
+  return {
+    deviceType,
+    browser: os ? `${browser} (${os})` : browser
+  }
+}
+
+/**
+ * Xác định vị trí địa lý của Client (IP, Tỉnh/Thành phố)
+ */
+const resolveClientLocation = (req) => {
+  const vercelCity = req.headers['x-vercel-ip-city']
+  const cfCity = req.headers['cf-ipcity']
+  let city = vercelCity || cfCity || null
+
+  if (city) {
+    try {
+      city = decodeURIComponent(city)
+    } catch {
+      // ignore
+    }
+  }
+
+  const rawIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim()
+  const cleanIp = rawIp.replace(/^::ffff:/, '')
+
+  return {
+    ip: cleanIp || '127.0.0.1',
+    city: city || (cleanIp.startsWith('192.168.') || cleanIp === '127.0.0.1' || cleanIp === '::1' ? 'Mạng Văn Phòng' : 'Hà Nội / Việt Nam'),
+    country: 'Việt Nam'
+  }
+}
+
+// Gửi nhịp tim (Heartbeat) cập nhật trang đang xem & vị trí hoạt động
+app.post('/api/v1/admin/heartbeat', authenticateAdmin, async (req, res) => {
+  try {
+    const { page, pageTitle } = req.body || {}
+    const admin = req.admin
+    const uaInfo = parseUserAgent(req.headers['user-agent'])
+    const loc = resolveClientLocation(req)
+
+    const cleanPage = typeof page === 'string' ? page.slice(0, 100) : '/admin/dashboard'
+    const cleanTitle = typeof pageTitle === 'string' ? pageTitle.slice(0, 150) : 'Trang Quản Trị'
+
+    await query(
+      `INSERT INTO admin_active_sessions 
+        (id, admin_id, username, full_name, role, current_page, current_page_title, ip_address, city, country, device_type, browser, last_active_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+       ON CONFLICT (admin_id) DO UPDATE SET
+         username = EXCLUDED.username,
+         full_name = EXCLUDED.full_name,
+         role = EXCLUDED.role,
+         current_page = EXCLUDED.current_page,
+         current_page_title = EXCLUDED.current_page_title,
+         ip_address = EXCLUDED.ip_address,
+         city = COALESCE(EXCLUDED.city, admin_active_sessions.city),
+         device_type = EXCLUDED.device_type,
+         browser = EXCLUDED.browser,
+         last_active_at = CURRENT_TIMESTAMP`,
+      [
+        randomUUID(),
+        admin.id,
+        admin.username,
+        admin.name,
+        admin.role,
+        cleanPage,
+        cleanTitle,
+        loc.ip,
+        loc.city,
+        loc.country,
+        uaInfo.deviceType,
+        uaInfo.browser
+      ]
+    )
+
+    res.json({ success: true, timestamp: Date.now() })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Lấy danh sách tài khoản đang Online, trang đang xem và vị trí thiết bị
+app.get('/api/v1/admin/online-users', authenticateAdmin, async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        a.id AS admin_id,
+        a.username,
+        a.full_name,
+        a.role,
+        a.email,
+        a.phone,
+        a.is_active,
+        s.current_page,
+        s.current_page_title,
+        s.ip_address,
+        s.city,
+        s.country,
+        s.device_type,
+        s.browser,
+        s.last_active_at,
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - s.last_active_at))::int AS seconds_ago
+      FROM admins a
+      LEFT JOIN admin_active_sessions s ON a.id = s.admin_id
+      WHERE a.is_active = TRUE AND a.role <> 'PENDING'
+      ORDER BY 
+        CASE 
+          WHEN s.last_active_at IS NOT NULL AND s.last_active_at > CURRENT_TIMESTAMP - INTERVAL '3 MINUTES' THEN 1
+          WHEN s.last_active_at IS NOT NULL AND s.last_active_at > CURRENT_TIMESTAMP - INTERVAL '15 MINUTES' THEN 2
+          ELSE 3
+        END,
+        s.last_active_at DESC NULLS LAST
+    `
+    const result = await query(sql)
+
+    const mapped = result.rows.map(row => {
+      const secAgo = row.seconds_ago
+      let status = 'OFFLINE'
+      let statusLabel = 'Ngoại tuyến'
+
+      if (secAgo !== null && secAgo !== undefined) {
+        if (secAgo <= 180) { // trong vòng 3 phút
+          status = 'ONLINE'
+          statusLabel = 'Đang trực tuyến'
+        } else if (secAgo <= 900) { // trong vòng 15 phút
+          status = 'AWAY'
+          statusLabel = 'Vừa rời đi / Tạm vắng'
+        }
+      }
+
+      return {
+        id: row.admin_id,
+        username: row.username,
+        fullName: row.full_name,
+        role: row.role,
+        email: row.email,
+        phone: row.phone,
+        status,
+        statusLabel,
+        currentPage: row.current_page || null,
+        currentPageTitle: row.current_page_title || null,
+        ipAddress: row.ip_address || null,
+        city: row.city || null,
+        country: row.country || 'Việt Nam',
+        deviceType: row.device_type || 'Desktop',
+        browser: row.browser || 'Web Browser',
+        lastActiveAt: row.last_active_at,
+        secondsAgo: secAgo
+      }
+    })
+
+    const onlineCount = mapped.filter(u => u.status === 'ONLINE').length
+    const awayCount = mapped.filter(u => u.status === 'AWAY').length
+
+    res.json({
+      success: true,
+      data: mapped,
+      counts: {
+        online: onlineCount,
+        away: awayCount,
+        totalActiveAdmins: mapped.length
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // Thống kê Dashboard
 app.get('/api/v1/admin/dashboard/stats', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
