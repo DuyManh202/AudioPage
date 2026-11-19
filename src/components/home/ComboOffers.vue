@@ -3,7 +3,7 @@
     <div class="container">
       <div class="section-head text-center" v-reveal>
         <span class="badge-gold">ĐẦY ĐỦ THIẾT BỊ — KHÔNG PHÁT SINH</span>
-        <h2 class="section-title">2 Gói Dàn Karaoke Trọn Bộ Át Chủ Bài</h2>
+        <h2 class="section-title">{{ combos.length > 0 ? `${combos.length} Gói Dàn Karaoke Trọn Bộ Át Chủ Bài` : 'Các Gói Dàn Karaoke Trọn Bộ Át Chủ Bài' }}</h2>
         <p class="section-desc">
           Được chính kỹ sư âm thanh Tú Audio tính toán công suất, ghép nối chuẩn pha, giải quyết triệt để vấn đề hú rít và hụt hơi của giọng hát.
         </p>
@@ -157,7 +157,7 @@ const handleSelectCombo = (combo) => {
 
 .combos-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
   gap: 28px;
   align-items: stretch;
 }

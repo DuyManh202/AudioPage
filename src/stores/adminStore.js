@@ -427,7 +427,7 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-    // Cập nhật Combo (Trọn bộ 19tr / 29tr)
+    // Cập nhật Combo (Trọn bộ 19tr / 29tr...)
     async updateCombo(comboId, updatedFields) {
       const idx = this.combos.findIndex(c => c.id === comboId)
       const backup = idx !== -1 ? JSON.parse(JSON.stringify(this.combos[idx])) : null
@@ -471,6 +471,70 @@ export const useAdminStore = defineStore('admin', {
           useProductStore().combos = [...this.combos]
         }
         this.showNotice(err.message || 'Không lưu được cấu hình gói dàn.', 'error')
+        throw err
+      }
+    },
+
+    // Thêm Gói Dàn Mới (Combos)
+    async addCombo(comboData) {
+      try {
+        const res = await apiRequest('/admin/combos', {
+          method: 'POST',
+          body: JSON.stringify(comboData)
+        })
+        if (res?.success && res.data) {
+          this.combos.unshift(res.data)
+          this._persistCombos()
+          useProductStore().combos = [...this.combos]
+          this.showNotice(`Đã thêm gói dàn "${res.data.name}" thành công.`, 'success')
+          return res.data
+        }
+        throw new Error(res?.message || 'Không tạo được gói dàn mới.')
+      } catch (err) {
+        this.showNotice(err.message || 'Không thêm được gói dàn.', 'error')
+        throw err
+      }
+    },
+
+    // Xóa Gói Dàn (Combos)
+    async deleteCombo(comboId) {
+      const idx = this.combos.findIndex(c => c.id === comboId)
+      if (idx === -1) return
+      const backup = [...this.combos]
+      const targetName = this.combos[idx]?.name || 'Gói dàn'
+      this.combos.splice(idx, 1)
+      this._persistCombos()
+      useProductStore().combos = [...this.combos]
+
+      try {
+        await apiRequest(`/admin/combos/${comboId}`, { method: 'DELETE' })
+        this.showNotice(`Đã xóa "${targetName}" khỏi hệ thống.`, 'success')
+        return true
+      } catch (err) {
+        this.combos = backup
+        this._persistCombos()
+        useProductStore().combos = [...this.combos]
+        this.showNotice(err.message || 'Không xóa được gói dàn.', 'error')
+        throw err
+      }
+    },
+
+    // Nhân bản Gói Dàn (Duplicate Combo)
+    async duplicateCombo(comboId) {
+      try {
+        const res = await apiRequest(`/admin/combos/${comboId}/duplicate`, {
+          method: 'POST'
+        })
+        if (res?.success && res.data) {
+          this.combos.unshift(res.data)
+          this._persistCombos()
+          useProductStore().combos = [...this.combos]
+          this.showNotice(`Đã nhân bản thành công gói "${res.data.name}".`, 'success')
+          return res.data
+        }
+        throw new Error(res?.message || 'Không thể nhân bản gói dàn.')
+      } catch (err) {
+        this.showNotice(err.message || 'Lỗi khi nhân bản gói dàn.', 'error')
         throw err
       }
     },

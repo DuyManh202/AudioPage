@@ -2050,7 +2050,126 @@ app.delete('/api/v1/admin/products/:id', authenticateAdmin, authorizeRoles('SUPE
 })
 
 // Cập nhật gói dàn karaoke (Combos) & tự tính lại số tiền tiết kiệm thật (total_real_value - price)
-app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'INVENTORY'), async (req, res) => {
+app.post('/api/v1/admin/combos', authenticateAdmin, authorizePermission('combos.create'), async (req, res) => {
+  try {
+    const c = req.body
+    if (!c.name || typeof c.name !== 'string' || !c.name.trim()) {
+      return res.status(400).json({ success: false, message: 'Tên gói dàn không được để trống.' })
+    }
+    for (const field of ['price', 'fastActionPrice', 'listPrice', 'totalRealValue']) {
+      if (c[field] !== undefined && !validMoney(c[field])) {
+        return res.status(400).json({ success: false, message: `Giá trị ${field} không hợp lệ.` })
+      }
+    }
+    if (!validOptionalText(c.name, 200) || !validOptionalText(c.tagline, 255) || !validOptionalText(c.roomSize, 100) || !validOptionalText(c.badge, 100) || !validOptionalText(c.videoUrl, 2048) || !validOptionalText(c.videoTitle, 255)) {
+      return res.status(400).json({ success: false, message: 'Thông tin văn bản của gói dàn vượt giới hạn cho phép.' })
+    }
+
+    const price = Number(c.price) || 0
+    const fastActionPrice = c.fastActionPrice !== undefined && c.fastActionPrice !== '' ? Number(c.fastActionPrice) : price
+    const listPrice = c.listPrice !== undefined && c.listPrice !== '' ? Number(c.listPrice) : price
+    const totalRealValue = c.totalRealValue !== undefined && c.totalRealValue !== '' ? Number(c.totalRealValue) : listPrice
+    const savedAmount = Math.max(0, totalRealValue - price)
+    const isFeatured = Boolean(c.isFeatured)
+
+    const rawSlug = slugifyVi(c.name).slice(0, 30)
+    const id = c.id && /^[a-z0-9-]+$/.test(c.id) ? c.id : `dan-karaoke-${rawSlug}-${Date.now().toString().slice(-4)}`
+
+    const sql = `
+      INSERT INTO combos (
+        id, name, tagline, price, fast_action_price, list_price, total_real_value,
+        saved_amount, room_size, is_featured, badge, video_url, video_title
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *
+    `
+    const result = await query(sql, [
+      id,
+      c.name.trim(),
+      c.tagline?.trim() || null,
+      price,
+      fastActionPrice,
+      listPrice,
+      totalRealValue,
+      savedAmount,
+      c.roomSize?.trim() || 'Phòng gia đình',
+      isFeatured,
+      c.badge?.trim() || null,
+      c.videoUrl?.trim() || null,
+      c.videoTitle?.trim() || null
+    ])
+
+    const row = result.rows[0]
+
+    if (Array.isArray(c.components)) {
+      const cleanComps = c.components
+        .filter(item => item && typeof item.item === 'string' && item.item.trim())
+        .slice(0, 30)
+      for (let idx = 0; idx < cleanComps.length; idx += 1) {
+        await query(
+          'INSERT INTO combo_components (combo_id, item_name, role_description, sort_order) VALUES ($1, $2, $3, $4)',
+          [id, cleanComps[idx].item.trim().slice(0, 255), String(cleanComps[idx].role || '').trim().slice(0, 255), idx + 1]
+        )
+      }
+    }
+
+    if (Array.isArray(c.gifts)) {
+      const cleanGifts = c.gifts
+        .map(g => String(g || '').trim())
+        .filter(Boolean)
+        .slice(0, 30)
+      for (let idx = 0; idx < cleanGifts.length; idx += 1) {
+        await query(
+          'INSERT INTO combo_gifts (combo_id, gift_description, sort_order) VALUES ($1, $2, $3)',
+          [id, cleanGifts[idx].slice(0, 500), idx + 1]
+        )
+      }
+    }
+
+    const compResult = await query(
+      'SELECT item_name as item, role_description as role FROM combo_components WHERE combo_id = $1 ORDER BY sort_order',
+      [id]
+    )
+    const giftResult = await query(
+      'SELECT gift_description as gift FROM combo_gifts WHERE combo_id = $1 ORDER BY sort_order',
+      [id]
+    )
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'COMBO_CREATE',
+      actionType: 'CREATE',
+      targetType: 'combo',
+      targetId: id,
+      details: { name: row.name, price: Number(row.price), roomSize: row.room_size }
+    })
+
+    res.json({
+      success: true,
+      data: {
+        id: row.id,
+        name: row.name,
+        tagline: row.tagline,
+        price: Number(row.price),
+        fastActionPrice: Number(row.fast_action_price),
+        totalRealValue: Number(row.total_real_value),
+        listPrice: Number(row.list_price),
+        savedAmount: Number(row.saved_amount),
+        roomSize: row.room_size,
+        isFeatured: row.is_featured,
+        badge: row.badge,
+        videoUrl: row.video_url,
+        videoTitle: row.video_title,
+        components: compResult.rows,
+        gifts: giftResult.rows.map(g => g.gift)
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Cập nhật gói dàn karaoke (Combos)
+app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizePermission('combos.edit'), async (req, res) => {
   try {
     const { id } = req.params
     const c = req.body
@@ -2062,6 +2181,8 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
     if (!validOptionalText(c.name, 200) || !validOptionalText(c.tagline, 255) || !validOptionalText(c.roomSize, 100) || !validOptionalText(c.badge, 100) || !validOptionalText(c.videoUrl, 2048) || !validOptionalText(c.videoTitle, 255)) {
       return res.status(400).json({ success: false, message: 'Thông tin văn bản của gói dàn vượt giới hạn cho phép.' })
     }
+
+    const isFeaturedVal = c.isFeatured !== undefined ? Boolean(c.isFeatured) : null
 
     const sql = `
       UPDATE combos
@@ -2077,8 +2198,9 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
         tagline = COALESCE($8, tagline),
         room_size = COALESCE($9, room_size),
         badge = COALESCE($10, badge),
+        is_featured = COALESCE($11, is_featured),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11
+      WHERE id = $12
       RETURNING *
     `
     const result = await query(sql, [
@@ -2092,6 +2214,7 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
       c.tagline?.trim() ?? null,
       c.roomSize?.trim() || null,
       c.badge?.trim() ?? null,
+      isFeaturedVal,
       id
     ])
 
@@ -2136,6 +2259,15 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
       [id]
     )
 
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'COMBO_UPDATE',
+      actionType: 'UPDATE',
+      targetType: 'combo',
+      targetId: id,
+      details: { name: row.name, price: Number(row.price), isFeatured: row.is_featured }
+    })
+
     res.json({
       success: true,
       data: {
@@ -2154,6 +2286,121 @@ app.put('/api/v1/admin/combos/:id', authenticateAdmin, authorizeRoles('SUPER_ADM
         videoTitle: row.video_title,
         components: compResult.rows,
         gifts: giftResult.rows.map(g => g.gift)
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Xóa gói dàn karaoke (Combos)
+app.delete('/api/v1/admin/combos/:id', authenticateAdmin, authorizePermission('combos.delete'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await query('SELECT id, name FROM combos WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy gói dàn cần xóa.' })
+    }
+    const comboName = existing.rows[0].name
+
+    await query('DELETE FROM combo_components WHERE combo_id = $1', [id])
+    await query('DELETE FROM combo_gifts WHERE combo_id = $1', [id])
+    await query('DELETE FROM combos WHERE id = $1', [id])
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'COMBO_DELETE',
+      actionType: 'DELETE',
+      targetType: 'combo',
+      targetId: id,
+      details: { name: comboName }
+    })
+
+    res.json({ success: true, message: `Đã xóa gói dàn "${comboName}".` })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Nhân bản gói dàn karaoke (Duplicate)
+app.post('/api/v1/admin/combos/:id/duplicate', authenticateAdmin, authorizePermission('combos.create'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const origResult = await query('SELECT * FROM combos WHERE id = $1', [id])
+    if (origResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy gói dàn nguồn để nhân bản.' })
+    }
+    const orig = origResult.rows[0]
+    const newId = `${orig.id.slice(0, 32)}-copy-${Date.now().toString().slice(-4)}`
+    const newName = `${orig.name} (Bản sao)`
+
+    const insertSql = `
+      INSERT INTO combos (
+        id, name, tagline, price, fast_action_price, list_price, total_real_value,
+        saved_amount, room_size, is_featured, badge, video_url, video_title
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *
+    `
+    const insertRes = await query(insertSql, [
+      newId,
+      newName,
+      orig.tagline,
+      orig.price,
+      orig.fast_action_price,
+      orig.list_price,
+      orig.total_real_value,
+      orig.saved_amount,
+      orig.room_size,
+      false,
+      orig.badge,
+      orig.video_url,
+      orig.video_title
+    ])
+    const newRow = insertRes.rows[0]
+
+    const compRows = await query('SELECT item_name, role_description, sort_order FROM combo_components WHERE combo_id = $1 ORDER BY sort_order', [id])
+    for (const c of compRows.rows) {
+      await query(
+        'INSERT INTO combo_components (combo_id, item_name, role_description, sort_order) VALUES ($1, $2, $3, $4)',
+        [newId, c.item_name, c.role_description, c.sort_order]
+      )
+    }
+
+    const giftRows = await query('SELECT gift_description, sort_order FROM combo_gifts WHERE combo_id = $1 ORDER BY sort_order', [id])
+    for (const g of giftRows.rows) {
+      await query(
+        'INSERT INTO combo_gifts (combo_id, gift_description, sort_order) VALUES ($1, $2, $3)',
+        [newId, g.gift_description, g.sort_order]
+      )
+    }
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'COMBO_DUPLICATE',
+      actionType: 'CREATE',
+      targetType: 'combo',
+      targetId: newId,
+      details: { originalId: id, name: newName }
+    })
+
+    res.json({
+      success: true,
+      data: {
+        id: newRow.id,
+        name: newRow.name,
+        tagline: newRow.tagline,
+        price: Number(newRow.price),
+        fastActionPrice: Number(newRow.fast_action_price),
+        totalRealValue: Number(newRow.total_real_value),
+        listPrice: Number(newRow.list_price),
+        savedAmount: Number(newRow.saved_amount),
+        roomSize: newRow.room_size,
+        isFeatured: newRow.is_featured,
+        badge: newRow.badge,
+        videoUrl: newRow.video_url,
+        videoTitle: newRow.video_title,
+        components: compRows.rows.map(r => ({ item: r.item_name, role: r.role_description })),
+        gifts: giftRows.rows.map(r => r.gift_description)
       }
     })
   } catch (err) {
@@ -2597,6 +2844,7 @@ const ensureDatabaseSchema = async () => {
       visited_by VARCHAR(100) NOT NULL,
       PRIMARY KEY (record_type,record_id)
     )`)
+    await query('ALTER TABLE combos ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE')
   } catch (err) {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
   }
