@@ -418,6 +418,12 @@ const orderFromModal = () => {
   background: #f8fafc;
 }
 
+.combos-section .container {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
 .text-center {
   text-align: center;
 }
@@ -1198,7 +1204,11 @@ const orderFromModal = () => {
 /* RESPONSIVE MOBILE ĐẶC BIỆT CHUẨN THẾ GIỚI DI ĐỘNG (<= 680px) */
 @media (max-width: 680px) {
   .combos-section {
-    padding: 36px 0 88px;
+    padding: 36px 0 130px;
+  }
+  
+  .combos-section .container {
+    padding: 0 12px;
   }
   
   .section-head {
@@ -1211,9 +1221,9 @@ const orderFromModal = () => {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 0 4px 8px;
+    padding: 0 12px 10px;
     flex-wrap: nowrap;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 20px;
   }
   
