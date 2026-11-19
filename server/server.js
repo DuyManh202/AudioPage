@@ -2672,15 +2672,39 @@ app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_A
 app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     let ads = []
-    const period = req.query.period === '30d' ? 'last_30d' : 'maximum'
-    const periodLabel = period === 'last_30d' ? '30 ngày gần nhất' : 'Toàn thời gian (Trọn đời)'
+    const periodParam = String(req.query.period || 'maximum').toLowerCase()
+    let period = 'maximum'
+    let periodLabel = 'Toàn thời gian (Trọn đời)'
+
+    if (periodParam === 'today') {
+      period = 'today'
+      periodLabel = 'Hôm nay'
+    } else if (periodParam === '7d') {
+      period = 'last_7d'
+      periodLabel = '7 ngày gần nhất'
+    } else if (periodParam === '30d') {
+      period = 'last_30d'
+      periodLabel = '30 ngày gần nhất'
+    }
+
+    // Tự động dọn dẹp các trường hợp bị gán nhầm vào chiến dịch ngày 19/11 nếu khách nhắn trước ngày 19/11
+    await query(`
+      UPDATE facebook_care_customers
+      SET source_ad_id = NULL,
+          source_ad_name = NULL,
+          source_campaign_id = NULL,
+          source_campaign_name = NULL,
+          source_type = NULL
+      WHERE (source_ad_name LIKE '%19/11/2026%' OR source_campaign_name LIKE '%19/11/2026%')
+        AND created_at < '2026-11-19 00:00:00+07:00'
+    `).catch(() => {})
 
     if (isFacebookAdsConfigured()) {
       try {
         const version = process.env.META_GRAPH_VERSION || 'v19.0'
         const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
         const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
-        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(${period}){impressions,reach,clicks,spend}`)
+        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(${period}){impressions,reach,clicks,spend,actions,cost_per_action_type}`)
         url.searchParams.set('limit', '100')
         const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
         const payload = await response.json().catch(() => ({}))
@@ -2691,6 +2715,34 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
             const isMetaActive = rawStatus === 'ACTIVE'
             const isMetaPaused = rawStatus.includes('PAUSE')
             const statusLabel = isMetaActive ? '🟢 Đang chạy trên Meta' : (isMetaPaused ? '⏸️ Đã tạm dừng trên Meta' : '📦 Đã tắt / Lưu trữ')
+
+            let metaMessages = 0
+            let metaCpl = 0
+            if (Array.isArray(insight.actions)) {
+              const msgAction = insight.actions.find(a =>
+                a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
+                a.action_type === 'onsite_conversion.total_messaging_connection' ||
+                a.action_type === 'messaging_conversation_started_7d' ||
+                a.action_type?.includes('messaging') ||
+                a.action_type === 'lead'
+              )
+              if (msgAction) metaMessages = Number(msgAction.value || 0)
+            }
+            if (Array.isArray(insight.cost_per_action_type)) {
+              const cplAction = insight.cost_per_action_type.find(a =>
+                a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
+                a.action_type === 'onsite_conversion.total_messaging_connection' ||
+                a.action_type === 'messaging_conversation_started_7d' ||
+                a.action_type?.includes('messaging') ||
+                a.action_type === 'lead'
+              )
+              if (cplAction) metaCpl = Number(cplAction.value || 0)
+            }
+            const spend = Number(insight.spend || 0)
+            if (metaCpl === 0 && spend > 0 && metaMessages > 0) {
+              metaCpl = Math.round(spend / metaMessages)
+            }
+
             return {
               id: ad.id,
               name: ad.name,
@@ -2703,7 +2755,9 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
               impressions: Number(insight.impressions || 0),
               reach: Number(insight.reach || 0),
               clicks: Number(insight.clicks || 0),
-              spend: Number(insight.spend || 0)
+              spend,
+              metaMessages,
+              metaCpl
             }
           })
         }
@@ -2763,9 +2817,10 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         ? stat.totalOrderRevenue
         : (stat.closedCustomers * 25000000)
 
-      const cpl = ad.spend > 0 && stat.totalCustomers > 0 ? Math.round(ad.spend / stat.totalCustomers) : 0
+      const effectiveCustomers = stat.totalCustomers > 0 ? stat.totalCustomers : (ad.metaMessages || 0)
+      const cpl = ad.metaCpl > 0 ? ad.metaCpl : (ad.spend > 0 && effectiveCustomers > 0 ? Math.round(ad.spend / effectiveCustomers) : 0)
       const cpa = ad.spend > 0 && stat.closedCustomers > 0 ? Math.round(ad.spend / stat.closedCustomers) : 0
-      const conversionRate = stat.totalCustomers > 0 ? Number(((stat.closedCustomers / stat.totalCustomers) * 100).toFixed(1)) : 0
+      const conversionRate = effectiveCustomers > 0 ? Number(((stat.closedCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
       const roas = ad.spend > 0 && effectiveRevenue > 0 ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
 
       let grade = ad.isMetaActive ? 'NEUTRAL' : 'PAUSED'
@@ -2778,15 +2833,15 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         grade = 'STAR'
         gradeLabel = '🌟 Siêu Lợi Nhuận'
         recommendation = `Chiến dịch sinh lời vượt trội (ROAS ${roas}x). Khuyến nghị TĂNG 25% - 40% ngân sách hàng ngày để tối đa hóa doanh thu.`
-      } else if (stat.closedCustomers >= 1 || (stat.totalCustomers >= 5 && cpl <= 150000)) {
+      } else if (stat.closedCustomers >= 1 || (effectiveCustomers >= 5 && cpl <= 150000)) {
         grade = 'GOOD'
         gradeLabel = '✅ Hiệu Quả Tốt'
         recommendation = `Giá khách rẻ (${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách). Đội ngũ sale nên tập trung gọi điện tư vấn nhanh để nâng cao tỷ lệ chốt.`
-      } else if (stat.totalCustomers >= 3 && stat.closedCustomers === 0) {
+      } else if (effectiveCustomers >= 3 && stat.closedCustomers === 0) {
         grade = 'WARNING'
         gradeLabel = '⚠️ Cần Tối Ưu Chốt Đơn'
         recommendation = 'Lượng khách quan tâm cao nhưng chưa chốt được đơn. Khuyến nghị kiểm tra lại kịch bản nhắn tin, tặng kèm phụ kiện hoặc ưu đãi chốt sale.'
-      } else if (ad.spend >= 500000 && stat.totalCustomers === 0) {
+      } else if (ad.spend >= 500000 && effectiveCustomers === 0) {
         grade = 'BAD'
         gradeLabel = '🛑 Kém Hiệu Quả'
         recommendation = 'Đã tiêu nhiều ngân sách nhưng chưa ra tin nhắn. Khuyến nghị tạm dừng hoặc thay đổi video/hình ảnh đại diện mới.'
@@ -2804,10 +2859,20 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         reach: ad.reach,
         clicks: ad.clicks,
         spend: ad.spend,
+        metaMessages: ad.metaMessages || 0,
+        metaCpl: ad.metaCpl || 0,
         ...stat,
+        totalCustomers: effectiveCustomers,
         effectiveRevenue,
         cpl,
         cpa,
+        conversionRate,
+        roas,
+        grade,
+        gradeLabel,
+        recommendation
+      })
+    }
         conversionRate,
         roas,
         grade,

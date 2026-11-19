@@ -147,17 +147,31 @@
             <div class="period-btn-group">
               <button
                 type="button"
-                :class="['period-btn', { active: analyticsPeriod === 'maximum' }]"
-                @click="changePeriod('maximum')"
+                :class="['period-btn', { active: analyticsPeriod === 'today' }]"
+                @click="changePeriod('today')"
               >
-                Toàn thời gian (Trọn đời)
+                Hôm nay
+              </button>
+              <button
+                type="button"
+                :class="['period-btn', { active: analyticsPeriod === '7d' }]"
+                @click="changePeriod('7d')"
+              >
+                7 ngày qua
               </button>
               <button
                 type="button"
                 :class="['period-btn', { active: analyticsPeriod === '30d' }]"
                 @click="changePeriod('30d')"
               >
-                30 ngày gần nhất
+                30 ngày qua
+              </button>
+              <button
+                type="button"
+                :class="['period-btn', { active: analyticsPeriod === 'maximum' }]"
+                @click="changePeriod('maximum')"
+              >
+                Trọn đời
               </button>
             </div>
             <button type="button" class="adm-btn adm-btn-sm auto-match-btn" :disabled="autoMatchingBusy || resetMatchingBusy" @click="autoMatchAds">
@@ -179,8 +193,9 @@
                 <th>Chiến Dịch & Tên Quảng Cáo</th>
                 <th>Trạng Thái Meta</th>
                 <th>Chi Phí ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</th>
-                <th>Số Khách Nhắn</th>
-                <th>Giá / Khách (CPL)</th>
+                <th>Tin Nhắn (Meta)</th>
+                <th>Khách CRM</th>
+                <th>Giá / Tin (CPL)</th>
                 <th>Đơn Chốt</th>
                 <th>Tỷ Lệ Chốt</th>
                 <th>Doanh Thu Ước Tính</th>
@@ -201,6 +216,9 @@
                   </span>
                 </td>
                 <td class="font-bold text-red">{{ formatMoney(item.spend) }}</td>
+                <td>
+                  <span class="badge-meta-msg">{{ item.metaMessages || 0 }} tin</span>
+                </td>
                 <td>
                   <span class="badge-leads">{{ item.totalCustomers }} khách</span>
                 </td>
@@ -231,7 +249,7 @@
                 </td>
               </tr>
               <tr v-if="!analyticsData.length">
-                <td colspan="11" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
+                <td colspan="12" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
               </tr>
             </tbody>
           </table>
@@ -431,6 +449,7 @@ onBeforeUnmount(() => {
 .analytics-table td{padding:12px 11px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 .analytics-table tr:hover td{background:#f8fafc}
 .badge-leads{display:inline-block;padding:3px 8px;background:#e0f2fe;color:#0369a1;border-radius:999px;font-weight:700;font-size:.74rem}
+.badge-meta-msg{display:inline-block;padding:3px 8px;background:#ede9fe;color:#6d28d9;border-radius:999px;font-weight:700;font-size:.74rem}
 .cr-wrap{display:flex;flex-direction:column;gap:3px}
 .cr-bar{width:56px;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden}
 .cr-fill{height:100%;background:#16a34a;border-radius:3px}
