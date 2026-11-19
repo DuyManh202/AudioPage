@@ -2848,7 +2848,10 @@ app.post('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER
 
 app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const { status, notes, phone, interest, assignedTo, followUpAt, customerName, address, province } = req.body
+    const {
+      status, notes, phone, interest, assignedTo, followUpAt, customerName, address, province,
+      sourceAdId, sourceAdName, sourceCampaignId, sourceCampaignName, sourceType
+    } = req.body
     const validStatuses = ['MOI', 'DANG_TU_VAN', 'CHO_PHAN_HOI', 'DA_CHOT', 'DA_HUY']
     if (status !== undefined && !validStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Trạng thái chăm sóc không hợp lệ.' })
     if (!validOptionalText(address, 500) || !validOptionalText(province, 100)) return res.status(400).json({ success: false, message: 'Địa chỉ hoặc tỉnh/thành không hợp lệ.' })
@@ -2857,12 +2860,31 @@ app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('
     const existingResult = await query('SELECT customer_name,phone,address FROM facebook_care_customers WHERE id=$1', [req.params.id])
     const existingCustomer = existingResult.rows[0]
     if (!existingCustomer) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách Facebook.' })
+
+    const adChanged = sourceAdId !== undefined
+    const cleanAdId = sourceAdId ? String(sourceAdId).trim() : null
+    const cleanAdName = sourceAdName ? String(sourceAdName).trim() : null
+    const cleanCampaignId = sourceCampaignId ? String(sourceCampaignId).trim() : null
+    const cleanCampaignName = sourceCampaignName ? String(sourceCampaignName).trim() : null
+    const cleanSourceType = sourceType ? String(sourceType).trim() : (cleanAdId ? 'AD' : null)
+
     const result = await query(`UPDATE facebook_care_customers SET
       customer_name=COALESCE($1,customer_name), phone=COALESCE($2,phone), interest=COALESCE($3,interest), notes=COALESCE($4,notes),
       status=COALESCE($5,status), assigned_to=COALESCE($6,assigned_to), follow_up_at=$7,
       address=COALESCE($8,address), province=COALESCE($9,province), location_lat=COALESCE($10,location_lat), location_lng=COALESCE($11,location_lng),
-      location_manually_set=CASE WHEN $12 THEN TRUE ELSE location_manually_set END, updated_at=CURRENT_TIMESTAMP
-      WHERE id=$13 RETURNING *`, [customerName ?? null, phone ?? null, interest ?? null, notes ?? null, status ?? null, assignedTo ?? null, followUpAt || null, address ?? null, detectedProvince?.displayName || null, detectedProvince?.lat ?? null, detectedProvince?.lng ?? null, locationChanged && Boolean(detectedProvince), req.params.id])
+      location_manually_set=CASE WHEN $12 THEN TRUE ELSE location_manually_set END,
+      source_ad_id=CASE WHEN $14 THEN $15 ELSE source_ad_id END,
+      source_ad_name=CASE WHEN $14 THEN $16 ELSE source_ad_name END,
+      source_campaign_id=CASE WHEN $14 THEN $17 ELSE source_campaign_id END,
+      source_campaign_name=CASE WHEN $14 THEN $18 ELSE source_campaign_name END,
+      source_type=CASE WHEN $14 THEN $19 ELSE source_type END,
+      updated_at=CURRENT_TIMESTAMP
+      WHERE id=$13 RETURNING *`, [
+      customerName ?? null, phone ?? null, interest ?? null, notes ?? null, status ?? null, assignedTo ?? null, followUpAt || null,
+      address ?? null, detectedProvince?.displayName || null, detectedProvince?.lat ?? null, detectedProvince?.lng ?? null,
+      locationChanged && Boolean(detectedProvince), req.params.id,
+      adChanged, cleanAdId, cleanAdName, cleanCampaignId, cleanCampaignName, cleanSourceType
+    ])
     if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách Facebook.' })
     const updatedCustomer = result.rows[0]
     const nameChanged = updatedCustomer.customer_name !== existingCustomer.customer_name
@@ -2876,6 +2898,67 @@ app.patch('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('
     }) : 0
     res.json({ success: true, data: mapFbCare({ ...updatedCustomer, messages: [] }), syncedOrders })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+// Tự động phân tích hội thoại và khớp nguồn chiến dịch quảng cáo
+app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { ads } = req.body || {}
+    if (!Array.isArray(ads) || ads.length === 0) {
+      return res.status(400).json({ success: false, message: 'Không có dữ liệu quảng cáo để khớp.' })
+    }
+
+    const unassigned = await query(`
+      SELECT c.id, c.customer_name, c.last_message, c.interest, c.created_at,
+        COALESCE(string_agg(m.body, ' ' ORDER BY m.created_at), '') as all_messages
+      FROM facebook_care_customers c
+      LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
+      WHERE c.source_ad_id IS NULL OR c.source_ad_id = ''
+      GROUP BY c.id
+    `)
+
+    let matchedCount = 0
+
+    const postAd = ads.find(a => (a.name || '').includes('Vang Số') || (a.name || '').includes('Thu Cũ') || (a.name || '').includes('Bài viết'))
+    const micMusicAd = ads.find(a => (a.name || '').includes('tiếng mic') || (a.name || '').includes('tiếng nhạc') || (a.name || '').includes('Chỉnh'))
+    const leadAd = ads.find(a => (a.name || '').includes('Thu Hút') || (a.name || '').includes('Khách Hàng')) || ads[0]
+
+    for (const c of unassigned.rows) {
+      const fullText = `${c.customer_name || ''} ${c.interest || ''} ${c.last_message || ''} ${c.all_messages || ''}`.toLowerCase()
+      let matchedAd = null
+
+      if (postAd && (fullText.includes('thu cũ') || fullText.includes('đổi mới') || fullText.includes('bài viết') || fullText.includes('miễn phí'))) {
+        matchedAd = postAd
+      } else if (micMusicAd && (fullText.includes('chỉnh') || fullText.includes('mic') || fullText.includes('tiếng') || fullText.includes('nhạc') || fullText.includes('vang') || fullText.includes('karaoke') || fullText.includes('ka ra oke') || fullText.includes('hát') || fullText.includes('không được hay') || fullText.includes('hú') || fullText.includes('rít'))) {
+        matchedAd = micMusicAd
+      } else if (leadAd) {
+        matchedAd = leadAd
+      }
+
+      if (matchedAd) {
+        await query(`
+          UPDATE facebook_care_customers
+          SET source_ad_id = $1,
+              source_ad_name = $2,
+              source_campaign_id = $3,
+              source_campaign_name = $4,
+              source_type = 'AD',
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $5
+        `, [matchedAd.id, matchedAd.name, matchedAd.campaignId || null, matchedAd.campaignName || null, c.id])
+        matchedCount++
+      }
+    }
+
+    res.json({
+      success: true,
+      matchedCount,
+      totalUnassigned: unassigned.rows.length,
+      message: `Đã tự động phân tích và gắn nguồn quảng cáo thành công cho ${matchedCount} khách hàng!`
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 })
 
 app.post('/api/v1/admin/facebook-care/:id/messages', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
