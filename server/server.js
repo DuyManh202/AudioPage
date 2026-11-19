@@ -2668,6 +2668,209 @@ app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_A
   } catch (err) { res.status(502).json({ success: false, configured: true, message: err.message || 'Không lấy được dữ liệu quảng cáo từ Meta.' }) }
 })
 
+// Phân tích hiệu quả quảng cáo & Tỷ suất sinh lời (Ads Analytics & ROI)
+app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    let ads = []
+    let period = 'last_30d'
+
+    if (isFacebookAdsConfigured()) {
+      try {
+        const version = process.env.META_GRAPH_VERSION || 'v19.0'
+        const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
+        const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
+        url.searchParams.set('fields', 'id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(last_30d){impressions,reach,clicks,spend}')
+        url.searchParams.set('limit', '100')
+        const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
+        const payload = await response.json().catch(() => ({}))
+        if (response.ok && Array.isArray(payload.data)) {
+          ads = payload.data.map(ad => {
+            const insight = ad.insights?.data?.[0] || {}
+            return {
+              id: ad.id,
+              name: ad.name,
+              status: ad.effective_status || ad.status,
+              campaignId: ad.campaign?.id || '',
+              campaignName: ad.campaign?.name || '',
+              adsetName: ad.adset?.name || '',
+              impressions: Number(insight.impressions || 0),
+              reach: Number(insight.reach || 0),
+              clicks: Number(insight.clicks || 0),
+              spend: Number(insight.spend || 0)
+            }
+          })
+        }
+      } catch (err) {
+        console.warn('[Meta Ads Analytics Error]:', err.message)
+      }
+    }
+
+    const dbStats = await query(`
+      SELECT
+        c.source_ad_id,
+        c.source_ad_name,
+        c.source_campaign_id,
+        c.source_campaign_name,
+        COUNT(DISTINCT c.id) as total_customers,
+        COUNT(DISTINCT CASE WHEN c.status = 'DA_CHOT' THEN c.id END) as closed_customers,
+        COUNT(DISTINCT CASE WHEN c.status = 'DANG_TU_VAN' THEN c.id END) as consulting_customers,
+        COUNT(DISTINCT CASE WHEN c.status = 'MOI' THEN c.id END) as new_customers,
+        COALESCE(SUM(o.total_amount), 0)::bigint as total_order_revenue,
+        COUNT(DISTINCT o.id) as total_orders_count
+      FROM facebook_care_customers c
+      LEFT JOIN orders o ON (
+        (c.phone IS NOT NULL AND c.phone <> '' AND o.customer_phone = c.phone)
+        OR (c.customer_name IS NOT NULL AND LOWER(c.customer_name) = LOWER(o.customer_name))
+      ) AND o.status <> 'CANCELLED'
+      WHERE c.source_ad_id IS NOT NULL AND c.source_ad_id <> ''
+      GROUP BY c.source_ad_id, c.source_ad_name, c.source_campaign_id, c.source_campaign_name
+    `)
+
+    const dbMap = new Map()
+    dbStats.rows.forEach(row => {
+      dbMap.set(row.source_ad_id, {
+        totalCustomers: Number(row.total_customers || 0),
+        closedCustomers: Number(row.closed_customers || 0),
+        consultingCustomers: Number(row.consulting_customers || 0),
+        newCustomers: Number(row.new_customers || 0),
+        totalOrderRevenue: Number(row.total_order_revenue || 0),
+        totalOrdersCount: Number(row.total_orders_count || 0)
+      })
+    })
+
+    const combinedAds = []
+    const processedAdIds = new Set()
+
+    for (const ad of ads) {
+      processedAdIds.add(ad.id)
+      const stat = dbMap.get(ad.id) || {
+        totalCustomers: 0,
+        closedCustomers: 0,
+        consultingCustomers: 0,
+        newCustomers: 0,
+        totalOrderRevenue: 0,
+        totalOrdersCount: 0
+      }
+
+      const effectiveRevenue = stat.totalOrderRevenue > 0
+        ? stat.totalOrderRevenue
+        : (stat.closedCustomers * 25000000)
+
+      const cpl = ad.spend > 0 && stat.totalCustomers > 0 ? Math.round(ad.spend / stat.totalCustomers) : 0
+      const cpa = ad.spend > 0 && stat.closedCustomers > 0 ? Math.round(ad.spend / stat.closedCustomers) : 0
+      const conversionRate = stat.totalCustomers > 0 ? Number(((stat.closedCustomers / stat.totalCustomers) * 100).toFixed(1)) : 0
+      const roas = ad.spend > 0 && effectiveRevenue > 0 ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
+
+      let grade = 'NEUTRAL'
+      let gradeLabel = 'Đang Chạy'
+      let recommendation = 'Tiếp tục theo dõi phản hồi của khách hàng.'
+
+      if (roas >= 3 || stat.closedCustomers >= 2) {
+        grade = 'STAR'
+        gradeLabel = '🌟 Siêu Lợi Nhuận'
+        recommendation = `Chiến dịch sinh lời vượt trội (ROAS ${roas}x). Khuyến nghị TĂNG 25% - 40% ngân sách hàng ngày để tối đa hóa doanh thu.`
+      } else if (stat.closedCustomers >= 1 || (stat.totalCustomers >= 5 && cpl <= 150000)) {
+        grade = 'GOOD'
+        gradeLabel = '✅ Hiệu Quả Tốt'
+        recommendation = `Giá khách rẻ (${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách). Đội ngũ sale nên tập trung gọi điện tư vấn nhanh để nâng cao tỷ lệ chốt.`
+      } else if (stat.totalCustomers >= 3 && stat.closedCustomers === 0) {
+        grade = 'WARNING'
+        gradeLabel = '⚠️ Cần Tối Ưu Chốt Đơn'
+        recommendation = 'Lượng khách quan tâm cao nhưng chưa chốt được đơn. Khuyến nghị kiểm tra lại kịch bản nhắn tin, tặng kèm phụ kiện hoặc ưu đãi chốt sale.'
+      } else if (ad.spend >= 500000 && stat.totalCustomers === 0) {
+        grade = 'BAD'
+        gradeLabel = '🛑 Kém Hiệu Quả'
+        recommendation = 'Đã tiêu nhiều ngân sách nhưng chưa ra tin nhắn. Khuyến nghị tạm dừng hoặc thay đổi video/hình ảnh đại diện mới.'
+      }
+
+      combinedAds.push({
+        id: ad.id,
+        name: ad.name,
+        campaignId: ad.campaignId,
+        campaignName: ad.campaignName,
+        status: ad.status,
+        impressions: ad.impressions,
+        reach: ad.reach,
+        clicks: ad.clicks,
+        spend: ad.spend,
+        ...stat,
+        effectiveRevenue,
+        cpl,
+        cpa,
+        conversionRate,
+        roas,
+        grade,
+        gradeLabel,
+        recommendation
+      })
+    }
+
+    for (const row of dbStats.rows) {
+      if (!processedAdIds.has(row.source_ad_id)) {
+        const totalCustomers = Number(row.total_customers || 0)
+        const closedCustomers = Number(row.closed_customers || 0)
+        const totalOrderRevenue = Number(row.total_order_revenue || 0)
+        const effectiveRevenue = totalOrderRevenue > 0 ? totalOrderRevenue : (closedCustomers * 25000000)
+        const conversionRate = totalCustomers > 0 ? Number(((closedCustomers / totalCustomers) * 100).toFixed(1)) : 0
+
+        combinedAds.push({
+          id: row.source_ad_id,
+          name: row.source_ad_name || `Chiến dịch ${row.source_ad_id}`,
+          campaignId: row.source_campaign_id || '',
+          campaignName: row.source_campaign_name || '',
+          status: 'ARCHIVED',
+          impressions: 0,
+          reach: 0,
+          clicks: 0,
+          spend: 0,
+          totalCustomers,
+          closedCustomers,
+          consultingCustomers: Number(row.consulting_customers || 0),
+          newCustomers: Number(row.new_customers || 0),
+          totalOrderRevenue,
+          totalOrdersCount: Number(row.total_orders_count || 0),
+          effectiveRevenue,
+          cpl: 0,
+          cpa: 0,
+          conversionRate,
+          roas: 0,
+          grade: closedCustomers > 0 ? 'GOOD' : 'NEUTRAL',
+          gradeLabel: closedCustomers > 0 ? '✅ Đã Chốt Đơn' : 'Lịch sử',
+          recommendation: 'Chiến dịch trước đây đã ghi nhận dữ liệu trong CRM.'
+        })
+      }
+    }
+
+    combinedAds.sort((a, b) => b.effectiveRevenue - a.effectiveRevenue || b.closedCustomers - a.closedCustomers || b.totalCustomers - a.totalCustomers)
+
+    const totalSpend = combinedAds.reduce((sum, a) => sum + (a.spend || 0), 0)
+    const totalLeads = combinedAds.reduce((sum, a) => sum + (a.totalCustomers || 0), 0)
+    const totalClosed = combinedAds.reduce((sum, a) => sum + (a.closedCustomers || 0), 0)
+    const totalRevenue = combinedAds.reduce((sum, a) => sum + (a.effectiveRevenue || 0), 0)
+    const avgCpl = totalLeads > 0 && totalSpend > 0 ? Math.round(totalSpend / totalLeads) : 0
+    const avgRoas = totalSpend > 0 && totalRevenue > 0 ? Number((totalRevenue / totalSpend).toFixed(2)) : 0
+    const overallCr = totalLeads > 0 ? Number(((totalClosed / totalLeads) * 100).toFixed(1)) : 0
+
+    res.json({
+      success: true,
+      summary: {
+        totalSpend,
+        totalLeads,
+        totalClosed,
+        totalRevenue,
+        avgCpl,
+        avgRoas,
+        overallCr,
+        totalCampaigns: combinedAds.length
+      },
+      data: combinedAds,
+      period
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const forceSync = req.query.sync === 'force'
