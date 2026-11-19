@@ -2823,29 +2823,94 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       const conversionRate = effectiveCustomers > 0 ? Number(((stat.closedCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
       const roas = ad.spend > 0 && effectiveRevenue > 0 ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
 
-      let grade = ad.isMetaActive ? 'NEUTRAL' : 'PAUSED'
-      let gradeLabel = ad.isMetaActive ? 'Đang Chạy' : 'Đã Tạm Dừng'
-      let recommendation = ad.isMetaActive
-        ? 'Chiến dịch đang phân phối trên Meta, tiếp tục theo dõi phản hồi.'
-        : 'Chiến dịch này hiện đã tạm dừng trong Trình quản lý quảng cáo Meta.'
+      const impressions = Number(ad.impressions || 0)
+      const reach = Number(ad.reach || 0)
+      const clicks = Number(ad.clicks || 0)
+      const spend = Number(ad.spend || 0)
 
-      if (roas >= 3 || stat.closedCustomers >= 2) {
-        grade = 'STAR'
-        gradeLabel = '🌟 Siêu Lợi Nhuận'
-        recommendation = `Chiến dịch sinh lời vượt trội (ROAS ${roas}x). Khuyến nghị TĂNG 25% - 40% ngân sách hàng ngày để tối đa hóa doanh thu.`
-      } else if (stat.closedCustomers >= 1 || (effectiveCustomers >= 5 && cpl <= 150000)) {
-        grade = 'GOOD'
-        gradeLabel = '✅ Hiệu Quả Tốt'
-        recommendation = `Giá khách rẻ (${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách). Đội ngũ sale nên tập trung gọi điện tư vấn nhanh để nâng cao tỷ lệ chốt.`
-      } else if (effectiveCustomers >= 3 && stat.closedCustomers === 0) {
-        grade = 'WARNING'
-        gradeLabel = '⚠️ Cần Tối Ưu Chốt Đơn'
-        recommendation = 'Lượng khách quan tâm cao nhưng chưa chốt được đơn. Khuyến nghị kiểm tra lại kịch bản nhắn tin, tặng kèm phụ kiện hoặc ưu đãi chốt sale.'
-      } else if (ad.spend >= 500000 && effectiveCustomers === 0) {
-        grade = 'BAD'
-        gradeLabel = '🛑 Kém Hiệu Quả'
-        recommendation = 'Đã tiêu nhiều ngân sách nhưng chưa ra tin nhắn. Khuyến nghị tạm dừng hoặc thay đổi video/hình ảnh đại diện mới.'
+      const cpm = impressions > 0 ? Math.round((spend / impressions) * 1000) : 0
+      const ctr = impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0
+      const cpc = clicks > 0 ? Math.round(spend / clicks) : 0
+      const frequency = reach > 0 ? Number((impressions / reach).toFixed(2)) : 1
+
+      // Bộ chẩn đoán "Bắt bệnh quảng cáo & Ra quyết định" theo phương pháp Chu Minh Hạnh
+      let diagnosis = {
+        action: 'HOLD',
+        actionLabel: '👁️ Tiếp tục theo dõi',
+        badgeClass: 'badge-hold',
+        disease: 'Bình thường',
+        advice: 'Chiến dịch đang trong ngưỡng phân phối cơ bản.'
       }
+
+      if (!ad.isMetaActive) {
+        diagnosis = {
+          action: 'PAUSED',
+          actionLabel: '⏸️ Đã tạm dừng',
+          badgeClass: 'badge-paused',
+          disease: 'Chiến dịch đã tắt',
+          advice: 'Chiến dịch này hiện đã tạm dừng trong Trình quản lý quảng cáo Meta.'
+        }
+      } else if (roas >= 3 || (stat.closedCustomers >= 2 && roas >= 2)) {
+        diagnosis = {
+          action: 'SCALE',
+          actionLabel: '🚀 VÍT NGÂN SÁCH (+20%)',
+          badgeClass: 'badge-scale',
+          disease: '🌟 Chiến dịch Win (Siêu lợi nhuận)',
+          advice: `ROAS đạt ${roas}x. Khuyến nghị tăng 20%-25% ngân sách mỗi 24h hoặc nhân bản nhóm sang tệp đối tượng tương tự.`
+        }
+      } else if (spend >= 300000 && effectiveCustomers === 0 && ctr < 1.2) {
+        diagnosis = {
+          action: 'KILL',
+          actionLabel: '🛑 TẮT NGAY (Đốt tiền)',
+          badgeClass: 'badge-kill',
+          disease: '🚨 Bệnh Content: CTR quá thấp (< 1.2%)',
+          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn, CTR chỉ ${ctr}%. Ảnh/video mở đầu không hút khách, tắt ngay để đổi content mới!`
+        }
+      } else if (frequency >= 2.0 && spend >= 1000000) {
+        diagnosis = {
+          action: 'CHANGE_CONTENT',
+          actionLabel: '🔄 THAY BÀI / ĐỔI TỆP',
+          badgeClass: 'badge-change',
+          disease: '⚠️ Bão hòa tệp (Tần suất > 2.0)',
+          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lặp lại nhiều lần khiến giá thầu tăng). Cần thay video mới hoặc đổi tệp target khác.`
+        }
+      } else if (effectiveCustomers >= 5 && stat.closedCustomers === 0) {
+        diagnosis = {
+          action: 'OPTIMIZE_SALE',
+          actionLabel: '💬 TỐI ƯU KỊCH BẢN CHỐT',
+          badgeClass: 'badge-optimize',
+          disease: '⚠️ Bệnh "Mess Rẻ Không Ra Đơn"',
+          advice: `Đã có ${effectiveCustomers} khách nhắn tin (CPL: ${new Intl.NumberFormat('vi-VN').format(cpl)} đ) nhưng 0 đơn chốt. Xem lại kịch bản tư vấn hoặc content đang hút tệp tò mò/không đúng phân khúc!`
+        }
+      } else if (ctr < 1.5 && spend >= 150000) {
+        diagnosis = {
+          action: 'CHANGE_CONTENT',
+          actionLabel: '🎨 SỬA 3S ĐẦU VIDEO',
+          badgeClass: 'badge-change',
+          disease: '⚠️ CTR thấp (< 1.5%)',
+          advice: `CTR chỉ đạt ${ctr}%. Khách lướt qua nhanh không nhấp vào xem. Cần đổi Thumbnail và giật tít 3 giây đầu đánh vào nỗi đau của khách.`
+        }
+      } else if (cpm >= 150000) {
+        diagnosis = {
+          action: 'CHANGE_TARGET',
+          actionLabel: '🎯 MỞ RỘNG TỆP TARGET',
+          badgeClass: 'badge-target',
+          disease: '💸 CPM quá cao (> 150.000 đ)',
+          advice: `Chi phí 1.000 lượt hiển thị cao (${new Intl.NumberFormat('vi-VN').format(cpm)} đ) do tệp quá hẹp hoặc cạnh tranh thầu lớn. Nên nới lỏng hành vi hoặc đổi sang tệp sở thích rộng hơn.`
+        }
+      } else if (effectiveCustomers > 0 && cpl <= 120000) {
+        diagnosis = {
+          action: 'HOLD',
+          actionLabel: '✅ GIỮ VÀ THEO DÕI',
+          badgeClass: 'badge-hold',
+          disease: 'Chi phí tin nhắn tốt',
+          advice: `Giá tin nhắn đạt ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách. Đội ngũ sale cần gọi điện hoặc phản hồi nhanh trong 5 phút để giữ chân khách.`
+        }
+      }
+
+      let grade = diagnosis.action === 'SCALE' ? 'STAR' : (diagnosis.action === 'KILL' ? 'BAD' : (diagnosis.action === 'OPTIMIZE_SALE' ? 'WARNING' : (ad.isMetaActive ? 'NEUTRAL' : 'PAUSED')))
+      let gradeLabel = diagnosis.disease
+      let recommendation = diagnosis.advice
 
       combinedAds.push({
         id: ad.id,
@@ -2855,10 +2920,15 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         status: ad.status,
         isMetaActive: ad.isMetaActive,
         statusLabel: ad.statusLabel,
-        impressions: ad.impressions,
-        reach: ad.reach,
-        clicks: ad.clicks,
-        spend: ad.spend,
+        impressions,
+        reach,
+        clicks,
+        spend,
+        cpm,
+        ctr,
+        cpc,
+        frequency,
+        diagnosis,
         metaMessages: ad.metaMessages || 0,
         metaCpl: ad.metaCpl || 0,
         ...stat,
@@ -2866,13 +2936,6 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         effectiveRevenue,
         cpl,
         cpa,
-        conversionRate,
-        roas,
-        grade,
-        gradeLabel,
-        recommendation
-      })
-    }
         conversionRate,
         roas,
         grade,
@@ -2925,9 +2988,19 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
     const totalLeads = combinedAds.reduce((sum, a) => sum + (a.totalCustomers || 0), 0)
     const totalClosed = combinedAds.reduce((sum, a) => sum + (a.closedCustomers || 0), 0)
     const totalRevenue = combinedAds.reduce((sum, a) => sum + (a.effectiveRevenue || 0), 0)
+    const totalImpressions = combinedAds.reduce((sum, a) => sum + (a.impressions || 0), 0)
+    const totalClicks = combinedAds.reduce((sum, a) => sum + (a.clicks || 0), 0)
+    const totalReach = combinedAds.reduce((sum, a) => sum + (a.reach || 0), 0)
+
     const avgCpl = totalLeads > 0 && totalSpend > 0 ? Math.round(totalSpend / totalLeads) : 0
     const avgRoas = totalSpend > 0 && totalRevenue > 0 ? Number((totalRevenue / totalSpend).toFixed(2)) : 0
     const overallCr = totalLeads > 0 ? Number(((totalClosed / totalLeads) * 100).toFixed(1)) : 0
+    const avgCtr = totalImpressions > 0 ? Number(((totalClicks / totalImpressions) * 100).toFixed(2)) : 0
+    const avgCpm = totalImpressions > 0 ? Math.round((totalSpend / totalImpressions) * 1000) : 0
+    const avgFrequency = totalReach > 0 ? Number((totalImpressions / totalReach).toFixed(2)) : 1
+    const killCount = combinedAds.filter(a => a.diagnosis?.action === 'KILL').length
+    const scaleCount = combinedAds.filter(a => a.diagnosis?.action === 'SCALE').length
+    const optimizeSaleCount = combinedAds.filter(a => a.diagnosis?.action === 'OPTIMIZE_SALE').length
 
     res.json({
       success: true,
@@ -2940,7 +3013,13 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         avgRoas,
         overallCr,
         totalCampaigns: combinedAds.length,
-        periodLabel
+        periodLabel,
+        avgCtr,
+        avgCpm,
+        avgFrequency,
+        killCount,
+        scaleCount,
+        optimizeSaleCount
       },
       data: combinedAds,
       period

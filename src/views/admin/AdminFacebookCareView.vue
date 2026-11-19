@@ -79,7 +79,7 @@
 
     <!-- TAB 2: BÁO CÁO PHÂN TÍCH HIỆU QUẢ QUẢNG CÁO & ROI -->
     <div v-else-if="currentTab === 'ANALYTICS'" class="analytics-tab-content">
-      <!-- 6 Thẻ Thống Kê Tổng Quan -->
+      <!-- 8 Thẻ Thống Kê Theo Phương Pháp Chu Minh Hạnh -->
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-header"><span class="kpi-icon">💳</span><span class="kpi-label">Tổng Ngân Sách QC ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</span></div>
@@ -88,7 +88,7 @@
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">👥</span><span class="kpi-label">Tổng Khách Nhắn Tin</span></div>
+          <div class="kpi-header"><span class="kpi-icon">💬</span><span class="kpi-label">Tin Nhắn / Khách Hàng</span></div>
           <div class="kpi-val text-blue">{{ analyticsSummary.totalLeads }} khách</div>
           <div class="kpi-sub">{{ analyticsSummary.totalCampaigns }} chiến dịch ghi nhận</div>
         </div>
@@ -97,6 +97,18 @@
           <div class="kpi-header"><span class="kpi-icon">🏷️</span><span class="kpi-label">Giá Mỗi Khách (CPL)</span></div>
           <div class="kpi-val text-amber">{{ analyticsSummary.avgCpl > 0 ? formatMoney(analyticsSummary.avgCpl) : '—' }}</div>
           <div class="kpi-sub">Chi phí để có 1 tin nhắn khách</div>
+        </div>
+
+        <div class="kpi-card highlight-kpi">
+          <div class="kpi-header"><span class="kpi-icon">🎯</span><span class="kpi-label">Độ Hút Content (CTR TB)</span></div>
+          <div :class="['kpi-val', (analyticsSummary.avgCtr || 0) >= 2 ? 'text-green' : 'text-amber']">{{ analyticsSummary.avgCtr || 0 }}%</div>
+          <div class="kpi-sub">Chuẩn: &gt; 2.0% là bài hút khách</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header"><span class="kpi-icon">📡</span><span class="kpi-label">Độ Cạnh Tranh (CPM TB)</span></div>
+          <div class="kpi-val text-purple">{{ formatMoney(analyticsSummary.avgCpm || 0) }}</div>
+          <div class="kpi-sub">Giá / 1.000 lượt hiển thị</div>
         </div>
 
         <div class="kpi-card">
@@ -118,30 +130,33 @@
         </div>
       </div>
 
-      <!-- Khuyến nghị tối ưu thông minh -->
-      <div v-if="bestAd" class="ai-insight-box">
-        <div class="insight-icon">💡</div>
+      <!-- Hộp Bắt Bệnh & Ra Quyết Định Nhanh (Chu Minh Hạnh Framework) -->
+      <div class="ai-insight-box">
+        <div class="insight-icon">🩺</div>
         <div class="insight-content">
-          <h4>Chiến Dịch Sinh Lời Hiệu Quả Nhất</h4>
+          <h4>Bắt Bệnh Chiến Dịch & Ra Quyết Định Nhanh (Phương Pháp Chu Minh Hạnh)</h4>
           <p>
-            Chiến dịch <strong>"{{ bestAd.name }}"</strong> đang dẫn đầu với 
-            <strong>{{ bestAd.totalCustomers }} khách nhắn tin</strong> và 
-            <strong>{{ bestAd.closedCustomers }} đơn đã chốt</strong> 
-            (Doanh thu ước tính: <strong>{{ formatMoney(bestAd.effectiveRevenue) }}</strong>, ROAS đạt <strong>{{ bestAd.roas }}x</strong>). 
-            Khuyến nghị Tú Audio tiếp tục ưu tiên ngân sách và đẩy mạnh chốt sale cho chiến dịch này!
+            Phân tích đa chiều giữa <strong>Độ hút Content (CTR)</strong>, 
+            <strong>Độ bão hòa tệp (Tần suất / Frequency)</strong>, 
+            <strong>Chi phí tiếp cận (CPM)</strong> và 
+            <strong>Tỷ lệ chốt đơn thực tế</strong> để đưa ra chỉ dẫn dứt khoát: 
+            khi nào <strong>Tắt camp đốt tiền</strong>, khi nào <strong>Sửa 3s đầu video</strong>, 
+            và khi nào <strong>Vít tiền chiến dịch Win</strong>!
           </p>
         </div>
-        <button type="button" class="adm-btn adm-btn-sm adm-btn-gold" @click="autoMatchAds" :disabled="autoMatchingBusy">
-          {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp Lại Nguồn QC' }}
-        </button>
+        <div class="insight-actions">
+          <button type="button" class="adm-btn adm-btn-sm adm-btn-gold" @click="autoMatchAds" :disabled="autoMatchingBusy || resetMatchingBusy">
+            {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp Nguồn QC' }}
+          </button>
+        </div>
       </div>
 
       <!-- Bảng xếp hạng chi tiết từng quảng cáo -->
       <div class="adm-card analytics-table-card">
         <div class="table-card-head">
           <div>
-            <h3>Bảng Xếp Hạng Hiệu Quả Từng Quảng Cáo (ROI Ranking)</h3>
-            <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Trọn đời' }}) với lượng khách & doanh thu thực tế</p>
+            <h3>Bảng Bắt Bệnh & Hiệu Quả Từng Quảng Cáo (ROI & Technical Ranking)</h3>
+            <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Trọn đời' }}) với các chỉ số kỹ thuật CTR, CPM, Freq và doanh thu thực tế</p>
           </div>
           <div class="head-actions">
             <div class="period-btn-group">
@@ -193,6 +208,7 @@
                 <th>Chiến Dịch & Tên Quảng Cáo</th>
                 <th>Trạng Thái Meta</th>
                 <th>Chi Phí ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</th>
+                <th>Chỉ Số Đo (CTR / CPM / Freq)</th>
                 <th>Tin Nhắn (Meta)</th>
                 <th>Khách CRM</th>
                 <th>Giá / Tin (CPL)</th>
@@ -200,7 +216,7 @@
                 <th>Tỷ Lệ Chốt</th>
                 <th>Doanh Thu Ước Tính</th>
                 <th>ROAS</th>
-                <th>Đánh Giá & Khuyến Nghị</th>
+                <th>Bắt Bệnh & Ra Quyết Định (Chu Minh Hạnh)</th>
                 <th>Thao Tác</th>
               </tr>
             </thead>
@@ -216,6 +232,15 @@
                   </span>
                 </td>
                 <td class="font-bold text-red">{{ formatMoney(item.spend) }}</td>
+                <td>
+                  <div class="tech-metrics">
+                    <span :class="['metric-pill', (item.ctr || 0) >= 2 ? 'metric-good' : ((item.ctr || 0) < 1.2 && item.spend > 100000 ? 'metric-bad' : 'metric-neutral')]">
+                      CTR: <b>{{ item.ctr || 0 }}%</b>
+                    </span>
+                    <span class="metric-sub">CPM: {{ formatMoney(item.cpm || 0) }}</span>
+                    <span class="metric-sub">Tần suất: {{ item.frequency || 1 }}x</span>
+                  </div>
+                </td>
                 <td>
                   <span class="badge-meta-msg">{{ item.metaMessages || 0 }} tin</span>
                 </td>
@@ -237,9 +262,12 @@
                   </span>
                 </td>
                 <td>
-                  <div class="rec-wrap">
-                    <span :class="['grade-tag', `grade-${item.grade.toLowerCase()}`]">{{ item.gradeLabel }}</span>
-                    <p class="rec-text">{{ item.recommendation }}</p>
+                  <div class="diagnosis-box">
+                    <span :class="['action-badge', `action-${(item.diagnosis?.action || 'HOLD').toLowerCase()}`]">
+                      {{ item.diagnosis?.actionLabel || item.gradeLabel }}
+                    </span>
+                    <strong class="disease-title">{{ item.diagnosis?.disease || item.gradeLabel }}</strong>
+                    <p class="rec-text">{{ item.diagnosis?.advice || item.recommendation }}</p>
                   </div>
                 </td>
                 <td>
@@ -249,7 +277,7 @@
                 </td>
               </tr>
               <tr v-if="!analyticsData.length">
-                <td colspan="12" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
+                <td colspan="13" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
               </tr>
             </tbody>
           </table>
@@ -487,6 +515,24 @@ onBeforeUnmount(() => {
 .period-btn{padding:5px 10px;font-size:.73rem;font-weight:700;border:none;background:#f8fafc;color:#475569;cursor:pointer;transition:all .15s}
 .period-btn:hover{background:#e2e8f0}
 .period-btn.active{background:#2563eb;color:#fff}
+
+.tech-metrics{display:flex;flex-direction:column;gap:3px;font-size:.72rem}
+.metric-pill{display:inline-block;padding:2px 6px;border-radius:4px;font-weight:600;width:fit-content}
+.metric-good{background:#dcfce7;color:#15803d}
+.metric-bad{background:#fee2e2;color:#b91c1c}
+.metric-neutral{background:#f1f5f9;color:#475569}
+.metric-sub{color:#64748b;font-size:.68rem}
+
+.diagnosis-box{display:flex;flex-direction:column;gap:4px;max-width:280px}
+.action-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-weight:800;font-size:.72rem;letter-spacing:.3px;width:fit-content}
+.action-scale{background:#7c3aed;color:#fff}
+.action-kill{background:#dc2626;color:#fff}
+.action-optimize_sale{background:#f59e0b;color:#fff}
+.action-change_content{background:#f97316;color:#fff}
+.action-change_target{background:#2563eb;color:#fff}
+.action-hold{background:#16a34a;color:#fff}
+.action-paused{background:#94a3b8;color:#fff}
+.disease-title{font-size:.76rem;color:#0f172a;line-height:1.3;font-weight:800}
 
 .analytics-table{width:100%;border-collapse:collapse;font-size:.78rem}
 .analytics-table th{background:#f8fafc;padding:10px 11px;text-align:left;color:#475569;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap}
