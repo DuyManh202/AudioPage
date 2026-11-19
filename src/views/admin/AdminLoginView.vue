@@ -7,14 +7,7 @@
     <div class="login-wrapper">
       <!-- Đầu trang thương hiệu Tú Audio -->
       <div class="login-brand">
-        <div class="brand-logo-badge">
-          <span>TA</span>
-        </div>
-        <h1 class="brand-name">TÚ AUDIO</h1>
-        <div class="brand-pill">
-          <span class="live-dot"></span>
-          <span>HỆ THỐNG ĐIỀU HÀNH BÁN HÀNG &amp; CRM</span>
-        </div>
+        <BrandLogo theme="dark" :height="56" tagline="HỆ THỐNG ĐIỀU HÀNH BÁN HÀNG & CRM" />
       </div>
 
       <!-- Khối Thẻ Trung Tâm (Chuyển đổi Đăng nhập / Đăng ký) -->
@@ -363,6 +356,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { adminHomeForRole } from '../../utils/permissions'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
+import BrandLogo from '../../components/common/BrandLogo.vue'
 
 const router = useRouter()
 const route = useRoute()

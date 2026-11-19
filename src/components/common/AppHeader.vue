@@ -19,14 +19,8 @@
 
     <div class="main-nav">
       <div class="container header-grid">
-        <router-link to="/" class="brand-logo">
-          <div class="logo-symbol">
-            <span>TA</span>
-          </div>
-          <div class="logo-text">
-            <span class="logo-title">TÚ AUDIO</span>
-            <span class="logo-slogan">Âm Thanh Chuẩn Phòng Hát</span>
-          </div>
+        <router-link to="/" class="brand-logo" title="Tú Audio — Âm Thanh Chuẩn Phòng Hát">
+          <BrandLogo theme="light" :height="42" />
         </router-link>
 
         <div class="search-box">
@@ -107,6 +101,7 @@ import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import { useCartStore } from '../../stores/cartStore'
 import { CONTACT_INFO } from '../../config/contact'
+import BrandLogo from './BrandLogo.vue'
 
 const router = useRouter()
 const productStore = useProductStore()

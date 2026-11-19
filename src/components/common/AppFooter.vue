@@ -5,11 +5,7 @@
     <div class="container footer-grid">
       <div class="footer-col footer-brand-col">
         <div class="footer-brand">
-          <div class="footer-logo-mark">TA</div>
-          <div>
-            <span class="brand-title">TÚ AUDIO</span>
-            <span class="brand-sub">Chuyên Gia Dàn Karaoke Gia Đình &amp; Bán Lẻ Loa</span>
-          </div>
+          <BrandLogo theme="dark" :height="44" tagline="Chuyên Gia Dàn Karaoke Gia Đình" />
         </div>
         <p class="desc">
           Cam kết thiết bị âm thanh đồng bộ, xử lý dứt điểm hú rít, đem lại chất âm dày ấm, chuẩn phòng hát cho không gian nhà bạn.
@@ -88,6 +84,7 @@
 
 <script setup>
 import { CONTACT_INFO } from '../../config/contact'
+import BrandLogo from './BrandLogo.vue'
 </script>
 
 <style scoped>

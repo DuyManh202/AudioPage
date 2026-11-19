@@ -12,11 +12,7 @@
     <!-- Sidebar Điều Hướng Trái -->
     <aside :class="['admin-sidebar', { 'is-open': mobileNavOpen }]">
       <div class="sidebar-brand">
-        <div class="brand-logo">TA</div>
-        <div class="brand-meta">
-          <span class="brand-title">TÚ AUDIO</span>
-          <span class="brand-sub">Enterprise Admin v2.0</span>
-        </div>
+        <BrandLogo theme="dark" :height="36" tagline="Enterprise Admin v2.0" />
         <button
           type="button"
           class="mobile-close-nav"
@@ -356,6 +352,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { canAccessMenu } from '../../utils/permissions'
 import { apiRequest } from '../../utils/api'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
+import BrandLogo from '../../components/common/BrandLogo.vue'
 import '../../assets/styles/admin.css'
 
 const route = useRoute()
