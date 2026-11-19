@@ -109,8 +109,9 @@ const productStore = useProductStore()
 
 const featuredCombo = computed(() => {
   return (
-    productStore.combos.find(c => c.id === 'dan-karaoke-29tr') ||
     productStore.combos.find(c => c.isFeatured) ||
+    productStore.combos.find(c => c.id === 'CB-29TR' || c.id === 'dan-karaoke-29tr') ||
+    productStore.combos[0] ||
     combosData[0]
   )
 })

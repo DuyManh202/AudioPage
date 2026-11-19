@@ -118,6 +118,9 @@
         <!-- Thẻ Header -->
         <div class="combo-item-top">
           <div class="badges-row">
+            <span class="adm-badge adm-badge-slate sku-tag">
+              {{ combo.id }}
+            </span>
             <span v-if="combo.badge" class="adm-badge adm-badge-gold">
               {{ combo.badge }}
             </span>
@@ -303,6 +306,17 @@
               </div>
 
               <div class="adm-field">
+                <label>Mã Quản Lý (Mã SKU) <span class="sub-hint">(vd: CB-01, CB-35TR)</span></label>
+                <input
+                  type="text"
+                  v-model="editingDraft.id"
+                  :disabled="!isNewCombo"
+                  placeholder="Hệ thống tự sinh (CB-01, CB-35TR...)"
+                  style="text-transform: uppercase; font-family: monospace; font-weight: 700;"
+                />
+              </div>
+
+              <div class="adm-field">
                 <label>Nhãn Tiếp Thị Nổi Bật</label>
                 <input
                   type="text"
@@ -311,7 +325,7 @@
                 />
               </div>
 
-              <div class="adm-field">
+              <div class="adm-field field-span-2">
                 <label>Diện Tích Phòng Đề Xuất</label>
                 <input
                   type="text"
@@ -829,6 +843,7 @@ const submitSaveCombo = async () => {
       .filter(Boolean)
 
     const payload = {
+      id: (editingDraft.id || '').trim().toUpperCase() || undefined,
       name: editingDraft.name.trim(),
       tagline: (editingDraft.tagline || '').trim(),
       roomSize: (editingDraft.roomSize || '').trim() || 'Phòng gia đình',
@@ -1111,6 +1126,21 @@ const executeDeleteCombo = async () => {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.sku-tag {
+  font-family: monospace;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.sub-hint {
+  font-size: 0.72rem;
+  font-weight: normal;
+  color: #64748b;
 }
 
 .featured-toggle-btn {

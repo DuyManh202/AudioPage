@@ -2072,8 +2072,19 @@ app.post('/api/v1/admin/combos', authenticateAdmin, authorizePermission('combos.
     const savedAmount = Math.max(0, totalRealValue - price)
     const isFeatured = Boolean(c.isFeatured)
 
-    const rawSlug = slugifyVi(c.name).slice(0, 30)
-    const id = c.id && /^[a-z0-9-]+$/.test(c.id) ? c.id : `dan-karaoke-${rawSlug}-${Date.now().toString().slice(-4)}`
+    let id = (c.id || '').trim().toUpperCase()
+    if (!id || !/^[A-Z0-9_-]+$/i.test(id)) {
+      const mil = Math.round(price / 1000000)
+      const baseId = mil > 0 ? `CB-${mil}TR` : 'CB-01'
+      const existing = await query('SELECT id FROM combos WHERE id = $1', [baseId])
+      if (existing.rows.length === 0) {
+        id = baseId
+      } else {
+        const countRes = await query('SELECT COUNT(*) FROM combos')
+        const nextNum = String(Number(countRes.rows[0].count) + 1).padStart(2, '0')
+        id = `CB-${nextNum}`
+      }
+    }
 
     const sql = `
       INSERT INTO combos (
@@ -2331,7 +2342,9 @@ app.post('/api/v1/admin/combos/:id/duplicate', authenticateAdmin, authorizePermi
       return res.status(404).json({ success: false, message: 'Không tìm thấy gói dàn nguồn để nhân bản.' })
     }
     const orig = origResult.rows[0]
-    const newId = `${orig.id.slice(0, 32)}-copy-${Date.now().toString().slice(-4)}`
+    const countRes = await query('SELECT COUNT(*) FROM combos')
+    const nextNum = String(Number(countRes.rows[0].count) + 1).padStart(2, '0')
+    const newId = `${orig.id}-COPY-${nextNum}`
     const newName = `${orig.name} (Bản sao)`
 
     const insertSql = `
@@ -2845,6 +2858,19 @@ const ensureDatabaseSchema = async () => {
       PRIMARY KEY (record_type,record_id)
     )`)
     await query('ALTER TABLE combos ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE')
+    // Chuẩn hóa ràng buộc khóa ngoại ON UPDATE CASCADE và cập nhật ID gói dàn cũ sang mã SKU chuẩn
+    try {
+      await query(`
+        ALTER TABLE combo_components DROP CONSTRAINT IF EXISTS combo_components_combo_id_fkey;
+        ALTER TABLE combo_components ADD CONSTRAINT combo_components_combo_id_fkey FOREIGN KEY (combo_id) REFERENCES combos(id) ON DELETE CASCADE ON UPDATE CASCADE;
+        ALTER TABLE combo_gifts DROP CONSTRAINT IF EXISTS combo_gifts_combo_id_fkey;
+        ALTER TABLE combo_gifts ADD CONSTRAINT combo_gifts_combo_id_fkey FOREIGN KEY (combo_id) REFERENCES combos(id) ON DELETE CASCADE ON UPDATE CASCADE;
+        UPDATE combos SET id = 'CB-19TR' WHERE id = 'dan-karaoke-19tr';
+        UPDATE combos SET id = 'CB-29TR' WHERE id = 'dan-karaoke-29tr';
+      `)
+    } catch (e) {
+      // Bỏ qua nếu đã nâng cấp
+    }
   } catch (err) {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
   }
