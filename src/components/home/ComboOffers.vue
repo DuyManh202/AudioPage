@@ -68,21 +68,19 @@
         <div
           v-for="(combo, idx) in filteredCombos"
           :key="combo.id"
-          v-reveal="idx * 60"
+          v-reveal="idx * 50"
           :class="['tgdd-card', { 'is-featured-border': combo.isFeatured }]"
         >
-          <!-- Nhãn Sticker TGDD ở góc trên ảnh -->
+          <!-- Nhãn Sticker TGDD ở góc trên ảnh: Chỉ giữ % Giảm và Trả Góp 0% để ảnh luôn thoáng và gọn -->
           <div class="tgdd-sticker-bar">
             <span v-if="calcDiscountPercent(combo) > 0" class="sticker-discount">
               Giảm {{ calcDiscountPercent(combo) }}%
             </span>
-            <span v-if="combo.badge" class="sticker-badge">
-              {{ combo.badge }}
-            </span>
+            <span v-else class="sticker-hot">HOT</span>
             <span class="sticker-installment">Trả góp 0%</span>
           </div>
 
-          <!-- Ảnh Đại Diện Bộ Dàn Sắc Nét Chuẩn Studio (Không bị lộ video vlog YouTube) -->
+          <!-- Ảnh Đại Diện Bộ Dàn Sắc Nét Chuẩn Studio -->
           <div class="tgdd-img-wrap" @click="openDetailModal(combo)">
             <img
               :src="getComboImage(combo)"
@@ -106,7 +104,14 @@
 
           <!-- Nội Dung Thẻ Sản Phẩm Chuẩn TGDD -->
           <div class="tgdd-info-body">
-            <!-- Tên gói dàn (2 dòng bằng nhau) -->
+            <!-- Nhãn Tôn Vinh Gói Dàn (Hero Highlight Tag) hiển thị trọn vẹn không bị cắt chữ -->
+            <div v-if="combo.badge" class="tgdd-hero-tag">
+              <span class="tag-fire">🔥</span>
+              <span>{{ combo.badge }}</span>
+            </div>
+            <div v-else class="tgdd-hero-tag-empty"></div>
+
+            <!-- Tên gói dàn (2 dòng chuẩn xác bằng nhau giữa tất cả các card) -->
             <h3 class="tgdd-item-title" :title="combo.name" @click="openDetailModal(combo)">
               {{ combo.name }}
             </h3>
@@ -133,14 +138,19 @@
                 <span v-if="combo.totalRealValue && combo.totalRealValue > combo.price" class="price-original">
                   {{ formatCurrency(combo.totalRealValue || combo.listPrice) }}
                 </span>
+                <span v-if="calcDiscountPercent(combo) > 0" class="price-discount-tag">
+                  -{{ calcDiscountPercent(combo) }}%
+                </span>
               </div>
 
               <div v-if="combo.fastActionPrice" class="fast-action-pill">
-                ⚡ Chuyển khoản trong ngày: <strong>{{ formatCurrency(combo.fastActionPrice) }}</strong>
+                <span class="bolt-icon">⚡</span>
+                <span>Chuyển khoản ngay: <strong>{{ formatCurrency(combo.fastActionPrice) }}</strong></span>
               </div>
 
               <div class="save-badge-line">
-                ✓ Tiết kiệm: <strong>{{ formatCurrency(calcSaved(combo)) }}</strong>
+                <span class="check-icon">✓</span>
+                <span>Tiết kiệm: <strong>{{ formatCurrency(calcSaved(combo)) }}</strong></span>
               </div>
             </div>
 
@@ -152,7 +162,8 @@
               </div>
               <ul class="promo-list">
                 <li v-for="(gift, gIdx) in (combo.gifts || []).slice(0, 2)" :key="gIdx">
-                  • {{ gift }}
+                  <span class="promo-dot">•</span>
+                  <span class="promo-text">{{ gift }}</span>
                 </li>
                 <li v-if="(combo.gifts?.length || 0) > 2" class="promo-more">
                   + Xem thêm {{ combo.gifts.length - 2 }} quà tặng &amp; đặc quyền...
@@ -168,14 +179,15 @@
               class="btn-tgdd-order"
               @click="handleSelectCombo(combo)"
             >
-              TƯ VẤN &amp; THỬ DÀN
+              TƯ VẤN &amp; THỬ DÀN TẬN NHÀ
             </button>
             <button
               type="button"
               class="btn-tgdd-detail"
               @click="openDetailModal(combo)"
             >
-              Xem Cấu Hình Chi Tiết
+              <span class="detail-icon">🔍</span>
+              <span>Xem Cấu Hình Chi Tiết</span>
             </button>
           </div>
         </div>
@@ -402,8 +414,8 @@ const orderFromModal = () => {
 
 <style scoped>
 .combos-section {
-  padding: 56px 0 72px;
-  background: #f1f5f9;
+  padding: 50px 0 96px;
+  background: #f8fafc;
 }
 
 .text-center {
@@ -440,7 +452,7 @@ const orderFromModal = () => {
 }
 
 .tgdd-tab-btn {
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 999px;
   background: #ffffff;
   border: 1px solid #d1d5db;
@@ -468,40 +480,40 @@ const orderFromModal = () => {
 /* LƯỚI SẢN PHẨM PHONG CÁCH THẾ GIỚI DI ĐỘNG */
 .tgdd-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
   align-items: stretch;
 }
 
 .tgdd-card {
   position: relative;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .tgdd-card:hover {
   transform: translateY(-4px);
   border-color: #3b82f6;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
 }
 
 .tgdd-card.is-featured-border {
   border: 2px solid #f59e0b;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15);
 }
 
-/* STICKER / BADGE PHONG CÁCH TGDD */
+/* STICKER / BADGE PHONG CÁCH TGDD TRÊN ẢNH */
 .tgdd-sticker-bar {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
+  top: 10px;
+  left: 10px;
+  right: 10px;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -513,40 +525,42 @@ const orderFromModal = () => {
 .sticker-discount {
   background: #dc2626;
   color: #ffffff;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 900;
-  padding: 3px 7px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+  white-space: nowrap;
 }
 
-.sticker-badge {
-  background: #f59e0b;
+.sticker-hot {
+  background: #ea580c;
   color: #ffffff;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 3px 7px;
-  border-radius: 4px;
-  max-width: 130px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.35);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .sticker-installment {
-  background: #1e293b;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(4px);
   color: #f8fafc;
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* KHUNG ẢNH THUMBNAIL BỘ DÀN CHUẨN ĐỒ HỌA STUDIO */
 .tgdd-img-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   background: #f8fafc;
   overflow: hidden;
   cursor: pointer;
@@ -564,7 +578,7 @@ const orderFromModal = () => {
 }
 
 .tgdd-card:hover .tgdd-product-img {
-  transform: scale(1.05);
+  transform: scale(1.04);
 }
 
 .video-chip-btn {
@@ -574,10 +588,10 @@ const orderFromModal = () => {
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(4px);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -595,7 +609,7 @@ const orderFromModal = () => {
 
 .play-icon-tri {
   color: #f87171;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
 }
 
 .video-chip-btn:hover .play-icon-tri {
@@ -604,24 +618,52 @@ const orderFromModal = () => {
 
 /* NỘI DUNG THẺ SẢN PHẨM */
 .tgdd-info-body {
-  padding: 14px 14px 10px;
+  padding: 14px 16px 12px;
   display: flex;
   flex-direction: column;
   flex: 1;
 }
 
-.tgdd-item-title {
-  font-size: 0.94rem;
+/* NHÃN HERO TAG TÔN VINH BỘ DÀN */
+.tgdd-hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
   font-weight: 800;
-  color: #1f2937;
-  line-height: 1.35;
-  margin: 0 0 8px 0;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tag-fire {
+  font-size: 0.8rem;
+}
+
+.tgdd-hero-tag-empty {
+  height: 25px;
+  margin-bottom: 8px;
+}
+
+.tgdd-item-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.38;
+  margin: 0 0 10px 0;
   cursor: pointer;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  height: 2.7em;
+  height: 2.76em;
+  min-height: 2.76em;
   transition: color 0.2s;
 }
 
@@ -633,81 +675,112 @@ const orderFromModal = () => {
 .tgdd-spec-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 5px;
+  margin-bottom: 12px;
+  min-height: 28px;
+  align-items: center;
 }
 
 .spec-pill {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  background: #f3f4f6;
-  color: #4b5563;
-  padding: 2px 7px;
-  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
   white-space: nowrap;
 }
 
 .pill-room {
   background: #eff6ff;
   color: #1d4ed8;
+  border-color: #bfdbfe;
   font-weight: 800;
 }
 
 /* KHỐI ĐỊNH GIÁ */
 .tgdd-price-wrap {
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #e5e7eb;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .price-row-main {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 3px;
   flex-wrap: wrap;
 }
 
 .price-current {
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 900;
   color: #dc2626;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .price-original {
-  font-size: 0.8rem;
-  color: #9ca3af;
+  font-size: 0.82rem;
+  color: #94a3b8;
   text-decoration: line-through;
   font-weight: 600;
 }
 
+.price-discount-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .fast-action-pill {
-  font-size: 0.74rem;
-  color: #b45309;
+  font-size: 0.76rem;
+  color: #92400e;
   background: #fef3c7;
-  padding: 3px 8px;
-  border-radius: 5px;
-  margin-bottom: 3px;
-  display: inline-block;
+  border: 1px solid #fde68a;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
 }
 
 .fast-action-pill strong {
   font-weight: 900;
 }
 
+.bolt-icon {
+  color: #d97706;
+  font-size: 0.82rem;
+}
+
 .save-badge-line {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #15803d;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.check-icon {
+  color: #16a34a;
+  font-weight: 900;
 }
 
 /* KHUNG QUÀ TẶNG KHUYẾN MÃI (HỘP VÀNG NÉT ĐỨT TGDD) */
 .tgdd-promo-box {
   background: #fffbeb;
-  border: 1px dashed #fcd34d;
-  border-radius: 6px;
-  padding: 8px 10px;
+  border: 1px dashed #f59e0b;
+  border-radius: 8px;
+  padding: 10px 12px;
   cursor: pointer;
   margin-top: auto;
   transition: background 0.2s;
@@ -720,10 +793,10 @@ const orderFromModal = () => {
 .promo-head {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
+  gap: 5px;
+  font-size: 0.75rem;
   color: #92400e;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .promo-list {
@@ -732,13 +805,25 @@ const orderFromModal = () => {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 0.72rem;
+  gap: 3px;
+  font-size: 0.74rem;
   color: #78350f;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .promo-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.promo-dot {
+  color: #d97706;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.promo-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -747,56 +832,68 @@ const orderFromModal = () => {
 .promo-more {
   color: #2563eb;
   font-weight: 700;
-  margin-top: 1px;
+  margin-top: 2px;
+  cursor: pointer;
 }
 
 /* NÚT THAO TÁC THẺ SẢN PHẨM */
 .tgdd-card-actions {
-  padding: 10px 14px 14px;
+  padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   background: #ffffff;
+  border-top: 1px solid #f1f5f9;
 }
 
 .btn-tgdd-order {
   width: 100%;
-  padding: 10px;
-  background: linear-gradient(180deg, #fd6e1d, #f59000);
+  padding: 11px 14px;
+  background: linear-gradient(180deg, #fd6e1d 0%, #ea580c 100%);
   border: none;
   color: #ffffff;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 900;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 6px rgba(245, 144, 0, 0.35);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.28);
   text-align: center;
+  letter-spacing: 0.01em;
 }
 
 .btn-tgdd-order:hover {
-  background: linear-gradient(180deg, #f59000, #d97706);
+  background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(234, 88, 12, 0.35);
 }
 
 .btn-tgdd-detail {
   width: 100%;
-  padding: 7px;
-  background: transparent;
+  padding: 9px 12px;
+  background: #ffffff;
   border: 1px solid #d1d5db;
-  color: #4b5563;
-  font-size: 0.76rem;
+  color: #374151;
+  font-size: 0.8rem;
   font-weight: 700;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .btn-tgdd-detail:hover {
-  background: #f3f4f6;
+  background: #f8fafc;
   color: #111827;
   border-color: #9ca3af;
+}
+
+.detail-icon {
+  font-size: 0.82rem;
 }
 
 /* MODAL CHI TIẾT & VIDEO */
@@ -1090,42 +1187,124 @@ const orderFromModal = () => {
   transform: translateY(-1px);
 }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
+/* RESPONSIVE DESKTOP VỪA & TABLET (681px - 1024px) */
+@media (max-width: 1024px) {
   .tgdd-product-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-  .modal-comps-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
   }
 }
 
-@media (max-width: 640px) {
+/* RESPONSIVE MOBILE ĐẶC BIỆT CHUẨN THẾ GIỚI DI ĐỘNG (<= 680px) */
+@media (max-width: 680px) {
   .combos-section {
-    padding: 36px 0 48px;
+    padding: 36px 0 88px;
   }
-  .tgdd-product-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+  
+  .section-head {
+    margin-bottom: 20px;
   }
-  .tgdd-info-body {
-    padding: 10px 8px 6px;
-  }
-  .tgdd-card-actions {
-    padding: 6px 8px 10px;
-  }
-  .price-current {
-    font-size: 1.1rem;
-  }
+
+  /* Thanh tab cuộn mượt tay chuẩn app di động */
   .tgdd-filter-tabs {
     justify-content: flex-start;
     overflow-x: auto;
-    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 4px 8px;
     flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 20px;
   }
+  
+  .tgdd-filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .tgdd-tab-btn {
     flex-shrink: 0;
+    padding: 7px 14px;
+    font-size: 0.78rem;
+  }
+
+  /* Lưới 1 cột trên Mobile: Mỗi bộ dàn là 1 thẻ lớn sang trọng, thoáng đãng, không bị bóp nghẹt */
+  .tgdd-product-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: 0 auto;
+    gap: 20px;
+  }
+
+  .tgdd-card {
+    border-radius: 16px;
+  }
+
+  .tgdd-img-wrap {
+    aspect-ratio: 16 / 10;
+  }
+
+  .tgdd-info-body {
+    padding: 14px 14px 10px;
+  }
+
+  .tgdd-item-title {
+    font-size: 0.98rem;
+    height: auto;
+    min-height: unset;
+    -webkit-line-clamp: 3;
+    margin-bottom: 8px;
+  }
+
+  .tgdd-spec-pills {
+    margin-bottom: 10px;
+  }
+
+  .spec-pill {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+  }
+
+  .price-current {
+    font-size: 1.35rem;
+  }
+
+  .tgdd-promo-box {
+    padding: 9px 10px;
+  }
+
+  .promo-list {
+    font-size: 0.72rem;
+  }
+
+  .tgdd-card-actions {
+    padding: 10px 14px 14px;
+    gap: 7px;
+  }
+
+  .btn-tgdd-order {
+    padding: 11px;
+    font-size: 0.84rem;
+  }
+
+  .btn-tgdd-detail {
+    padding: 9px;
+    font-size: 0.78rem;
+  }
+
+  /* Modal trên Mobile */
+  .modal-comps-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tgdd-modal-box {
+    max-height: 94vh;
+    border-radius: 14px;
+  }
+  
+  .modal-pricing-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 </style>
