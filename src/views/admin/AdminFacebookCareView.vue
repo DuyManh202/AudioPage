@@ -669,6 +669,7 @@ onBeforeUnmount(() => {
 .action-badge-row{margin-bottom:2px}
 .action-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-weight:900;font-size:.7rem;letter-spacing:.4px;text-transform:uppercase}
 .action-scale{background:#7c3aed;color:#fff;box-shadow:0 2px 8px rgba(124,58,237,0.3)}
+.action-potential_win{background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35);font-weight:900}
 .action-kill{background:#dc2626;color:#fff;box-shadow:0 2px 8px rgba(220,38,38,0.3)}
 .action-optimize_sale{background:#d97706;color:#fff;box-shadow:0 2px 8px rgba(217,119,6,0.3)}
 .action-change_content{background:#ea580c;color:#fff}

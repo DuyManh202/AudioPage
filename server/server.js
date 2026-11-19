@@ -2830,13 +2830,13 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       const cpc = clicks > 0 ? Math.round(spend / clicks) : 0
       const frequency = reach > 0 ? Number((impressions / reach).toFixed(2)) : 1
 
-      // Bộ chẩn đoán "Bắt bệnh quảng cáo & Ra quyết định" theo phương pháp Chu Minh Hạnh
+      // Bộ chẩn đoán "Bắt bệnh quảng cáo & Ra quyết định" chuẩn phương pháp Chu Minh Hạnh
       let diagnosis = {
         action: 'HOLD',
         actionLabel: '👁️ Tiếp tục theo dõi',
         badgeClass: 'badge-hold',
-        disease: 'Bình thường',
-        advice: 'Chiến dịch đang trong ngưỡng phân phối cơ bản.'
+        disease: 'Phân phối bình thường',
+        advice: 'Chiến dịch đang trong ngưỡng phân phối cơ bản, tiếp tục theo dõi biến động chỉ số.'
       }
 
       if (!ad.isMetaActive) {
@@ -2852,56 +2852,64 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           action: 'SCALE',
           actionLabel: '🚀 VÍT NGÂN SÁCH (+20%)',
           badgeClass: 'badge-scale',
-          disease: '🌟 Chiến dịch Win (Siêu lợi nhuận)',
-          advice: `ROAS đạt ${roas}x. Khuyến nghị tăng 20%-25% ngân sách mỗi 24h hoặc nhân bản nhóm sang tệp đối tượng tương tự.`
+          disease: '🌟 Chiến Dịch Win (Siêu Lợi Nhuận)',
+          advice: `ROAS đạt ${roas}x. Áp dụng quy tắc vàng Chu Minh Hạnh: Chỉ tăng 20%-25% ngân sách mỗi 24h để tránh vỡ máy học, hoặc nhân bản nhóm sang tệp Lookalike/Sở thích mới.`
         }
-      } else if (spend >= 300000 && effectiveCustomers === 0 && ctr < 1.2) {
+      } else if (spend >= 250000 && effectiveCustomers === 0 && ctr < 1.2) {
         diagnosis = {
           action: 'KILL',
-          actionLabel: '🛑 TẮT NGAY (Đốt tiền)',
+          actionLabel: '🛑 TẮT NGAY (Cắt Lỗ)',
           badgeClass: 'badge-kill',
-          disease: '🚨 Bệnh Content: CTR quá thấp (< 1.2%)',
-          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn, CTR chỉ ${ctr}%. Ảnh/video mở đầu không hút khách, tắt ngay để đổi content mới!`
+          disease: '🚨 Bệnh Content Hỏng: CTR quá thấp (< 1.2%)',
+          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn, CTR chỉ ${ctr}%. Đúng bài anh Hạnh dạy: Tắt ngay lập tức, không nuôi hy vọng làm cháy ngân sách!`
         }
-      } else if (frequency >= 2.0 && spend >= 1000000) {
+      } else if (frequency >= 1.8 && spend >= 300000) {
         diagnosis = {
           action: 'CHANGE_CONTENT',
           actionLabel: '🔄 THAY BÀI / ĐỔI TỆP',
           badgeClass: 'badge-change',
-          disease: '⚠️ Bão hòa tệp (Tần suất > 2.0)',
-          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lặp lại nhiều lần khiến giá thầu tăng). Cần thay video mới hoặc đổi tệp target khác.`
+          disease: `⚠️ Bão Hòa Tệp (Tần suất ${frequency}x >= 1.8x)`,
+          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lại lần 2-3). Theo anh Hạnh: Tệp đã bắt đầu mòn, giá tin nhắn sẽ tăng vọt. Cần đổi video mới hoặc nhân nhóm đổi tệp target.`
         }
-      } else if (effectiveCustomers >= 5 && stat.closedCustomers === 0) {
+      } else if (effectiveCustomers >= 15 && stat.closedCustomers === 0 && spend >= 300000) {
         diagnosis = {
           action: 'OPTIMIZE_SALE',
-          actionLabel: '💬 TỐI ƯU KỊCH BẢN CHỐT',
+          actionLabel: '💬 BỆNH MESS RẺ KHÔNG RA ĐƠN',
           badgeClass: 'badge-optimize',
-          disease: '⚠️ Bệnh "Mess Rẻ Không Ra Đơn"',
-          advice: `Đã có ${effectiveCustomers} khách nhắn tin (CPL: ${new Intl.NumberFormat('vi-VN').format(cpl)} đ) nhưng 0 đơn chốt. Xem lại kịch bản tư vấn hoặc content đang hút tệp tò mò/không đúng phân khúc!`
+          disease: '⚠️ Bệnh "Mess Rẻ Không Ra Đơn" (Kinh Điển)',
+          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ được ${effectiveCustomers} khách (CPL: ${new Intl.NumberFormat('vi-VN').format(cpl)} đ) nhưng 0 đơn chốt. Nguyên nhân 1: Content hút tệp tò mò/xin miễn phí; Nguyên nhân 2: Kịch bản sale nhắn tin dông dài, chưa xin SĐT gọi tư vấn trực tiếp!`
         }
-      } else if (ctr < 1.5 && spend >= 150000) {
+      } else if (ctr >= 4.0 && effectiveCustomers > 0 && cpl <= 25000) {
+        diagnosis = {
+          action: 'POTENTIAL_WIN',
+          actionLabel: '🔥 WIN TIỀM NĂNG (GIỮ CHẶT)',
+          badgeClass: 'badge-scale',
+          disease: '🌟 Content Siêu Hút (CTR kỷ lục)',
+          advice: `CTR đạt ${ctr}% (> 4%), CPL chỉ ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/tin. Mở đầu video 3s cực kỳ cuốn. Sale tập trung bốc máy gọi chốt nóng ngay. Nếu mai duy trì tốt -> Vít thêm 20% ngân sách!`
+        }
+      } else if (ctr < 1.5 && spend >= 100000 && cpm <= 80000) {
         diagnosis = {
           action: 'CHANGE_CONTENT',
-          actionLabel: '🎨 SỬA 3S ĐẦU VIDEO',
+          actionLabel: '🎨 SỬA 3S ĐẦU / THUMBNAIL',
           badgeClass: 'badge-change',
-          disease: '⚠️ CTR thấp (< 1.5%)',
-          advice: `CTR chỉ đạt ${ctr}%. Khách lướt qua nhanh không nhấp vào xem. Cần đổi Thumbnail và giật tít 3 giây đầu đánh vào nỗi đau của khách.`
+          disease: '⚠️ Lỗi 3 Giây Đầu Video (CTR < 1.5%)',
+          advice: `CPM rẻ (${new Intl.NumberFormat('vi-VN').format(cpm)} đ) chứng tỏ tệp đúng, nhưng CTR chỉ đạt ${ctr}%. Khách lướt qua không thèm dừng lại. Lỗi 100% ở 3s đầu video hoặc ảnh bìa!`
         }
       } else if (cpm >= 150000) {
         diagnosis = {
           action: 'CHANGE_TARGET',
-          actionLabel: '🎯 MỞ RỘNG TỆP TARGET',
+          actionLabel: '🎯 NỚI RỘNG TỆP TARGET',
           badgeClass: 'badge-target',
-          disease: '💸 CPM quá cao (> 150.000 đ)',
-          advice: `Chi phí 1.000 lượt hiển thị cao (${new Intl.NumberFormat('vi-VN').format(cpm)} đ) do tệp quá hẹp hoặc cạnh tranh thầu lớn. Nên nới lỏng hành vi hoặc đổi sang tệp sở thích rộng hơn.`
+          disease: '💸 CPM Quá Cao (> 150.000 đ)',
+          advice: `Chi phí 1.000 lượt hiển thị cao (${new Intl.NumberFormat('vi-VN').format(cpm)} đ) do tệp quá hẹp hoặc bị cạnh tranh giá thầu. Nên nới rộng vị trí/độ tuổi hoặc tắt bớt nhóm bị trùng lặp tệp.`
         }
-      } else if (effectiveCustomers > 0 && cpl <= 120000) {
+      } else if (effectiveCustomers > 0 && cpl <= 35000) {
         diagnosis = {
           action: 'HOLD',
-          actionLabel: '✅ GIỮ VÀ THEO DÕI',
+          actionLabel: '✅ GIỮ VÀ CHỐT SALE NHANH',
           badgeClass: 'badge-hold',
-          disease: 'Chi phí tin nhắn tốt',
-          advice: `Giá tin nhắn đạt ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách. Đội ngũ sale cần gọi điện hoặc phản hồi nhanh trong 5 phút để giữ chân khách.`
+          disease: 'Giá Tin Nhắn Rất Đẹp',
+          advice: `CPL đạt ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách (rất tốt với ngành âm thanh). Yêu cầu đội sale gọi điện trong vòng 5 phút đầu để chốt đơn.`
         }
       }
 
