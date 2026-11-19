@@ -262,8 +262,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAdminStore } from '../../stores/adminStore'
 import { apiRequest } from '../../utils/api'
 import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
+const adminStore = useAdminStore()
 const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
 const currentTab = ref('CARE')
 const analyticsData = ref([])
@@ -336,20 +338,62 @@ async function forceSync() { syncBusy.value = true; error.value = ''; try { awai
 async function loadAds() { adsBusy.value = true; adsError.value = ''; try { const r = await apiRequest('/admin/facebook-ads'); ads.value = r.data || []; adsConfigured.value = Boolean(r.configured) } catch (e) { adsError.value = e.message; adsConfigured.value = e.status !== 503 } finally { adsBusy.value = false } }
 function select(c) { selected.value = c; if (c) Object.assign(edit, { status: c.status, interest: c.interest, phone: c.phone, address: c.address || '', province: c.province || '', notes: c.notes, followUpAt: c.followUpAt, assignedTo: c.assignedTo, sourceAdId: c.sourceAdId || '' }) }
 function onSourceAdChange() { const chosen = ads.value.find(a => a.id === edit.sourceAdId); if (chosen) { Object.assign(edit, { sourceAdName: chosen.name, sourceCampaignId: chosen.campaignId || '', sourceCampaignName: chosen.campaignName || '', sourceType: 'AD' }) } else { Object.assign(edit, { sourceAdName: '', sourceCampaignId: '', sourceCampaignName: '', sourceType: '' }) }; save() }
-async function autoMatchAds() { if (!ads.value.length) await loadAds(); if (!ads.value.length) { error.value = 'Chưa tải được danh sách chiến dịch quảng cáo từ Meta.'; return } autoMatchingBusy.value = true; autoMatchNotice.value = ''; try { const r = await apiRequest('/admin/facebook-care/auto-attribute', { method: 'POST', body: JSON.stringify({ ads: ads.value }) }); if (r.success) { autoMatchNotice.value = r.message; await load({ force: true }); if (currentTab.value === 'ANALYTICS') await loadAnalytics() } } catch (e) { error.value = e.message } finally { autoMatchingBusy.value = false } }
+async function autoMatchAds() {
+  if (!ads.value.length) await loadAds()
+  if (!ads.value.length) {
+    adminStore.showNotice('Chưa tải được danh sách chiến dịch quảng cáo từ Meta.', 'error')
+    error.value = 'Chưa tải được danh sách chiến dịch quảng cáo từ Meta.'
+    return
+  }
+  const ok = await adminStore.confirm({
+    title: 'Khớp nguồn quảng cáo tự động',
+    message: 'Hệ thống sẽ đối soát theo ngày chạy và từ khóa ưu đãi cụ thể của từng chiến dịch Meta để phân loại khách hàng. Anh có muốn tiếp tục?',
+    confirmText: 'Bắt đầu khớp',
+    cancelText: 'Hủy bỏ',
+    type: 'warning'
+  })
+  if (!ok) return
+
+  autoMatchingBusy.value = true
+  autoMatchNotice.value = ''
+  try {
+    const r = await apiRequest('/admin/facebook-care/auto-attribute', { method: 'POST', body: JSON.stringify({ ads: ads.value }) })
+    if (r.success) {
+      adminStore.showNotice(r.message, 'success')
+      autoMatchNotice.value = r.message
+      await load({ force: true })
+      if (currentTab.value === 'ANALYTICS') await loadAnalytics()
+    }
+  } catch (e) {
+    adminStore.showNotice(e.message, 'error')
+    error.value = e.message
+  } finally {
+    autoMatchingBusy.value = false
+  }
+}
+
 async function resetMatchedAds() {
-  if (!confirm('Bạn có muốn xóa gán ảo và đưa toàn bộ khách hàng về trạng thái Chưa xác định nguồn quảng cáo không?')) return
+  const ok = await adminStore.confirm({
+    title: 'Xóa gán nguồn quảng cáo ảo',
+    message: 'Anh có chắc chắn muốn xóa toàn bộ việc gán quảng cáo tự động và đưa tất cả khách hàng về nguồn tự nhiên (Chưa xác định) không?',
+    confirmText: 'Đồng ý xóa gán',
+    cancelText: 'Hủy bỏ',
+    type: 'danger'
+  })
+  if (!ok) return
+
   resetMatchingBusy.value = true
   error.value = ''
   autoMatchNotice.value = ''
   try {
     const r = await apiRequest('/admin/facebook-care/reset-attribute', { method: 'POST' })
     if (r.success) {
-      autoMatchNotice.value = r.message
+      adminStore.showNotice(r.message || 'Đã khôi phục toàn bộ khách hàng về nguồn tự nhiên!', 'success')
       await load({ force: true })
       if (currentTab.value === 'ANALYTICS') await loadAnalytics()
     }
   } catch (e) {
+    adminStore.showNotice(e.message, 'error')
     error.value = e.message
   } finally {
     resetMatchingBusy.value = false
