@@ -31,3 +31,13 @@ export function isDirectVideo(url) {
   const clean = url.trim().split('?')[0].toLowerCase()
   return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.ogg')
 }
+
+export function getYoutubeThumbnail(url) {
+  if (!url) return ''
+  const trimmed = url.trim()
+  const match = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/)
+  if (match && match[1]) {
+    return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`
+  }
+  return ''
+}
