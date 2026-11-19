@@ -3305,8 +3305,31 @@ app.post('/api/v1/admin/facebook-care/reset-attribute', authenticateAdmin, autho
 app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const { ads } = req.body || {}
-    if (!Array.isArray(ads) || ads.length === 0) {
-      return res.status(400).json({ success: false, message: 'Không có dữ liệu quảng cáo để khớp.' })
+    let adsList = Array.isArray(ads) && ads.length > 0 ? ads : []
+    if (adsList.length === 0 && isFacebookAdsConfigured()) {
+      try {
+        const version = process.env.META_GRAPH_VERSION || 'v19.0'
+        const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
+        const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
+        url.searchParams.set('fields', 'id,name,campaign{id,name},adset{id,name},status,effective_status')
+        url.searchParams.set('limit', '100')
+        const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(15000) })
+        const payload = await response.json().catch(() => ({}))
+        if (response.ok && Array.isArray(payload.data)) {
+          adsList = payload.data.map(ad => ({
+            id: ad.id,
+            name: ad.name,
+            campaignId: ad.campaign?.id || '',
+            campaignName: ad.campaign?.name || ''
+          }))
+        }
+      } catch (err) {
+        console.warn('[Auto-attribute Ads Fetch Warning]:', err.message)
+      }
+    }
+
+    if (adsList.length === 0) {
+      return res.status(400).json({ success: false, message: 'Chưa lấy được danh sách chiến dịch quảng cáo từ Meta để đối soát.' })
     }
 
     const unassigned = await query(`
@@ -3314,14 +3337,14 @@ app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, author
         COALESCE(string_agg(m.body, ' ' ORDER BY m.created_at), '') as all_messages
       FROM facebook_care_customers c
       LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
-      WHERE c.source_ad_id IS NULL OR c.source_ad_id = ''
+      WHERE c.source_ad_id IS NULL OR c.source_ad_id = '' OR c.source_type = 'AUTO_MATCHED'
       GROUP BY c.id
     `)
 
     let matchedCount = 0
 
     // Chuẩn bị danh sách quảng cáo kèm ngày bắt đầu và từ khóa đặc trưng
-    const preparedAds = ads.map(a => {
+    const preparedAds = adsList.map(a => {
       const name = a.name || ''
       const startDate = parseCampaignStartDate(name) || parseCampaignStartDate(a.campaignName || '')
       return {
@@ -3330,32 +3353,38 @@ app.post('/api/v1/admin/facebook-care/auto-attribute', authenticateAdmin, author
       }
     })
 
-    const micMusicAd = preparedAds.find(a => (a.name || '').includes('tiếng mic') || (a.name || '').includes('tiếng nhạc'))
+    const micMusicAd = preparedAds.find(a => (a.name || '').includes('19/11') || (a.name || '').includes('tiếng mic') || (a.name || '').includes('tiếng nhạc'))
+    const leadAttractAd = preparedAds.find(a => (a.name || '').includes('6/11') || (a.name || '').includes('Thu Hút Khách Hàng'))
     const tradeInAd = preparedAds.find(a => (a.name || '').includes('Thu Cũ') || (a.name || '').includes('Vang Số'))
     const rentalAd = preparedAds.find(a => (a.name || '').includes('Cho Thuê') || (a.name || '').includes('500K'))
+
+    const micTime = micMusicAd?.startDate?.getTime() || new Date('2026-11-19T00:00:00+07:00').getTime()
+    const attractTime = leadAttractAd?.startDate?.getTime() || new Date('2026-11-06T00:00:00+07:00').getTime()
 
     for (const c of unassigned.rows) {
       const customerTime = c.created_at ? new Date(c.created_at).getTime() : 0
       const fullText = `${c.customer_name || ''} ${c.interest || ''} ${c.last_message || ''} ${c.all_messages || ''}`.toLowerCase()
       let matchedAd = null
 
-      // Chiến dịch thuê âm thanh: bắt buộc có từ khóa thuê âm thanh
+      // 1. Chiến dịch thuê âm thanh: bắt buộc có từ khóa thuê âm thanh
       if (rentalAd && (fullText.includes('thuê âm thanh') || fullText.includes('cho thuê loa') || fullText.includes('thuê dàn') || fullText.includes('500k'))) {
         if (!rentalAd.startDate || customerTime >= rentalAd.startDate.getTime()) {
           matchedAd = rentalAd
         }
       }
-      // Chiến dịch thu cũ đổi mới: bắt buộc có cụm từ thu cũ đổi mới hoặc căn chỉnh miễn phí
-      else if (tradeInAd && (fullText.includes('thu cũ') || fullText.includes('đổi mới') || fullText.includes('căn chỉnh miễn phí'))) {
+      // 2. Chiến dịch thu cũ đổi mới / căn chỉnh vang số: khách hỏi về thu cũ, đổi mới, đổi loa cũ, vang số
+      else if (tradeInAd && (fullText.includes('thu cũ') || fullText.includes('đổi mới') || fullText.includes('đổi loa') || fullText.includes('đổi vang') || fullText.includes('căn chỉnh miễn phí'))) {
         if (!tradeInAd.startDate || customerTime >= tradeInAd.startDate.getTime()) {
           matchedAd = tradeInAd
         }
       }
-      // Chiến dịch chỉnh tiếng mic tiếng nhạc (camp 19/11): BẮT BUỘC khách phải nhắn TỪ ngày bắt đầu chiến dịch (19/11)
-      else if (micMusicAd && (fullText.includes('chỉnh tiếng mic') || fullText.includes('chỉnh tiếng nhạc') || fullText.includes('tiếng mic') || fullText.includes('chỉnh mic'))) {
-        if (!micMusicAd.startDate || customerTime >= micMusicAd.startDate.getTime()) {
-          matchedAd = micMusicAd
-        }
+      // 3. Chiến dịch 19/11 Chỉnh tiếng mic tiếng nhạc: Khách nhắn từ ngày 19/11/2026 khi chiến dịch 19/11 đang chạy
+      else if (micMusicAd && customerTime >= micTime) {
+        matchedAd = micMusicAd
+      }
+      // 4. Chiến dịch 6/11 Thu hút khách hàng: Khách nhắn từ ngày 06/11 đến trước ngày 19/11 hỏi về dàn karaoke, âm thanh, giá cả
+      else if (leadAttractAd && customerTime >= attractTime && customerTime < micTime) {
+        matchedAd = leadAttractAd
       }
 
       if (matchedAd) {
