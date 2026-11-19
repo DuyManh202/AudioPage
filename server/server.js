@@ -2672,24 +2672,31 @@ app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_A
 app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     let ads = []
-    let period = 'last_30d'
+    const period = req.query.period === '30d' ? 'last_30d' : 'maximum'
+    const periodLabel = period === 'last_30d' ? '30 ngày gần nhất' : 'Toàn thời gian (Trọn đời)'
 
     if (isFacebookAdsConfigured()) {
       try {
         const version = process.env.META_GRAPH_VERSION || 'v19.0'
         const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
         const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
-        url.searchParams.set('fields', 'id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(last_30d){impressions,reach,clicks,spend}')
+        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(${period}){impressions,reach,clicks,spend}`)
         url.searchParams.set('limit', '100')
         const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
         const payload = await response.json().catch(() => ({}))
         if (response.ok && Array.isArray(payload.data)) {
           ads = payload.data.map(ad => {
             const insight = ad.insights?.data?.[0] || {}
+            const rawStatus = String(ad.effective_status || ad.status || 'PAUSED').toUpperCase()
+            const isMetaActive = rawStatus === 'ACTIVE'
+            const isMetaPaused = rawStatus.includes('PAUSE')
+            const statusLabel = isMetaActive ? '🟢 Đang chạy trên Meta' : (isMetaPaused ? '⏸️ Đã tạm dừng trên Meta' : '📦 Đã tắt / Lưu trữ')
             return {
               id: ad.id,
               name: ad.name,
-              status: ad.effective_status || ad.status,
+              status: rawStatus,
+              isMetaActive,
+              statusLabel,
               campaignId: ad.campaign?.id || '',
               campaignName: ad.campaign?.name || '',
               adsetName: ad.adset?.name || '',
@@ -2761,9 +2768,11 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       const conversionRate = stat.totalCustomers > 0 ? Number(((stat.closedCustomers / stat.totalCustomers) * 100).toFixed(1)) : 0
       const roas = ad.spend > 0 && effectiveRevenue > 0 ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
 
-      let grade = 'NEUTRAL'
-      let gradeLabel = 'Đang Chạy'
-      let recommendation = 'Tiếp tục theo dõi phản hồi của khách hàng.'
+      let grade = ad.isMetaActive ? 'NEUTRAL' : 'PAUSED'
+      let gradeLabel = ad.isMetaActive ? 'Đang Chạy' : 'Đã Tạm Dừng'
+      let recommendation = ad.isMetaActive
+        ? 'Chiến dịch đang phân phối trên Meta, tiếp tục theo dõi phản hồi.'
+        : 'Chiến dịch này hiện đã tạm dừng trong Trình quản lý quảng cáo Meta.'
 
       if (roas >= 3 || stat.closedCustomers >= 2) {
         grade = 'STAR'
@@ -2789,6 +2798,8 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         campaignId: ad.campaignId,
         campaignName: ad.campaignName,
         status: ad.status,
+        isMetaActive: ad.isMetaActive,
+        statusLabel: ad.statusLabel,
         impressions: ad.impressions,
         reach: ad.reach,
         clicks: ad.clicks,
@@ -2819,6 +2830,8 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           campaignId: row.source_campaign_id || '',
           campaignName: row.source_campaign_name || '',
           status: 'ARCHIVED',
+          isMetaActive: false,
+          statusLabel: '📦 Đã tắt / Lưu trữ',
           impressions: 0,
           reach: 0,
           clicks: 0,
@@ -2841,7 +2854,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       }
     }
 
-    combinedAds.sort((a, b) => b.effectiveRevenue - a.effectiveRevenue || b.closedCustomers - a.closedCustomers || b.totalCustomers - a.totalCustomers)
+    combinedAds.sort((a, b) => (b.isMetaActive ? 1 : 0) - (a.isMetaActive ? 1 : 0) || b.effectiveRevenue - a.effectiveRevenue || b.closedCustomers - a.closedCustomers || b.totalCustomers - a.totalCustomers)
 
     const totalSpend = combinedAds.reduce((sum, a) => sum + (a.spend || 0), 0)
     const totalLeads = combinedAds.reduce((sum, a) => sum + (a.totalCustomers || 0), 0)
@@ -2861,7 +2874,8 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         avgCpl,
         avgRoas,
         overallCr,
-        totalCampaigns: combinedAds.length
+        totalCampaigns: combinedAds.length,
+        periodLabel
       },
       data: combinedAds,
       period

@@ -82,7 +82,7 @@
       <!-- 6 Thẻ Thống Kê Tổng Quan -->
       <div class="kpi-grid">
         <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-icon">💳</span><span class="kpi-label">Tổng Ngân Sách QC (30 ngày)</span></div>
+          <div class="kpi-header"><span class="kpi-icon">💳</span><span class="kpi-label">Tổng Ngân Sách QC ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</span></div>
           <div class="kpi-val text-red">{{ formatMoney(analyticsSummary.totalSpend) }}</div>
           <div class="kpi-sub">Theo dữ liệu Meta Ads Manager</div>
         </div>
@@ -141,13 +141,29 @@
         <div class="table-card-head">
           <div>
             <h3>Bảng Xếp Hạng Hiệu Quả Từng Quảng Cáo (ROI Ranking)</h3>
-            <p>Đối soát tự động giữa chi phí quảng cáo Meta và doanh thu thực tế</p>
+            <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Trọn đời' }}) với lượng khách & doanh thu thực tế</p>
           </div>
           <div class="head-actions">
+            <div class="period-btn-group">
+              <button
+                type="button"
+                :class="['period-btn', { active: analyticsPeriod === 'maximum' }]"
+                @click="changePeriod('maximum')"
+              >
+                Toàn thời gian (Trọn đời)
+              </button>
+              <button
+                type="button"
+                :class="['period-btn', { active: analyticsPeriod === '30d' }]"
+                @click="changePeriod('30d')"
+              >
+                30 ngày gần nhất
+              </button>
+            </div>
             <button type="button" class="adm-btn adm-btn-sm auto-match-btn" :disabled="autoMatchingBusy" @click="autoMatchAds">
               {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC tự động' }}
             </button>
-            <button type="button" class="adm-btn adm-btn-sm" @click="loadAnalytics" :disabled="analyticsBusy">
+            <button type="button" class="adm-btn adm-btn-sm" @click="loadAnalytics()" :disabled="analyticsBusy">
               {{ analyticsBusy ? 'Đang tải...' : '↻ Làm Mới' }}
             </button>
           </div>
@@ -158,7 +174,8 @@
             <thead>
               <tr>
                 <th>Chiến Dịch & Tên Quảng Cáo</th>
-                <th>Chi Phí (30 ngày)</th>
+                <th>Trạng Thái Meta</th>
+                <th>Chi Phí ({{ analyticsSummary.periodLabel || 'Trọn đời' }})</th>
                 <th>Số Khách Nhắn</th>
                 <th>Giá / Khách (CPL)</th>
                 <th>Đơn Chốt</th>
@@ -174,6 +191,11 @@
                 <td>
                   <strong>{{ item.name }}</strong>
                   <small>{{ item.campaignName || item.id }}</small>
+                </td>
+                <td>
+                  <span :class="['meta-status-pill', item.isMetaActive ? 'pill-active' : 'pill-paused']">
+                    {{ item.statusLabel }}
+                  </span>
                 </td>
                 <td class="font-bold text-red">{{ formatMoney(item.spend) }}</td>
                 <td>
@@ -206,7 +228,7 @@
                 </td>
               </tr>
               <tr v-if="!analyticsData.length">
-                <td colspan="10" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
+                <td colspan="11" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
               </tr>
             </tbody>
           </table>
@@ -224,6 +246,7 @@ import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
 const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref('')
 const currentTab = ref('CARE')
 const analyticsData = ref([])
+const analyticsPeriod = ref('maximum')
 const analyticsSummary = ref({
   totalSpend: 0,
   totalLeads: 0,
@@ -232,7 +255,8 @@ const analyticsSummary = ref({
   avgCpl: 0,
   avgRoas: 0,
   overallCr: 0,
-  totalCampaigns: 0
+  totalCampaigns: 0,
+  periodLabel: 'Toàn thời gian (Trọn đời)'
 })
 const analyticsBusy = ref(false)
 const analyticsError = ref('')
@@ -292,7 +316,23 @@ async function loadAds() { adsBusy.value = true; adsError.value = ''; try { cons
 function select(c) { selected.value = c; if (c) Object.assign(edit, { status: c.status, interest: c.interest, phone: c.phone, address: c.address || '', province: c.province || '', notes: c.notes, followUpAt: c.followUpAt, assignedTo: c.assignedTo, sourceAdId: c.sourceAdId || '' }) }
 function onSourceAdChange() { const chosen = ads.value.find(a => a.id === edit.sourceAdId); if (chosen) { Object.assign(edit, { sourceAdName: chosen.name, sourceCampaignId: chosen.campaignId || '', sourceCampaignName: chosen.campaignName || '', sourceType: 'AD' }) } else { Object.assign(edit, { sourceAdName: '', sourceCampaignId: '', sourceCampaignName: '', sourceType: '' }) }; save() }
 async function autoMatchAds() { if (!ads.value.length) await loadAds(); if (!ads.value.length) { error.value = 'Chưa tải được danh sách chiến dịch quảng cáo từ Meta.'; return } autoMatchingBusy.value = true; autoMatchNotice.value = ''; try { const r = await apiRequest('/admin/facebook-care/auto-attribute', { method: 'POST', body: JSON.stringify({ ads: ads.value }) }); if (r.success) { autoMatchNotice.value = r.message; await load({ force: true }); if (currentTab.value === 'ANALYTICS') await loadAnalytics() } } catch (e) { error.value = e.message } finally { autoMatchingBusy.value = false } }
-async function loadAnalytics() { analyticsBusy.value = true; analyticsError.value = ''; try { const r = await apiRequest('/admin/facebook-ads/analytics'); if (r.success) { analyticsData.value = r.data || []; analyticsSummary.value = r.summary || analyticsSummary.value } } catch (e) { analyticsError.value = e.message || 'Lỗi khi tải báo cáo hiệu quả quảng cáo.' } finally { analyticsBusy.value = false } }
+async function loadAnalytics(period) {
+  if (period) analyticsPeriod.value = period
+  analyticsBusy.value = true
+  analyticsError.value = ''
+  try {
+    const r = await apiRequest(`/admin/facebook-ads/analytics?period=${analyticsPeriod.value}`)
+    if (r.success) {
+      analyticsData.value = r.data || []
+      analyticsSummary.value = r.summary || analyticsSummary.value
+    }
+  } catch (e) {
+    analyticsError.value = e.message || 'Lỗi khi tải báo cáo hiệu quả quảng cáo.'
+  } finally {
+    analyticsBusy.value = false
+  }
+}
+function changePeriod(p) { loadAnalytics(p) }
 function switchTab(tab) { currentTab.value = tab; if (tab === 'ANALYTICS') loadAnalytics() }
 function filterByCampaign(adId) { currentTab.value = 'CARE'; adFilter.value = adId }
 function selectNewArrival(customer) { select(customer); newArrivals.value = newArrivals.value.filter(item => item.id !== customer.id) }
@@ -357,6 +397,14 @@ onBeforeUnmount(() => {
 .table-card-head p{font-size:.74rem;color:#64748b;margin:3px 0 0}
 .head-actions{display:flex;gap:8px}
 .analytics-table-wrap{overflow-x:auto}
+.meta-status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700;white-space:nowrap}
+.pill-active{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.pill-paused{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+.period-btn-group{display:inline-flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
+.period-btn{padding:5px 10px;font-size:.73rem;font-weight:700;border:none;background:#f8fafc;color:#475569;cursor:pointer;transition:all .15s}
+.period-btn:hover{background:#e2e8f0}
+.period-btn.active{background:#2563eb;color:#fff}
+
 .analytics-table{width:100%;border-collapse:collapse;font-size:.78rem}
 .analytics-table th{background:#f8fafc;padding:10px 11px;text-align:left;color:#475569;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap}
 .analytics-table td{padding:12px 11px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
