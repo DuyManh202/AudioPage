@@ -57,5 +57,94 @@
       "Setup căn chỉnh trực tiếp 1 lần tại nhà & hỗ trợ từ xa",
       "Miễn phí vận chuyển tận nhà trong bán kính 300km"
     ]
+  },
+  {
+    "id": "CB-24TR",
+    "name": "Dàn Karaoke Quốc Dân 24 Triệu — Đẩy Vang Đồng Bộ, Hát Nhẹ Tuyệt Đối",
+    "tagline": "Cấu hình gia đình được ưa chuộng nhất cho không gian phòng khách từ 20 - 35m²",
+    "price": 24800000,
+    "fastActionPrice": 23900000,
+    "totalRealValue": 35000000,
+    "listPrice": 30500000,
+    "savedAmount": 10200000,
+    "roomSize": "20 - 35m²",
+    "isFeatured": false,
+    "badge": "Gia Đình Khuyên Dùng",
+    "videoUrl": "https://www.youtube.com/watch?v=hK7F0a_2x-Q",
+    "videoTitle": "Lắp Dàn Karaoke 5 Năm Rồi Mà Càng Ngày Càng Hay — Tú Audio Thực Tế",
+    "components": [
+      { "item": "1 Đôi Loa Full 30 PF 12 Pro Họng Kèn Titan", "role": "Lời ca sáng trong, tiếng nhạc tách bạch, hát không hụt hơi" },
+      { "item": "Cục Đẩy 3 Kênh Tích Hợp Độc Lập", "role": "Gọn gàng 1 khối máy, 2 kênh kéo loa full và 1 kênh kéo riêng sub" },
+      { "item": "Vang Số Chỉnh Cơ PF K8+ Màn Hình LED", "role": "DSP 32-bit chống hú rít 100%, dễ chỉnh tay hoặc phần mềm" },
+      { "item": "Bộ Micro Không Dây CM 05 Cảm Biến Gia Tốc", "role": "Tự ngắt chống rú rít khi đặt xuống bàn, củ mic dày ấm tôn giọng" },
+      { "item": "Loa Sub Điện 30 PF S12 Siêu Trầm", "role": "Dải bass sâu lắng, nghe nhạc vàng ấm cúng, hát bolero truyền cảm" }
+    ],
+    "gifts": [
+      "Bộ Quản lý nguồn cao cấp bảo vệ an toàn nguồn điện hệ thống",
+      "Dây quang AudioQuest xịn kết nối Smart TV",
+      "10m Dây loa bọc giáp đồng nguyên chất + Bộ jack cắm chuyên dụng",
+      "Bộ pin sạc dung lượng cao cho Micro (dùng 2-3 năm)",
+      "Căn chỉnh âm học trực tiếp 1 lần tại nhà & hỗ trợ từ xa suốt đời",
+      "Miễn phí vận chuyển và lắp đặt tận nhà trong 300km"
+    ]
+  },
+  {
+    "id": "CB-39TR",
+    "name": "Dàn Karaoke VIP 39 Triệu — 2 Đôi Loa Full + Sub Kép Chuẩn Phòng Bay",
+    "tagline": "Cấu hình đẳng cấp âm thanh sân khấu cho phòng khách lớn & biệt thự từ 35 - 65m²",
+    "price": 39500000,
+    "fastActionPrice": 38500000,
+    "totalRealValue": 56000000,
+    "listPrice": 48500000,
+    "savedAmount": 16500000,
+    "roomSize": "35 - 65m²",
+    "isFeatured": false,
+    "badge": "Đẳng Cấp Phòng Bay VIP",
+    "videoUrl": "https://www.youtube.com/watch?v=vHKHBGQSV8o",
+    "videoTitle": "Dàn Karaoke Gia Đình 54 Triệu Vẫn Không Hay, Cân Chỉnh Đồng Bộ Hay Gấp Đôi",
+    "components": [
+      { "item": "2 Đôi Loa Full 30 PF 12 Pro (4 Chiếc)", "role": "Góc phủ âm rộng 360 độ, âm thanh dày đặc bao trọn không gian lớn" },
+      { "item": "Cục Đẩy Công Suất 4 Kênh x1000W Class H", "role": "Đánh căng đét 4 loa full 30, lực đánh cực khỏe không méo tiếng" },
+      { "item": "Cục Đẩy 2 Kênh Kéo Sub Riêng Biệt 1200W", "role": "Mạch lực đánh sub riêng, tạo tiếng trầm sâu thẳm chuẩn quán hát" },
+      { "item": "Vang Số Cao Cấp DSP 32-bit PF K9", "role": "Hiệu ứng Echo - Reverb bay bổng, triệt tiêu phản hồi âm học tuyệt đối" },
+      { "item": "Bộ Micro Không Dây 4 Râu Sóng Khỏe CM 08", "role": "Bắt sóng xa 100m ổn định, hát nhẹ hơi như ca sĩ chuyên nghiệp" },
+      { "item": "Loa Sub Hơi 50cm PF S18 Uy Lực", "role": "Bass 50 đánh rung chuyển sàn nhà, uy lực bùng nổ cho tiệc tùng" }
+    ],
+    "gifts": [
+      "Bộ Quản lý nguồn thông minh 8 cổng tự ngắt bảo vệ toàn diện",
+      "Tủ máy âm thanh chuyên nghiệp bọc nhôm cánh mở cao cấp",
+      "Dây quang AudioQuest xịn truyền nhạc số sạch không suy hao",
+      "Toàn bộ hệ thống dây giắc kết nối Neutrik mạ vàng",
+      "Kỹ sư Tú Audio trực tiếp tới căn chỉnh đo đạc pha âm thanh tại nhà",
+      "Bảo hành đổi mới 1-1 trong 12 tháng & Bảo trì miễn phí trọn đời"
+    ]
+  },
+  {
+    "id": "CB-14TR",
+    "name": "Dàn Karaoke Chung Cư 14.5 Triệu — Nhỏ Gọn, Hát Êm, Không Lo Hàng Xóm",
+    "tagline": "Cấu hình âm thanh tinh gọn tối ưu cho căn hộ chung cư và phòng khách từ 12 - 22m²",
+    "price": 14500000,
+    "fastActionPrice": 13800000,
+    "totalRealValue": 21500000,
+    "listPrice": 18500000,
+    "savedAmount": 7000000,
+    "roomSize": "12 - 22m²",
+    "isFeatured": false,
+    "badge": "Chung Cư & Phòng Nhỏ",
+    "videoUrl": "https://www.youtube.com/watch?v=mb9PpteD70c",
+    "videoTitle": "Khắc Phục Dàn Loa Hát Nặng, Bí Tiếng Tại Phòng Khách Gia Đình — Tú Audio",
+    "components": [
+      { "item": "1 Đôi Loa Full 25 CM Pro Nhỏ Gọn", "role": "Tiếng sáng rõ, trung âm dày dặn, không bí tiếng, phù hợp phòng nhỏ" },
+      { "item": "Cục Đẩy Liền Vang Cơ Bluetooth 600W", "role": "Thiết kế 2 trong 1 cực kỳ gọn gàng, tiết kiệm diện tích kệ TV" },
+      { "item": "Bộ Micro Không Dây CM 05 Chống Hú", "role": "Bắt sóng ổn định, củ mic hát nhẹ tôn giọng người hát yếu" },
+      { "item": "Loa Sub Điện 30cm Gọn Nhẹ", "role": "Dải bass ấm êm dịu, không bị rung tường gây phiền toái căn hộ bên cạnh" }
+    ],
+    "gifts": [
+      "Tặng kèm bộ giá treo loa áp tường chịu lực chuyên dụng",
+      "Dây quang Optical chính hãng kết nối trực tiếp Smart TV",
+      "10m Dây loa bọc giáp đồng chống nhiễu",
+      "Setup cài đặt âm học chuẩn phòng chung cư tận nơi",
+      "Miễn phí vận chuyển tận nhà trong bán kính 300km"
+    ]
   }
 ]

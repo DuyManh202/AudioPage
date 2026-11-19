@@ -2871,6 +2871,191 @@ const ensureDatabaseSchema = async () => {
     } catch (e) {
       // Bỏ qua nếu đã nâng cấp
     }
+
+    // Tự động nạp danh sách 5 gói dàn karaoke chuẩn thương hiệu Tú Audio nếu chưa tồn tại
+    try {
+      const defaultCombos = [
+        {
+          id: 'CB-29TR',
+          name: 'Dàn Karaoke 29 Triệu — Chuẩn Âm Hay Hơn Quán Hát',
+          tagline: 'Gói cao cấp bán chạy nhất cho phòng khách từ 25 - 45m²',
+          price: 29900000,
+          fastActionPrice: 28900000,
+          totalRealValue: 40000000,
+          listPrice: 34800000,
+          savedAmount: 10100000,
+          roomSize: '25 - 45m²',
+          isFeatured: true,
+          badge: 'Lựa Chọn Số 1 Của 80% Khách Hàng',
+          videoUrl: 'https://www.youtube.com/watch?v=AwEJrll5EPk',
+          videoTitle: 'So Sánh Dàn Karaoke Gia Đình Với Quán Hát — Lắp Thực Tế Nhà Anh Ngọc (Vĩnh Phúc)',
+          components: [
+            { item: '1 Đôi Loa Full 30 PF 12 Pro', role: 'Tiếng sáng, hát nhẹ, không hú rít' },
+            { item: 'Cục Đẩy 4 Kênh x800W Acoustic', role: 'Mạch Class H khỏe, đánh căng không nóng máy' },
+            { item: 'Vang Số Cao Cấp PF K9', role: 'Chip DSP 32-bit chống hú rít tuyệt đối, effect mượt mà' },
+            { item: 'Bộ Micro Không Dây CM 05', role: 'Bắt sóng xa, cảm biến tự ngắt, tiếng mic dày ấm' },
+            { item: 'Loa Sub Trầm Hơi 40 PF S15', role: 'Bass 40 đánh rung sàn, uy lực chuẩn phòng bay' }
+          ],
+          gifts: [
+            'Bộ Quản lý nguồn điện cao cấp bảo vệ toàn bộ dàn',
+            'Dây quang AudioQuest xịn truyền tải nhạc sạch',
+            '10m Dây loa bọc giáp đồng nguyên chất + Bộ jack Neutrik',
+            'Bộ pin sạc dung lượng cao cho Micro (dùng 2-3 năm không cần mua pin tiểu)',
+            'Setup căn chỉnh trực tiếp 1 lần tại nhà & hỗ trợ từ xa suốt đời',
+            'Miễn phí vận chuyển tận nhà trong bán kính 300km'
+          ]
+        },
+        {
+          id: 'CB-19TR',
+          name: 'Dàn Karaoke 19 Triệu — Hay Như Quán Hát Tiết Kiệm',
+          tagline: 'Cấu hình tiêu chuẩn tối ưu chi phí cho phòng khách từ 15 - 30m²',
+          price: 19800000,
+          fastActionPrice: 18800000,
+          totalRealValue: 30400000,
+          listPrice: 26700000,
+          savedAmount: 10600000,
+          roomSize: '15 - 30m²',
+          isFeatured: false,
+          badge: 'Tiết Kiệm Nhất',
+          videoUrl: 'https://www.youtube.com/watch?v=9sh3YSPm57I',
+          videoTitle: 'Dàn Karaoke Gia Đình 19,5 Triệu Hay Như Quán Hát — Lắp Nhà Cô Hồng (Phú Thọ)',
+          components: [
+            { item: '1 Đôi Loa Full 30 PF 12 Pro', role: 'Bass 30cm nội lực, dải trung rõ nét' },
+            { item: 'Cục Đẩy 2 Kênh x600W Acoustic', role: 'Kéo căng đôi loa full 30, âm sắc sạch' },
+            { item: 'Vang Số Cơ Lai CM x16+', role: 'Dễ chỉnh tay hoặc máy tính, chống hú tốt' },
+            { item: 'Bộ Micro Không Dây CM 05', role: 'Hát nhẹ hơi, nâng giọng cho người giọng yếu' },
+            { item: 'Loa Sub Điện 30 PF S12', role: 'Gọn gàng, tăng cường dải bass ấm cúng cho gia đình' }
+          ],
+          gifts: [
+            'Dây quang AudioQuest chính hãng truyền nhạc sạch từ Smart TV',
+            'Dây loa + Toàn bộ jack canon phụ kiện đi kèm',
+            'Bộ pin sạc micro chuyên dụng',
+            'Setup căn chỉnh trực tiếp 1 lần tại nhà & hỗ trợ từ xa',
+            'Miễn phí vận chuyển tận nhà trong bán kính 300km'
+          ]
+        },
+        {
+          id: 'CB-24TR',
+          name: 'Dàn Karaoke Quốc Dân 24 Triệu — Đẩy Vang Đồng Bộ, Hát Nhẹ Tuyệt Đối',
+          tagline: 'Cấu hình gia đình được ưa chuộng nhất cho không gian phòng khách từ 20 - 35m²',
+          price: 24800000,
+          fastActionPrice: 23900000,
+          totalRealValue: 35000000,
+          listPrice: 30500000,
+          savedAmount: 10200000,
+          roomSize: '20 - 35m²',
+          isFeatured: false,
+          badge: 'Gia Đình Khuyên Dùng',
+          videoUrl: 'https://www.youtube.com/watch?v=hK7F0a_2x-Q',
+          videoTitle: 'Lắp Dàn Karaoke 5 Năm Rồi Mà Càng Ngày Càng Hay — Tú Audio Thực Tế',
+          components: [
+            { item: '1 Đôi Loa Full 30 PF 12 Pro Họng Kèn Titan', role: 'Lời ca sáng trong, tiếng nhạc tách bạch, hát không hụt hơi' },
+            { item: 'Cục Đẩy 3 Kênh Tích Hợp Độc Lập', role: 'Gọn gàng 1 khối máy, 2 kênh kéo loa full và 1 kênh kéo riêng sub' },
+            { item: 'Vang Số Chỉnh Cơ PF K8+ Màn Hình LED', role: 'DSP 32-bit chống hú rít 100%, dễ chỉnh tay hoặc phần mềm' },
+            { item: 'Bộ Micro Không Dây CM 05 Cảm Biến Gia Tốc', role: 'Tự ngắt chống rú rít khi đặt xuống bàn, củ mic dày ấm tôn giọng' },
+            { item: 'Loa Sub Điện 30 PF S12 Siêu Trầm', role: 'Dải bass sâu lắng, nghe nhạc vàng ấm cúng, hát bolero truyền cảm' }
+          ],
+          gifts: [
+            'Bộ Quản lý nguồn cao cấp bảo vệ an toàn nguồn điện hệ thống',
+            'Dây quang AudioQuest xịn kết nối Smart TV',
+            '10m Dây loa bọc giáp đồng nguyên chất + Bộ jack cắm chuyên dụng',
+            'Bộ pin sạc dung lượng cao cho Micro (dùng 2-3 năm)',
+            'Căn chỉnh âm học trực tiếp 1 lần tại nhà & hỗ trợ từ xa suốt đời',
+            'Miễn phí vận chuyển và lắp đặt tận nhà trong 300km'
+          ]
+        },
+        {
+          id: 'CB-39TR',
+          name: 'Dàn Karaoke VIP 39 Triệu — 2 Đôi Loa Full + Sub Kép Chuẩn Phòng Bay',
+          tagline: 'Cấu hình đẳng cấp âm thanh sân khấu cho phòng khách lớn & biệt thự từ 35 - 65m²',
+          price: 39500000,
+          fastActionPrice: 38500000,
+          totalRealValue: 56000000,
+          listPrice: 48500000,
+          savedAmount: 16500000,
+          roomSize: '35 - 65m²',
+          isFeatured: false,
+          badge: 'Đẳng Cấp Phòng Bay VIP',
+          videoUrl: 'https://www.youtube.com/watch?v=vHKHBGQSV8o',
+          videoTitle: 'Dàn Karaoke Gia Đình 54 Triệu Vẫn Không Hay, Cân Chỉnh Đồng Bộ Hay Gấp Đôi',
+          components: [
+            { item: '2 Đôi Loa Full 30 PF 12 Pro (4 Chiếc)', role: 'Góc phủ âm rộng 360 độ, âm thanh dày đặc bao trọn không gian lớn' },
+            { item: 'Cục Đẩy Công Suất 4 Kênh x1000W Class H', role: 'Đánh căng đét 4 loa full 30, lực đánh cực khỏe không méo tiếng' },
+            { item: 'Cục Đẩy 2 Kênh Kéo Sub Riêng Biệt 1200W', role: 'Mạch lực đánh sub riêng, tạo tiếng trầm sâu thẳm chuẩn quán hát' },
+            { item: 'Vang Số Cao Cấp DSP 32-bit PF K9', role: 'Hiệu ứng Echo - Reverb bay bổng, triệt tiêu phản hồi âm học tuyệt đối' },
+            { item: 'Bộ Micro Không Dây 4 Râu Sóng Khỏe CM 08', role: 'Bắt sóng xa 100m ổn định, hát nhẹ hơi như ca sĩ chuyên nghiệp' },
+            { item: 'Loa Sub Hơi 50cm PF S18 Uy Lực', role: 'Bass 50 đánh rung chuyển sàn nhà, uy lực bùng nổ cho tiệc tùng' }
+          ],
+          gifts: [
+            'Bộ Quản lý nguồn thông minh 8 cổng tự ngắt bảo vệ toàn diện',
+            'Tủ máy âm thanh chuyên nghiệp bọc nhôm cánh mở cao cấp',
+            'Dây quang AudioQuest xịn truyền nhạc số sạch không suy hao',
+            'Toàn bộ hệ thống dây giắc kết nối Neutrik mạ vàng',
+            'Kỹ sư Tú Audio trực tiếp tới căn chỉnh đo đạc pha âm thanh tại nhà',
+            'Bảo hành đổi mới 1-1 trong 12 tháng & Bảo trì miễn phí trọn đời'
+          ]
+        },
+        {
+          id: 'CB-14TR',
+          name: 'Dàn Karaoke Chung Cư 14.5 Triệu — Nhỏ Gọn, Hát Êm, Không Lo Hàng Xóm',
+          tagline: 'Cấu hình âm thanh tinh gọn tối ưu cho căn hộ chung cư và phòng khách từ 12 - 22m²',
+          price: 14500000,
+          fastActionPrice: 13800000,
+          totalRealValue: 21500000,
+          listPrice: 18500000,
+          savedAmount: 7000000,
+          roomSize: '12 - 22m²',
+          isFeatured: false,
+          badge: 'Chung Cư & Phòng Nhỏ',
+          videoUrl: 'https://www.youtube.com/watch?v=mb9PpteD70c',
+          videoTitle: 'Khắc Phục Dàn Loa Hát Nặng, Bí Tiếng Tại Phòng Khách Gia Đình — Tú Audio',
+          components: [
+            { item: '1 Đôi Loa Full 25 CM Pro Nhỏ Gọn', role: 'Tiếng sáng rõ, trung âm dày dặn, không bí tiếng, phù hợp phòng nhỏ' },
+            { item: 'Cục Đẩy Liền Vang Cơ Bluetooth 600W', role: 'Thiết kế 2 trong 1 cực kỳ gọn gàng, tiết kiệm diện tích kệ TV' },
+            { item: 'Bộ Micro Không Dây CM 05 Chống Hú', role: 'Bắt sóng ổn định, củ mic hát nhẹ tôn giọng người hát yếu' },
+            { item: 'Loa Sub Điện 30cm Gọn Nhẹ', role: 'Dải bass ấm êm dịu, không bị rung tường gây phiền toái căn hộ bên cạnh' }
+          ],
+          gifts: [
+            'Tặng kèm bộ giá treo loa áp tường chịu lực chuyên dụng',
+            'Dây quang Optical chính hãng kết nối trực tiếp Smart TV',
+            '10m Dây loa bọc giáp đồng chống nhiễu',
+            'Setup cài đặt âm học chuẩn phòng chung cư tận nơi',
+            'Miễn phí vận chuyển tận nhà trong bán kính 300km'
+          ]
+        }
+      ]
+
+      for (const cb of defaultCombos) {
+        const check = await query('SELECT id FROM combos WHERE id = $1', [cb.id])
+        if (check.rows.length === 0) {
+          await query(`
+            INSERT INTO combos (
+              id, name, tagline, price, fast_action_price, list_price, total_real_value,
+              saved_amount, room_size, is_featured, badge, video_url, video_title
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          `, [
+            cb.id, cb.name, cb.tagline, cb.price, cb.fastActionPrice, cb.listPrice, cb.totalRealValue,
+            cb.savedAmount, cb.roomSize, cb.isFeatured, cb.badge, cb.videoUrl, cb.videoTitle
+          ])
+
+          for (let i = 0; i < cb.components.length; i++) {
+            await query(`
+              INSERT INTO combo_components (combo_id, item_name, role_description, sort_order)
+              VALUES ($1, $2, $3, $4)
+            `, [cb.id, cb.components[i].item, cb.components[i].role, i + 1])
+          }
+
+          for (let i = 0; i < cb.gifts.length; i++) {
+            await query(`
+              INSERT INTO combo_gifts (combo_id, gift_description, sort_order)
+              VALUES ($1, $2, $3)
+            `, [cb.id, cb.gifts[i], i + 1])
+          }
+        }
+      }
+    } catch (seedErr) {
+      console.warn('⚠️ Lỗi nạp combo mặc định:', seedErr.message)
+    }
   } catch (err) {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
   }

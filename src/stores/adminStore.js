@@ -39,21 +39,34 @@ const loadProducts = () => {
 const loadCombos = () => {
   try {
     const local = JSON.parse(localStorage.getItem('audioshop_combos'))
-    if (!local || !Array.isArray(local)) return initialCombos
+    if (!local || !Array.isArray(local) || local.length === 0) return initialCombos
+    const localById = new Map(local.map(c => [c.id, c]))
     const defaultsById = new Map(initialCombos.map(c => [c.id, c]))
-    return local.map(item => {
-      const def = defaultsById.get(item.id)
-      if (!def) return item
+
+    const result = local.map(item => {
+      const targetId = item.id === 'dan-karaoke-19tr' ? 'CB-19TR' : (item.id === 'dan-karaoke-29tr' ? 'CB-29TR' : item.id)
+      const def = defaultsById.get(targetId) || defaultsById.get(item.id)
+      if (!def) return { ...item, id: targetId }
       const isLegacy = LEGACY_VIDEO_RE.test(item.videoUrl || '')
       return {
         ...def,
         ...item,
+        id: targetId,
         totalRealValue: item.totalRealValue || def.totalRealValue,
         savedAmount: item.savedAmount || Math.max(0, (item.totalRealValue || def.totalRealValue || item.listPrice) - item.price),
         videoUrl: isLegacy ? def.videoUrl : item.videoUrl,
         videoTitle: isLegacy ? def.videoTitle : item.videoTitle
       }
     })
+
+    for (const def of initialCombos) {
+      const legacyId = def.id === 'CB-19TR' ? 'dan-karaoke-19tr' : (def.id === 'CB-29TR' ? 'dan-karaoke-29tr' : '')
+      if (!localById.has(def.id) && (!legacyId || !localById.has(legacyId))) {
+        result.push(def)
+      }
+    }
+
+    return result
   } catch {
     return initialCombos
   }
