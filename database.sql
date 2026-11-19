@@ -13,10 +13,12 @@ CREATE TABLE IF NOT EXISTS admins (
     role VARCHAR(20) DEFAULT 'SUPER_ADMIN',
     is_active BOOLEAN DEFAULT TRUE,
     auth_version INTEGER NOT NULL DEFAULT 0,
+    permissions JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb;
 
 -- Vô hiệu hóa tài khoản seed cũ có thông tin xác thực công khai.
 UPDATE admins SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
@@ -24,9 +26,30 @@ WHERE username = 'anhtu'
   AND password_hash = '$2b$10$eQNylyxmTK.THMlaGU253uAqElofKKYbb4kdounYSdHq2490GWx/.';
 UPDATE admins SET role = 'SUPER_ADMIN' WHERE role IN ('ADMIN', 'admin');
 ALTER TABLE admins DROP CONSTRAINT IF EXISTS admins_role_check;
-ALTER TABLE admins ADD CONSTRAINT admins_role_check CHECK (role IN ('SUPER_ADMIN', 'SALES', 'INVENTORY')) NOT VALID;
+ALTER TABLE admins ADD CONSTRAINT admins_role_check CHECK (role IN ('SUPER_ADMIN', 'SALES', 'INVENTORY', 'PENDING', 'CUSTOM')) NOT VALID;
 ALTER TABLE admins VALIDATE CONSTRAINT admins_role_check;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_username_lower ON admins (LOWER(username));
+
+-- BẢNG NHẬT KÝ LỊCH SỬ THAO TÁC (AUDIT LOGS)
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id VARCHAR(36) PRIMARY KEY,
+    admin_id VARCHAR(36) REFERENCES admins(id) ON DELETE SET NULL,
+    admin_username VARCHAR(50),
+    admin_name VARCHAR(100),
+    admin_role VARCHAR(50),
+    action VARCHAR(100) NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    target_type VARCHAR(50),
+    target_id VARCHAR(100),
+    summary TEXT NOT NULL,
+    details JSONB DEFAULT '{}'::jsonb,
+    ip_address VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON admin_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action_type ON admin_audit_logs(action_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target_type ON admin_audit_logs(target_type);
 
 -- 2. BẢNG DANH MỤC THIẾT BỊ (CATEGORIES)
 CREATE TABLE IF NOT EXISTS categories (

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { apiRequest } from '../utils/api'
+import { hasPermission, canAccessMenu } from '../utils/permissions'
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
@@ -23,7 +24,9 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token && !!state.user,
-    currentUser: (state) => state.user || { full_name: 'Quản Trị Viên', role: null }
+    currentUser: (state) => state.user || { full_name: 'Quản Trị Viên', role: null, permissions: [] },
+    hasPerm: (state) => (permKey) => hasPermission(state.user, permKey),
+    canMenu: (state) => (menuKey) => canAccessMenu(state.user, menuKey)
   },
 
   actions: {

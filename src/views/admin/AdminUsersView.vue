@@ -262,17 +262,27 @@
               </td>
               <td>{{ user.phone || '—' }}</td>
               <td>
-                <select
-                  :class="['adm-status-select', user.role === 'PENDING' ? 'adm-status-amber' : 'adm-status-blue']"
-                  :value="user.role"
-                  :disabled="busy"
-                  @change="changeRole(user, $event.target.value)"
-                >
-                  <option value="PENDING" disabled>Chờ phân quyền...</option>
-                  <option value="SALES">Chuyên viên kinh doanh</option>
-                  <option value="INVENTORY">Quản lý kho</option>
-                  <option value="SUPER_ADMIN">Quản trị cấp cao</option>
-                </select>
+                <div class="user-role-cell">
+                  <div class="role-pill-row">
+                    <span :class="['role-pill', getRoleBadgeClass(user.role)]">
+                      {{ formatUserRole(user.role) }}
+                    </span>
+                    <span class="perms-count-pill" :title="getPermsTooltip(user)">
+                      {{ getPermsCountLabel(user) }}
+                    </span>
+                  </div>
+                  <button
+                    v-if="user.role !== 'PENDING'"
+                    type="button"
+                    class="perm-edit-btn"
+                    :disabled="busy"
+                    @click="openPermissionModal(user)"
+                    title="Cấu hình phân quyền sâu từng thao tác cho tài khoản này"
+                  >
+                    <AdminIcon name="shield" :size="12" />
+                    <span>Phân quyền chi tiết</span>
+                  </button>
+                </div>
               </td>
               <td>
                 <span :class="['adm-badge', user.role === 'PENDING' ? 'adm-badge-amber' : (user.is_active ? 'adm-badge-green' : 'adm-badge-red')]">
@@ -292,6 +302,19 @@
                   >
                     <AdminIcon name="check" :size="14" />
                     <span>{{ user.role === 'PENDING' ? 'Duyệt & Phân Quyền' : 'Mở Khóa' }}</span>
+                  </button>
+
+                  <!-- Nút phân quyền sâu cho tài khoản đang hoạt động -->
+                  <button
+                    v-if="user.role !== 'PENDING'"
+                    type="button"
+                    class="adm-btn adm-btn-sm adm-btn-ghost perm-quick-btn"
+                    :disabled="busy"
+                    @click="openPermissionModal(user)"
+                    title="Cấu hình phân quyền chi tiết từng thao tác"
+                  >
+                    <AdminIcon name="shield" :size="14" />
+                    <span>Phân quyền</span>
                   </button>
 
                   <!-- Nút đổi mật khẩu cho tài khoản đã kích hoạt -->
@@ -438,6 +461,139 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal Phân Quyền Chi Tiết Từng Tài Khoản -->
+    <div v-if="permissionModalUser" class="adm-modal-backdrop" @click.self="permissionModalUser = null">
+      <div class="adm-modal perm-modal">
+        <div class="adm-modal-head">
+          <div>
+            <h3>Phân Quyền Chi Tiết: {{ permissionModalUser.full_name || permissionModalUser.username }}</h3>
+            <p>Tài khoản: <code>{{ permissionModalUser.username }}</code> — Email nhận OTP: <strong>{{ permissionModalUser.email || 'Chưa có' }}</strong></p>
+          </div>
+          <button type="button" class="adm-modal-close" @click="permissionModalUser = null">
+            <AdminIcon name="x" :size="18" />
+          </button>
+        </div>
+
+        <form @submit.prevent="submitPermissions">
+          <div class="adm-modal-body perm-modal-body">
+            <!-- Chọn mẫu vai trò nhanh -->
+            <div class="perm-template-box">
+              <span class="template-label">Áp dụng mẫu vai trò nhanh:</span>
+              <div class="template-btns">
+                <button
+                  type="button"
+                  :class="['t-btn', selectedRole === 'SUPER_ADMIN' ? 'active t-gold' : '']"
+                  @click="applyRoleTemplate('SUPER_ADMIN')"
+                >
+                  <AdminIcon name="shield" :size="14" />
+                  <span>Quản Trị Cấp Cao (Toàn quyền *)</span>
+                </button>
+                <button
+                  type="button"
+                  :class="['t-btn', selectedRole === 'SALES' ? 'active t-blue' : '']"
+                  @click="applyRoleTemplate('SALES')"
+                >
+                  <AdminIcon name="leads" :size="14" />
+                  <span>Kinh Doanh (16 quyền)</span>
+                </button>
+                <button
+                  type="button"
+                  :class="['t-btn', selectedRole === 'INVENTORY' ? 'active t-green' : '']"
+                  @click="applyRoleTemplate('INVENTORY')"
+                >
+                  <AdminIcon name="products" :size="14" />
+                  <span>Kho Thiết Bị (8 quyền)</span>
+                </button>
+                <button
+                  type="button"
+                  :class="['t-btn', selectedRole === 'CUSTOM' ? 'active t-purple' : '']"
+                  @click="selectedRole = 'CUSTOM'"
+                >
+                  <AdminIcon name="edit" :size="14" />
+                  <span>Tùy Chỉnh Thủ Công</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Thanh thống kê & thao tác chọn nhanh -->
+            <div class="perm-toolbar">
+              <div class="perm-stats">
+                Quyền được cấp: <strong class="text-gold">{{ selectedPermissions.includes('*') ? 'Toàn bộ quyền (*)' : selectedPermissions.length + ' thao tác' }}</strong>
+              </div>
+              <div class="perm-quick-actions" v-if="!selectedPermissions.includes('*')">
+                <button type="button" class="adm-link-btn" @click="selectAllPermissions">Chọn tất cả</button>
+                <span class="sep">•</span>
+                <button type="button" class="adm-link-btn text-danger" @click="deselectAllPermissions">Bỏ chọn tất cả</button>
+              </div>
+            </div>
+
+            <!-- Trường hợp Toàn quyền (Super Admin) -->
+            <div v-if="selectedPermissions.includes('*')" class="super-admin-notice">
+              <AdminIcon name="shield" :size="24" />
+              <div>
+                <strong>Tài khoản Quản Trị Cấp Cao (Super Admin)</strong>
+                <p>Tài khoản này có toàn quyền truy cập tất cả phân hệ, chỉnh sửa giá bán, phê duyệt nhân sự và xóa mọi dữ liệu trong hệ thống.</p>
+              </div>
+            </div>
+
+            <!-- Danh sách 10 nhóm quyền chi tiết (Checkbox Cards) -->
+            <div v-else class="perm-groups-container">
+              <div
+                v-for="group in PERMISSION_GROUPS"
+                :key="group.id"
+                class="perm-group-card"
+              >
+                <div class="perm-group-header">
+                  <div class="group-title">
+                    <AdminIcon :name="group.icon" :size="16" />
+                    <strong>{{ group.label }}</strong>
+                    <span class="group-count">({{ countGroupSelected(group) }}/{{ group.permissions.length }})</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="group-toggle-btn"
+                    @click="toggleGroup(group)"
+                  >
+                    {{ isGroupAllSelected(group) ? 'Bỏ chọn nhóm' : 'Chọn cả nhóm' }}
+                  </button>
+                </div>
+
+                <div class="perm-items-grid">
+                  <label
+                    v-for="perm in group.permissions"
+                    :key="perm.key"
+                    class="perm-item-label"
+                    :class="{ 'item-checked': isPermSelected(perm.key), 'perm-sensitive': isSensitivePerm(perm.key) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="isPermSelected(perm.key)"
+                      @change="togglePerm(perm.key)"
+                    />
+                    <div class="perm-item-content">
+                      <div class="perm-item-title-row">
+                        <span class="perm-title">{{ perm.label }}</span>
+                        <span v-if="isSensitivePerm(perm.key)" class="badge-sensitive">Quyền nhạy cảm</span>
+                      </div>
+                      <span class="perm-desc">{{ perm.desc }}</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="adm-modal-foot">
+            <button type="button" class="adm-btn adm-btn-ghost" @click="permissionModalUser = null">Hủy Bỏ</button>
+            <button type="submit" class="adm-btn adm-btn-gold" :disabled="busy">
+              <AdminIcon name="check" :size="16" />
+              <span>{{ busy ? 'Đang Lưu...' : 'Lưu Cấu Hình Phân Quyền' }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -446,6 +602,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { apiRequest } from '../../utils/api'
 import { useAuthStore } from '../../stores/authStore'
 import { useAdminStore } from '../../stores/adminStore'
+import { PERMISSION_GROUPS, ROLE_TEMPLATES } from '../../utils/permissions'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 
 const auth = useAuthStore()
@@ -723,6 +880,172 @@ const submitPasswordReset = async () => {
   }
 }
 
+// Phân Quyền Sâu Từng Tài Khoản
+const permissionModalUser = ref(null)
+const selectedRole = ref('SALES')
+const selectedPermissions = ref([])
+
+const openPermissionModal = (user) => {
+  permissionModalUser.value = user
+  selectedRole.value = user.role || 'SALES'
+  if (user.role === 'SUPER_ADMIN') {
+    selectedPermissions.value = ['*']
+  } else if (Array.isArray(user.permissions) && user.permissions.length > 0) {
+    selectedPermissions.value = [...user.permissions]
+  } else {
+    selectedPermissions.value = [...(ROLE_TEMPLATES[user.role] || [])]
+  }
+  error.value = ''
+  message.value = ''
+}
+
+const applyRoleTemplate = (role) => {
+  selectedRole.value = role
+  if (role === 'SUPER_ADMIN') {
+    selectedPermissions.value = ['*']
+  } else {
+    selectedPermissions.value = [...(ROLE_TEMPLATES[role] || [])]
+  }
+}
+
+const getAllPermissionKeys = () => {
+  const keys = []
+  PERMISSION_GROUPS.forEach(g => {
+    g.permissions.forEach(p => keys.push(p.key))
+  })
+  return keys
+}
+
+const selectAllPermissions = () => {
+  selectedPermissions.value = getAllPermissionKeys()
+  selectedRole.value = 'CUSTOM'
+}
+
+const deselectAllPermissions = () => {
+  selectedPermissions.value = []
+  selectedRole.value = 'CUSTOM'
+}
+
+const isPermSelected = (key) => {
+  if (selectedPermissions.value.includes('*')) return true
+  return selectedPermissions.value.includes(key)
+}
+
+const togglePerm = (key) => {
+  if (selectedPermissions.value.includes('*')) {
+    selectedPermissions.value = getAllPermissionKeys().filter(k => k !== key)
+    selectedRole.value = 'CUSTOM'
+    return
+  }
+  const idx = selectedPermissions.value.indexOf(key)
+  if (idx > -1) {
+    selectedPermissions.value.splice(idx, 1)
+  } else {
+    selectedPermissions.value.push(key)
+  }
+  selectedRole.value = 'CUSTOM'
+}
+
+const countGroupSelected = (group) => {
+  if (selectedPermissions.value.includes('*')) return group.permissions.length
+  return group.permissions.filter(p => selectedPermissions.value.includes(p.key)).length
+}
+
+const isGroupAllSelected = (group) => {
+  if (selectedPermissions.value.includes('*')) return true
+  return group.permissions.every(p => selectedPermissions.value.includes(p.key))
+}
+
+const toggleGroup = (group) => {
+  const groupKeys = group.permissions.map(p => p.key)
+  if (selectedPermissions.value.includes('*')) {
+    selectedPermissions.value = getAllPermissionKeys().filter(k => !groupKeys.includes(k))
+    selectedRole.value = 'CUSTOM'
+    return
+  }
+  if (isGroupAllSelected(group)) {
+    selectedPermissions.value = selectedPermissions.value.filter(k => !groupKeys.includes(k))
+  } else {
+    groupKeys.forEach(k => {
+      if (!selectedPermissions.value.includes(k)) selectedPermissions.value.push(k)
+    })
+  }
+  selectedRole.value = 'CUSTOM'
+}
+
+const isSensitivePerm = (key) => {
+  const sensitiveKeys = [
+    'products.price_edit',
+    'orders.delete',
+    'leads.delete',
+    'products.delete',
+    'combos.delete',
+    'tradeins.delete',
+    'users.permissions',
+    'users.delete'
+  ]
+  return sensitiveKeys.includes(key)
+}
+
+const submitPermissions = async () => {
+  if (!permissionModalUser.value) return
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    const res = await apiRequest(`/admin/users/${permissionModalUser.value.id}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        role: selectedRole.value,
+        permissions: selectedPermissions.value
+      })
+    })
+    Object.assign(permissionModalUser.value, res.data)
+    if (res.newToken && permissionModalUser.value.id === currentUserId.value) {
+      auth.updateSessionToken(res.newToken, res.data)
+    }
+    message.value = res.message || `Đã cập nhật phân quyền cho tài khoản ${permissionModalUser.value.username}.`
+    permissionModalUser.value = null
+    await loadUsers()
+  } catch (err) {
+    error.value = err.message || 'Không cập nhật được phân quyền.'
+  } finally {
+    busy.value = false
+  }
+}
+
+const formatUserRole = (role) => {
+  const map = {
+    SUPER_ADMIN: 'Quản trị cấp cao',
+    SALES: 'Kinh doanh',
+    INVENTORY: 'Quản lý kho',
+    CUSTOM: 'Tùy chỉnh',
+    PENDING: 'Chờ duyệt'
+  }
+  return map[role] || role || 'Nhân viên'
+}
+
+const getRoleBadgeClass = (role) => {
+  if (role === 'SUPER_ADMIN') return 'role-gold'
+  if (role === 'SALES') return 'role-blue'
+  if (role === 'INVENTORY') return 'role-green'
+  if (role === 'CUSTOM') return 'role-purple'
+  return 'role-amber'
+}
+
+const getPermsCountLabel = (user) => {
+  if (user.role === 'SUPER_ADMIN' || user.permissions?.includes('*')) return 'Toàn quyền (*)'
+  if (Array.isArray(user.permissions) && user.permissions.length > 0) return `${user.permissions.length} quyền`
+  const defCount = (ROLE_TEMPLATES[user.role] || []).length
+  return defCount > 0 ? `${defCount} quyền` : 'Chưa cấp quyền'
+}
+
+const getPermsTooltip = (user) => {
+  if (user.role === 'SUPER_ADMIN' || user.permissions?.includes('*')) return 'Toàn quyền thao tác trên mọi phân hệ'
+  if (Array.isArray(user.permissions) && user.permissions.length > 0) return user.permissions.join(', ')
+  return 'Sử dụng bộ quyền mặc định theo vai trò'
+}
+
 onMounted(loadUsers)
 </script>
 
@@ -960,5 +1283,342 @@ onMounted(loadUsers)
 
 .pwd-modal {
   max-width: 480px;
+}
+
+/* User Role Cell & Badge */
+.user-role-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.role-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.role-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.role-gold { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.role-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.role-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.role-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+.role-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+
+.perms-count-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.perm-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: fit-content;
+}
+
+.perm-edit-btn:hover:not(:disabled) {
+  border-color: #eab308;
+  color: #b45309;
+  background: #fefce8;
+}
+
+.perm-quick-btn {
+  color: #6366f1 !important;
+}
+
+.perm-quick-btn:hover {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+}
+
+/* Modal Phân Quyền Sâu */
+.perm-modal {
+  max-width: 860px;
+  width: 95vw;
+}
+
+.perm-modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.perm-template-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.template-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 10px;
+}
+
+.template-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.t-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.t-btn:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.t-btn.active.t-gold {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.t-btn.active.t-blue {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.t-btn.active.t-green {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+  font-weight: 700;
+}
+
+.t-btn.active.t-purple {
+  background: #f3e8ff;
+  border-color: #a855f7;
+  color: #6b21a8;
+  font-weight: 700;
+}
+
+.perm-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.perm-stats {
+  font-size: 0.84rem;
+  color: #334155;
+}
+
+.perm-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.adm-link-btn:hover {
+  text-decoration: underline;
+}
+
+.adm-link-btn.text-danger {
+  color: #dc2626;
+}
+
+.sep {
+  color: #cbd5e1;
+}
+
+.super-admin-notice {
+  display: flex;
+  gap: 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: #92400e;
+}
+
+.super-admin-notice p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #78350f;
+}
+
+.perm-groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.perm-group-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.perm-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: #0f172a;
+}
+
+.group-count {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.group-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.group-toggle-btn:hover {
+  color: #0f172a;
+  text-decoration: underline;
+}
+
+.perm-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.perm-item-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.perm-item-label:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.perm-item-label.item-checked {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.perm-item-label.perm-sensitive.item-checked {
+  background: #fffdf5;
+  border-color: #fde68a;
+}
+
+.perm-item-label input[type="checkbox"] {
+  margin-top: 3px;
+  cursor: pointer;
+  accent-color: #16a34a;
+}
+
+.perm-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.perm-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.perm-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.badge-sensitive {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.perm-desc {
+  font-size: 0.72rem;
+  color: #64748b;
 }
 </style>

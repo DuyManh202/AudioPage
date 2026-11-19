@@ -145,7 +145,7 @@ const authenticateAdmin = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Phiên làm việc hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.' })
   }
   try {
-    const result = await query('SELECT id, username, full_name, role, is_active, COALESCE(auth_version, 0) AS auth_version FROM admins WHERE id = $1', [decoded.id])
+    const result = await query('SELECT id, username, full_name, role, is_active, permissions, COALESCE(auth_version, 0) AS auth_version FROM admins WHERE id = $1', [decoded.id])
     const admin = result.rows[0]
     if (!admin || !admin.is_active) {
       return res.status(401).json({ success: false, message: 'Tài khoản đã bị khóa hoặc không còn tồn tại.' })
@@ -153,11 +153,60 @@ const authenticateAdmin = async (req, res, next) => {
     if (Number(admin.auth_version ?? 0) !== Number(decoded.authVersion ?? 0)) {
       return res.status(401).json({ success: false, message: 'Tài khoản đã thay đổi. Vui lòng đăng nhập lại.' })
     }
-    req.admin = { id: admin.id, username: admin.username, role: admin.role, name: admin.full_name }
+    req.admin = {
+      id: admin.id,
+      username: admin.username,
+      role: admin.role,
+      name: admin.full_name,
+      permissions: Array.isArray(admin.permissions) ? admin.permissions : []
+    }
     next()
   } catch (err) {
     console.error('[authenticateAdmin] DB error:', err.message)
     return res.status(500).json({ success: false, message: 'Không thể xác thực tài khoản lúc này.' })
+  }
+}
+
+/**
+ * Ghi nhật ký lịch sử thao tác hệ thống (Audit Trail)
+ */
+const recordAuditLog = async ({
+  admin,
+  action,
+  actionType,
+  targetType = null,
+  targetId = null,
+  summary,
+  details = {},
+  req = null
+}) => {
+  try {
+    const ip = req ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() : null
+    const adminId = admin?.id || null
+    const adminUsername = admin?.username || 'system'
+    const adminName = admin?.name || admin?.full_name || 'Hệ thống'
+    const adminRole = admin?.role || 'SYSTEM'
+
+    await query(
+      `INSERT INTO admin_audit_logs (id, admin_id, admin_username, admin_name, admin_role, action, action_type, target_type, target_id, summary, details, ip_address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        randomUUID(),
+        adminId,
+        adminUsername,
+        adminName,
+        adminRole,
+        action,
+        actionType,
+        targetType,
+        targetId ? String(targetId) : null,
+        summary,
+        JSON.stringify(details || {}),
+        ip
+      ]
+    )
+  } catch (err) {
+    console.error('[recordAuditLog] Lỗi ghi nhật ký:', err.message)
   }
 }
 
@@ -168,11 +217,33 @@ const authorizeRoles = (...roles) => (req, res, next) => {
   next()
 }
 
+/**
+ * Middleware phân quyền sâu (Granular Permission Check)
+ * Super Admin luôn có toàn quyền bypass
+ */
+const authorizePermission = (...requiredPerms) => (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({ success: false, message: 'Chưa đăng nhập.' })
+  }
+  if (req.admin.role === 'SUPER_ADMIN' || req.admin.permissions?.includes('*')) {
+    return next()
+  }
+  const userPerms = req.admin.permissions || []
+  const hasPerm = requiredPerms.some(p => userPerms.includes(p))
+  if (!hasPerm) {
+    return res.status(403).json({
+      success: false,
+      message: 'Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ Quản trị viên cấp cao.'
+    })
+  }
+  next()
+}
+
 const validPhone = (phone) => /^\+?[0-9][0-9\s().-]{7,19}$/.test(String(phone || '').trim())
 const validEmail = (email) => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 const validMoney = (value) => (typeof value === 'number' || typeof value === 'string' && value.trim() !== '') && Number.isSafeInteger(Number(value)) && Number(value) >= 0
 const validOptionalText = (value, maxLength) => value === undefined || value === null || typeof value === 'string' && value.length <= maxLength
-const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY', 'PENDING'])
+const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY', 'PENDING', 'CUSTOM'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
 
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
@@ -1056,6 +1127,17 @@ app.post('/api/v1/admin/auth/verify-otp', async (req, res) => {
       { expiresIn: decoded.rememberMe ? '30d' : '8h' }
     )
 
+    await recordAuditLog({
+      admin: { id: admin.id, username: admin.username, name: admin.full_name, role: admin.role },
+      action: 'AUTH_LOGIN_SUCCESS',
+      actionType: 'AUTH',
+      targetType: 'auth',
+      targetId: admin.username,
+      summary: `Quản trị viên ${admin.full_name} (${admin.username}) đã đăng nhập thành công bằng mã OTP Email.`,
+      details: { email: admin.email, role: admin.role },
+      req
+    })
+
     return res.json({
       success: true,
       token,
@@ -1064,7 +1146,8 @@ app.post('/api/v1/admin/auth/verify-otp', async (req, res) => {
         username: admin.username,
         full_name: admin.full_name,
         role: admin.role,
-        email: admin.email || null
+        email: admin.email || null,
+        permissions: Array.isArray(admin.permissions) ? admin.permissions : []
       }
     })
   } catch (err) {
@@ -1194,7 +1277,7 @@ app.patch('/api/v1/admin/auth/profile', authenticateAdmin, async (req, res) => {
 // Quản lý tài khoản nhân viên: chỉ SUPER_ADMIN được phép
 app.get('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const result = await query('SELECT id, username, full_name, email, phone, role, is_active, created_at FROM admins ORDER BY created_at DESC')
+    const result = await query('SELECT id, username, full_name, email, phone, role, is_active, permissions, created_at FROM admins ORDER BY created_at DESC')
     res.json({ success: true, data: result.rows })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -1203,7 +1286,7 @@ app.get('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN'),
 
 app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const { username, password, fullName, phone, role, email } = req.body
+    const { username, password, fullName, phone, role, email, permissions } = req.body
     const cleanUsername = typeof username === 'string' ? username.trim().toLowerCase() : ''
     if (!/^[a-z0-9._-]{3,50}$/.test(cleanUsername)) {
       return res.status(400).json({ success: false, message: 'Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm hoặc gạch nối (3–50 ký tự, viết liền không khoảng trắng).' })
@@ -1234,10 +1317,23 @@ app.post('/api/v1/admin/users', authenticateAdmin, authorizeRoles('SUPER_ADMIN')
       return res.status(409).json({ success: false, message: `Tên đăng nhập "${cleanUsername}" đã tồn tại.` })
     }
     const passwordHash = await bcrypt.hash(password, 12)
+    const perms = Array.isArray(permissions) ? permissions : (role === 'SUPER_ADMIN' ? ['*'] : [])
     const result = await query(
-      'INSERT INTO admins (id, username, password_hash, full_name, email, phone, role, is_active, auth_version) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, 0) RETURNING id, username, full_name, email, phone, role, is_active, created_at',
-      [randomUUID(), cleanUsername, passwordHash, fullName.trim(), cleanEmail, cleanPhone, role]
+      'INSERT INTO admins (id, username, password_hash, full_name, email, phone, role, is_active, permissions, auth_version) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, 0) RETURNING id, username, full_name, email, phone, role, is_active, permissions, created_at',
+      [randomUUID(), cleanUsername, passwordHash, fullName.trim(), cleanEmail, cleanPhone, role, JSON.stringify(perms)]
     )
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'USER_CREATE',
+      actionType: 'CREATE',
+      targetType: 'admin',
+      targetId: cleanUsername,
+      summary: `Tạo tài khoản nhân viên mới: ${fullName.trim()} (${cleanUsername}) với vai trò ${role}.`,
+      details: { username: cleanUsername, fullName: fullName.trim(), phone: cleanPhone, email: cleanEmail, role, permissions: perms },
+      req
+    })
+
     res.status(201).json({ success: true, data: result.rows[0] })
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ success: false, message: 'Tên đăng nhập đã được sử dụng.' })
@@ -1279,11 +1375,23 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
         full_name = COALESCE($3, full_name), phone = COALESCE($4, phone),
         email = COALESCE($5, email),
         password_hash = COALESCE($6, password_hash), auth_version = COALESCE(auth_version, 0) + 1, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7 RETURNING id, username, full_name, email, phone, role, is_active, auth_version, created_at`,
+       WHERE id = $7 RETURNING id, username, full_name, email, phone, role, is_active, permissions, auth_version, created_at`,
       [role ?? null, isActive ?? null, fullName?.trim() ?? null, phone?.trim() ?? null, cleanEmail, passwordHash, id]
     )
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' })
     const updatedRow = result.rows[0]
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: isActive === false ? 'USER_LOCK' : (isActive === true ? 'USER_ACTIVATE' : 'USER_UPDATE'),
+      actionType: 'UPDATE',
+      targetType: 'admin',
+      targetId: updatedRow.username,
+      summary: `Cập nhật tài khoản ${updatedRow.username}: ${isActive === false ? 'Khóa tài khoản' : (isActive === true ? 'Mở khóa / Kích hoạt' : 'Sửa thông tin cá nhân/vai trò')}.`,
+      details: { targetUserId: id, role, isActive, fullName, phone, email: cleanEmail },
+      req
+    })
+
     let refreshedToken = null
     if (id === req.admin.id && updatedRow.is_active) {
       refreshedToken = jwt.sign(
@@ -1299,6 +1407,81 @@ app.patch('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_AD
   }
 })
 
+// Cập nhật phân quyền sâu chi tiết cho từng tài khoản (Chỉ SUPER_ADMIN)
+app.put('/api/v1/admin/users/:id/permissions', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { role, permissions } = req.body
+
+    if (role !== undefined && !validRoles.has(role)) {
+      return res.status(400).json({ success: false, message: 'Vai trò được chọn không hợp lệ.' })
+    }
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ success: false, message: 'Danh sách quyền hạn phải là một mảng.' })
+    }
+
+    const target = await query('SELECT username, full_name, role, is_active, permissions FROM admins WHERE id = $1', [id])
+    if (!target.rows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản nhân sự.' })
+    }
+    const oldUser = target.rows[0]
+
+    // Tránh tước quyền SUPER_ADMIN của quản trị viên duy nhất
+    if (oldUser.role === 'SUPER_ADMIN' && role && role !== 'SUPER_ADMIN') {
+      const superCount = await query("SELECT COUNT(*)::int AS count FROM admins WHERE role = 'SUPER_ADMIN' AND is_active = TRUE AND id <> $1", [id])
+      if (superCount.rows[0].count === 0) {
+        return res.status(400).json({ success: false, message: 'Cần giữ lại ít nhất một Quản trị viên cấp cao trong hệ thống.' })
+      }
+    }
+
+    const newRole = role || oldUser.role
+    const result = await query(
+      `UPDATE admins 
+       SET role = $1, permissions = $2, auth_version = COALESCE(auth_version, 0) + 1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 
+       RETURNING id, username, full_name, email, phone, role, is_active, permissions, auth_version, created_at`,
+      [newRole, JSON.stringify(permissions), id]
+    )
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'USER_UPDATE_PERMISSIONS',
+      actionType: 'PERMISSIONS',
+      targetType: 'admin',
+      targetId: oldUser.username,
+      summary: `Phân quyền chi tiết tài khoản ${oldUser.username} (${oldUser.full_name}): Vai trò [${newRole}], gồm ${permissions.includes('*') ? 'Toàn quyền (*)' : permissions.length + ' quyền thao tác'}.`,
+      details: {
+        targetUserId: id,
+        targetUsername: oldUser.username,
+        oldRole: oldUser.role,
+        newRole,
+        oldPermissions: oldUser.permissions,
+        newPermissions: permissions
+      },
+      req
+    })
+
+    let refreshedToken = null
+    if (id === req.admin.id) {
+      refreshedToken = jwt.sign(
+        { id: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role, name: result.rows[0].full_name, authVersion: Number(result.rows[0].auth_version ?? 0) },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      )
+    }
+
+    const { auth_version: _av, ...publicAdmin } = result.rows[0]
+    res.json({
+      success: true,
+      message: `Đã cập nhật phân quyền cho tài khoản ${oldUser.username} thành công.`,
+      data: publicAdmin,
+      ...(refreshedToken ? { newToken: refreshedToken } : {})
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // Xóa hoặc từ chối tài khoản nhân sự (Chỉ SUPER_ADMIN được phép)
 app.delete('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
@@ -1306,7 +1489,7 @@ app.delete('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_A
     if (id === req.admin.id) {
       return res.status(400).json({ success: false, message: 'Không thể tự xóa tài khoản đang đăng nhập.' })
     }
-    const target = await query('SELECT role, is_active FROM admins WHERE id = $1', [id])
+    const target = await query('SELECT username, full_name, role, is_active FROM admins WHERE id = $1', [id])
     if (target.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản nhân sự này.' })
     }
@@ -1317,7 +1500,76 @@ app.delete('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_A
       }
     }
     await query('DELETE FROM admins WHERE id = $1', [id])
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'USER_DELETE',
+      actionType: 'DELETE',
+      targetType: 'admin',
+      targetId: target.rows[0].username || id,
+      summary: `Đã xóa tài khoản nhân sự ${target.rows[0].username} (${target.rows[0].full_name}) khỏi hệ thống.`,
+      details: { targetUserId: id, targetUsername: target.rows[0].username, targetRole: target.rows[0].role },
+      req
+    })
+
     res.json({ success: true, message: 'Đã xóa tài khoản khỏi hệ thống thành công.' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Lấy danh sách lịch sử thao tác hệ thống (Audit Logs)
+app.get('/api/v1/admin/audit-logs', authenticateAdmin, async (req, res) => {
+  try {
+    if (req.admin.role !== 'SUPER_ADMIN' && !req.admin.permissions?.includes('*') && !req.admin.permissions?.includes('logs.view')) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem nhật ký thao tác hệ thống.' })
+    }
+
+    const { page = 1, limit = 25, q = '', actionType = 'ALL', targetType = 'ALL' } = req.query
+    const parsedPage = Math.max(1, parseInt(page, 10))
+    const take = Math.min(100, Math.max(1, parseInt(limit, 10)))
+    const offset = (parsedPage - 1) * take
+
+    const conditions = []
+    const params = []
+
+    if (q && q.trim()) {
+      params.push(`%${q.trim().toLowerCase()}%`)
+      conditions.push(`(LOWER(admin_username) LIKE $${params.length} OR LOWER(admin_name) LIKE $${params.length} OR LOWER(summary) LIKE $${params.length} OR LOWER(ip_address) LIKE $${params.length} OR target_id LIKE $${params.length})`)
+    }
+
+    if (actionType && actionType !== 'ALL') {
+      params.push(actionType)
+      conditions.push(`action_type = $${params.length}`)
+    }
+
+    if (targetType && targetType !== 'ALL') {
+      params.push(targetType)
+      conditions.push(`target_type = $${params.length}`)
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const countRes = await query(`SELECT COUNT(*)::int AS count FROM admin_audit_logs ${whereClause}`, params)
+    const total = countRes.rows[0].count
+
+    params.push(take, offset)
+    const dataRes = await query(
+      `SELECT id, admin_id, admin_username, admin_name, admin_role, action, action_type, target_type, target_id, summary, details, ip_address, created_at
+       FROM admin_audit_logs
+       ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    )
+
+    res.json({
+      success: true,
+      data: dataRes.rows,
+      total,
+      page: parsedPage,
+      limit: take
+    })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -1516,6 +1768,12 @@ app.put('/api/v1/admin/products/:id', authenticateAdmin, authorizeRoles('SUPER_A
   try {
     const { id } = req.params
     const p = req.body
+
+    // Kiểm tra quyền sửa giá bán nếu có thay đổi giá
+    if ((p.price !== undefined || p.originalPrice !== undefined) && req.admin.role !== 'SUPER_ADMIN' && !req.admin.permissions?.includes('*') && !req.admin.permissions?.includes('products.price_edit')) {
+      return res.status(403).json({ success: false, message: 'Tài khoản của bạn chưa được cấp quyền chỉnh sửa giá bán / giá khuyến mãi sản phẩm.' })
+    }
+
     if (p.name !== undefined && (typeof p.name !== 'string' || !p.name.trim() || p.name.length > 200) || p.category !== undefined && !validCategories.has(p.category) || p.price !== undefined && !validMoney(p.price) || p.originalPrice !== undefined && !validMoney(p.originalPrice)) {
       return res.status(400).json({ success: false, message: 'Tên hoặc giá sản phẩm không hợp lệ.' })
     }
@@ -1568,6 +1826,18 @@ app.put('/api/v1/admin/products/:id', authenticateAdmin, authorizeRoles('SUPER_A
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' })
     }
+
+    await recordAuditLog({
+      admin: req.admin,
+      action: (p.price !== undefined || p.originalPrice !== undefined) ? 'PRODUCT_PRICE_UPDATE' : 'PRODUCT_UPDATE',
+      actionType: 'UPDATE',
+      targetType: 'product',
+      targetId: id,
+      summary: `Cập nhật thông tin thiết bị "${result.rows[0].name}"${p.price ? ` (Giá mới: ${Number(p.price).toLocaleString('vi-VN')}đ)` : ''}.`,
+      details: { productId: id, name: result.rows[0].name, price: p.price, inStock: p.inStock },
+      req
+    })
+
     res.json({ success: true, data: mapProductRow(result.rows[0]) })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

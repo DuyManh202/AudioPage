@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useAuthStore } from '../stores/authStore'
-import { adminHomeForRole } from '../utils/permissions'
+import { adminHomeForRole, canAccessMenu } from '../utils/permissions'
 
 const routes = [
   // Khách hàng / Public Website
@@ -46,67 +46,73 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: () => adminHomeForRole(useAuthStore().currentUser.role)
+        redirect: () => adminHomeForRole(useAuthStore().currentUser)
       },
       {
         path: 'dashboard',
         name: 'AdminDashboard',
         component: () => import('../views/admin/AdminDashboardView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'dashboard' }
       },
       {
         path: 'leads',
         name: 'AdminLeads',
         component: () => import('../views/admin/AdminLeadsView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'leads' }
       },
       {
         path: 'ai-chat',
         name: 'AdminAiChat',
         component: () => import('../views/admin/AdminAiChatView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'ai-chat' }
       },
       {
         path: 'facebook-care',
         name: 'AdminFacebookCare',
         component: () => import('../views/admin/AdminFacebookCareView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'facebook-care' }
       },
       {
         path: 'customer-map',
         name: 'AdminCustomerMap',
         component: () => import('../views/admin/AdminCustomerMapView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'customer-map' }
       },
       {
         path: 'orders',
         name: 'AdminOrders',
         component: () => import('../views/admin/AdminOrdersView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'orders' }
       },
       {
         path: 'trade-ins',
         name: 'AdminTradeIns',
         component: () => import('../views/admin/AdminTradeInsView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'SALES'] }
+        meta: { requiresAuth: true, menuKey: 'trade-ins' }
       },
       {
         path: 'products',
         name: 'AdminProducts',
         component: () => import('../views/admin/AdminProductsView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'INVENTORY'] }
+        meta: { requiresAuth: true, menuKey: 'products' }
       },
       {
         path: 'combos',
         name: 'AdminCombos',
         component: () => import('../views/admin/AdminCombosView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'INVENTORY'] }
+        meta: { requiresAuth: true, menuKey: 'combos' }
       },
       {
         path: 'users',
         name: 'AdminUsers',
         component: () => import('../views/admin/AdminUsersView.vue'),
-        meta: { requiresAuth: true, roles: ['SUPER_ADMIN'] }
+        meta: { requiresAuth: true, menuKey: 'users' }
+      },
+      {
+        path: 'audit-logs',
+        name: 'AdminAuditLogs',
+        component: () => import('../views/admin/AdminAuditLogsView.vue'),
+        meta: { requiresAuth: true, menuKey: 'audit-logs' }
       }
     ]
   }
@@ -135,11 +141,16 @@ router.beforeEach((to, from, next) => {
       query: { redirect: to.fullPath } 
     })
   } else if (to.path === '/admin/login' && authStore.isAuthenticated) {
-    // Đã đăng nhập rồi mà cố vào lại Login -> Chuyển thẳng vào trang chủ theo đúng vai trò
-    next(adminHomeForRole(authStore.currentUser.role))
-  } else if (to.matched.some(record => record.meta.roles && !record.meta.roles.includes(authStore.currentUser.role))) {
-    next(adminHomeForRole(authStore.currentUser.role))
+    // Đã đăng nhập rồi mà cố vào lại Login -> Chuyển thẳng vào trang chủ theo quyền
+    next(adminHomeForRole(authStore.currentUser))
   } else {
+    // Kiểm tra quyền theo menuKey
+    const targetRecord = to.matched.find(r => r.meta?.menuKey)
+    if (targetRecord && targetRecord.meta.menuKey) {
+      if (!canAccessMenu(authStore.currentUser, targetRecord.meta.menuKey)) {
+        return next(adminHomeForRole(authStore.currentUser))
+      }
+    }
     next()
   }
 })

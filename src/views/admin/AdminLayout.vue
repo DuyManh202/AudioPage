@@ -143,6 +143,16 @@
           <span class="nav-text">Tài Khoản Nhân Sự</span>
         </router-link>
 
+        <router-link
+          v-if="can('audit-logs')"
+          to="/admin/audit-logs"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="history" :size="18" />
+          <span class="nav-text">Lịch Sử Thao Tác</span>
+        </router-link>
+
         <router-link to="/" target="_blank" class="nav-item storefront-link">
           <AdminIcon name="globe" :size="18" />
           <span class="nav-text">Mở Trang Khách Hàng</span>
@@ -343,7 +353,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
-import { canAccess } from '../../utils/permissions'
+import { canAccessMenu } from '../../utils/permissions'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import '../../assets/styles/admin.css'
 
@@ -353,13 +363,14 @@ const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const mobileNavOpen = ref(false)
 
-const can = (permission) => canAccess(authStore.currentUser?.role, permission)
+const can = (permission) => canAccessMenu(authStore.currentUser, permission)
 
 const roleLabel = computed(() => {
   const map = {
     SUPER_ADMIN: 'Quản trị cấp cao',
     SALES: 'Chuyên viên kinh doanh',
-    INVENTORY: 'Quản lý kho thiết bị'
+    INVENTORY: 'Quản lý kho thiết bị',
+    CUSTOM: 'Quyền hạn tùy chỉnh'
   }
   return map[authStore.currentUser?.role] || 'Nhân sự hệ thống'
 })
@@ -375,6 +386,7 @@ const currentRouteTitle = computed(() => {
   if (route.path.includes('orders')) return 'Quản Lý Đơn Đặt Mua Lẻ'
   if (route.path.includes('trade-ins')) return 'Thẩm Định Thu Cũ Đổi Mới'
   if (route.path.includes('users')) return 'Tài Khoản & Phân Quyền'
+  if (route.path.includes('audit-logs')) return 'Nhật Ký Lịch Sử Thao Tác'
   if (route.path.includes('products')) return 'Kho Loa & Chiến Dịch Sale'
   if (route.path.includes('combos')) return 'Cấu Hình Gói Dàn Karaoke'
   return 'Tổng Quan Điều Hành'
