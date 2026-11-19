@@ -331,8 +331,12 @@ onMounted(() => {
     setTimeout(() => {
       if (!isOpen.value) {
         showGreetingBubble.value = true
+        // Tự động thu gọn sau 7 giây để không che khuất nội dung website
+        setTimeout(() => {
+          showGreetingBubble.value = false
+        }, 7000)
       }
-    }, 3500)
+    }, 4000)
   }
 })
 </script>
@@ -964,6 +968,10 @@ onMounted(() => {
 
 /* Mobile responsive */
 @media (max-width: 640px) {
+  .ai-greeting-bubble {
+    display: none !important;
+  }
+
   .ai-chat-launcher-wrapper {
     left: 14px;
     bottom: calc(76px + env(safe-area-inset-bottom));

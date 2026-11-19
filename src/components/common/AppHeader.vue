@@ -4,7 +4,8 @@
       <div class="container flex-between">
         <div class="ticker-text">
           <span class="live-dot" aria-hidden="true"></span>
-          <span>Lắp đặt &amp; Cân chỉnh tận nhà miễn phí bán kính 300km quanh Hà Nội - Phú Thọ</span>
+          <span class="ticker-desktop">Lắp đặt &amp; Cân chỉnh tận nhà miễn phí bán kính 300km quanh Hà Nội - Phú Thọ</span>
+          <span class="ticker-mobile">Miễn phí lắp đặt tận nhà 300km quanh Hà Nội &amp; Phú Thọ</span>
         </div>
         <div class="top-contact">
           <span>
@@ -185,11 +186,12 @@ const scrollToEbook = () => {
   flex: 1;
 }
 
-.ticker-text > span:last-child {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.ticker-mobile {
+  display: none;
+}
+
+.ticker-desktop {
+  display: inline-block;
 }
 
 .live-dot {
@@ -565,6 +567,17 @@ const scrollToEbook = () => {
 
   .top-contact {
     display: none;
+  }
+
+  .ticker-desktop {
+    display: none;
+  }
+
+  .ticker-mobile {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .ticker-text {

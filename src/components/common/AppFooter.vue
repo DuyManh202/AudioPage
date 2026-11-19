@@ -5,7 +5,7 @@
     <div class="container footer-grid">
       <div class="footer-col footer-brand-col">
         <div class="footer-brand">
-          <BrandLogo theme="dark" :height="44" tagline="Chuyên Gia Dàn Karaoke Gia Đình" />
+          <BrandLogo theme="light" :height="44" tagline="Chuyên Gia Dàn Karaoke Gia Đình &amp; Bán Lẻ Loa" />
         </div>
         <p class="desc">
           Cam kết thiết bị âm thanh đồng bộ, xử lý dứt điểm hú rít, đem lại chất âm dày ấm, chuẩn phòng hát cho không gian nhà bạn.

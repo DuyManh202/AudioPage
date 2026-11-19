@@ -9,7 +9,7 @@ const LEGACY_VIDEO_RE = /ScMzIvxBSi4|kJQP7kiw5Fk/
 const getStoredProducts = () => {
   try {
     const local = JSON.parse(localStorage.getItem('audioshop_products'))
-    if (!local || !Array.isArray(local)) return productsData
+    if (!local || !Array.isArray(local) || local.length === 0) return productsData
     const defaultsById = new Map(productsData.map(p => [p.id, p]))
     return local.map(item => {
       const def = defaultsById.get(item.id)

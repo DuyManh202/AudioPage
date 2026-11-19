@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useProductStore } from '../stores/productStore'
 import HomeHero from '../components/home/HomeHero.vue'
 import ComboOffers from '../components/home/ComboOffers.vue'
@@ -125,6 +125,10 @@ import ProductCard from '../components/product/ProductCard.vue'
 const productStore = useProductStore()
 
 const featuredProducts = computed(() => productStore.products.slice(0, 6))
+
+onMounted(() => {
+  productStore.fetchProducts()
+})
 </script>
 
 <style scoped>
