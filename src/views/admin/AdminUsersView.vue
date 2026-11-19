@@ -323,7 +323,7 @@
                   <!-- Thông tin vị trí & thiết bị nếu đang có phiên -->
                   <div v-if="getUserSession(user)" class="session-meta">
                     <span class="session-loc" :title="'IP mạng: ' + (getUserSession(user).ipAddress || '—')">
-                      📍 {{ formatSessionCity(getUserSession(user).city) }} • {{ getUserSession(user).deviceType || 'PC' }}
+                      {{ getUserSession(user).city?.startsWith('🎯') ? '' : '📍 ' }}{{ formatSessionCity(getUserSession(user).city) }} • {{ getUserSession(user).deviceType || 'PC' }}
                     </span>
                     <span v-if="getUserSession(user).currentPageTitle" class="session-page" :title="getUserSession(user).currentPage">
                       👁 {{ getUserSession(user).currentPageTitle }}
@@ -698,7 +698,7 @@
               <div class="c-details-list">
                 <div class="c-detail-item">
                   <span class="c-label">Vị trí địa lý:</span>
-                  <span class="c-val text-gold">📍 {{ formatSessionCity(user.city) }} <small v-if="user.ipAddress">({{ user.ipAddress }})</small></span>
+                  <span class="c-val text-gold">{{ user.city?.startsWith('🎯') ? '' : '📍 ' }}{{ formatSessionCity(user.city) }} <small v-if="user.ipAddress">({{ user.ipAddress }})</small></span>
                 </div>
                 <div class="c-detail-item">
                   <span class="c-label">Thiết bị &amp; Môi trường:</span>

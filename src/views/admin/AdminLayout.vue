@@ -221,6 +221,18 @@
             <span v-if="adminStore.lastSyncedAt" class="db-time">• {{ adminStore.lastSyncedAt }}</span>
           </div>
 
+          <!-- Nút định vị GPS chính xác cao -->
+          <button
+            type="button"
+            class="topbar-geo-pill"
+            :class="{ 'is-gps': cachedAdminGeo?.isGps }"
+            @click="requestPreciseGps(true)"
+            :title="cachedAdminGeo?.isGps ? 'Đã nhận diện GPS chính xác từng mét (Bấm để định vị lại)' : 'Đang định vị qua IP mạng (Bấm để lấy GPS chính xác từng mét)'"
+          >
+            <span class="geo-icon">{{ cachedAdminGeo?.isGps ? '🎯' : '📍' }}</span>
+            <span class="geo-text">{{ isLocatingGps ? 'Đang dò GPS...' : (currentGeoLabel || 'Định vị GPS') }}</span>
+          </button>
+
           <button
             type="button"
             class="topbar-sync-btn"
@@ -375,6 +387,14 @@ const roleLabel = computed(() => {
 
 let heartbeatTimer = null
 let cachedAdminGeo = null
+const isLocatingGps = ref(false)
+const currentGeoLabel = ref('Đang xác định...')
+
+const updateGeoLabel = () => {
+  if (cachedAdminGeo?.city) {
+    currentGeoLabel.value = cachedAdminGeo.city
+  }
+}
 
 const getAdminGeo = async () => {
   if (cachedAdminGeo) return cachedAdminGeo
@@ -382,6 +402,7 @@ const getAdminGeo = async () => {
     const saved = sessionStorage.getItem('tuaudio_admin_geo')
     if (saved) {
       cachedAdminGeo = JSON.parse(saved)
+      updateGeoLabel()
       return cachedAdminGeo
     }
   } catch {}
@@ -418,11 +439,13 @@ const getAdminGeo = async () => {
         cachedAdminGeo = {
           city: locString,
           country: data.country || 'Việt Nam',
-          ip: data.ip
+          ip: data.ip,
+          isGps: false
         }
         try {
           sessionStorage.setItem('tuaudio_admin_geo', JSON.stringify(cachedAdminGeo))
         } catch {}
+        updateGeoLabel()
         return cachedAdminGeo
       }
     }
@@ -430,6 +453,98 @@ const getAdminGeo = async () => {
     // Không gián đoạn nếu mạng chậm hoặc ngoại tuyến
   }
   return null
+}
+
+const requestPreciseGps = async (manualClick = false) => {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    if (manualClick) {
+      adminStore.showNotice({
+        type: 'warning',
+        title: 'Thiết bị không hỗ trợ GPS',
+        message: 'Trình duyệt hoặc máy tính của bạn không hỗ trợ Geolocation API.'
+      })
+    }
+    return
+  }
+
+  isLocatingGps.value = true
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      isLocatingGps.value = false
+      const { latitude, longitude } = pos.coords
+      let preciseAddress = null
+
+      try {
+        const res = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=vi`,
+          { signal: AbortSignal.timeout(4000) }
+        )
+        if (res.ok) {
+          const data = await res.json()
+          const locality = data.locality || data.neighbourhood || ''
+          const city = data.city || ''
+          const province = data.principalSubdivision || ''
+          const parts = [locality, city, province].filter(Boolean)
+          if (parts.length > 0) {
+            preciseAddress = parts.join(', ')
+          }
+        }
+      } catch {}
+
+      if (!preciseAddress) {
+        try {
+          const res = await fetch(
+            `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}`,
+            { signal: AbortSignal.timeout(4000) }
+          )
+          if (res.ok) {
+            const data = await res.json()
+            const p = data?.features?.[0]?.properties
+            if (p) {
+              const parts = [p.name || p.street, p.district || p.suburb, p.city || p.county, p.state].filter(Boolean)
+              if (parts.length > 0) preciseAddress = parts.join(', ')
+            }
+          }
+        } catch {}
+      }
+
+      const display = preciseAddress ? `🎯 ${preciseAddress}` : `🎯 GPS (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+
+      cachedAdminGeo = {
+        city: display,
+        country: 'Việt Nam',
+        isGps: true,
+        coords: { lat: latitude, lng: longitude }
+      }
+      try {
+        sessionStorage.setItem('tuaudio_admin_geo', JSON.stringify(cachedAdminGeo))
+      } catch {}
+
+      updateGeoLabel()
+      sendHeartbeat()
+
+      if (manualClick) {
+        adminStore.showNotice({
+          type: 'success',
+          title: 'Đã nhận diện GPS chính xác!',
+          message: `Vị trí phiên của bạn: ${display}`
+        })
+      }
+    },
+    (err) => {
+      isLocatingGps.value = false
+      if (manualClick) {
+        let msg = 'Chưa cấp quyền truy cập vị trí. Bạn có thể bấm biểu tượng ổ khóa 🔒 trên thanh địa chỉ, chọn Cho phép vị trí (Location -> Allow) rồi thử lại.'
+        adminStore.showNotice({
+          type: 'warning',
+          title: 'Chưa thể lấy GPS',
+          message: msg
+        })
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  )
 }
 
 const sendHeartbeat = async () => {
@@ -449,10 +564,20 @@ const sendHeartbeat = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   adminStore.fetchAllAdminData()
+  await getAdminGeo()
   sendHeartbeat()
   heartbeatTimer = setInterval(sendHeartbeat, 30000)
+
+  // Nếu trình duyệt đã cấp quyền vị trí, tự động lấy GPS chính xác
+  if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(result => {
+      if (result.state === 'granted') {
+        requestPreciseGps(false)
+      }
+    }).catch(() => {})
+  }
 })
 
 onUnmounted(() => {
@@ -871,6 +996,44 @@ const handleLogout = async () => {
 .db-time {
   color: #64748b;
   font-weight: 600;
+}
+
+.topbar-geo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s ease;
+}
+
+.topbar-geo-pill:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.topbar-geo-pill.is-gps {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.topbar-geo-pill .geo-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-sync-btn,
