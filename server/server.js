@@ -1608,28 +1608,129 @@ const parseUserAgent = (uaString = '') => {
   }
 }
 
+const ipLocationCache = new Map()
+
+/**
+ * Định dạng tên địa danh Việt Nam có dấu chuẩn
+ */
+const formatVietnameseLocation = (city, region, country) => {
+  const c = (city || '').trim()
+  const r = (region || '').replace(/^Tinh\s+/i, '').replace(/^Tỉnh\s+/i, '').replace(/^Thanh pho\s+/i, '').replace(/^Thành phố\s+/i, '').trim()
+
+  const accentMap = {
+    'Vinh Yen': 'Vĩnh Yên',
+    'Phu Tho': 'Phú Thọ',
+    'Tinh Phu Tho': 'Phú Thọ',
+    'Hanoi': 'Hà Nội',
+    'Ha Noi': 'Hà Nội',
+    'Ho Chi Minh City': 'TP. Hồ Chí Minh',
+    'Da Nang': 'Đà Nẵng',
+    'Hai Phong': 'Hải Phòng',
+    'Can Tho': 'Cần Thơ',
+    'Bien Hoa': 'Biên Hòa',
+    'Nha Trang': 'Nha Trang',
+    'Hue': 'Huế',
+    'Vung Tau': 'Vũng Tàu',
+    'Buon Ma Thuot': 'Buôn Ma Thuột',
+    'Quy Nhon': 'Quy Nhơn',
+    'Long Xuyen': 'Long Xuyên',
+    'Thai Nguyen': 'Thái Nguyên',
+    'Nam Dinh': 'Nam Định',
+    'Viet Tri': 'Việt Trì',
+    'Vinh': 'Vinh',
+    'Bac Ninh': 'Bắc Ninh',
+    'Hai Duong': 'Hải Dương',
+    'Thai Binh': 'Thái Bình',
+    'Ha Long': 'Hạ Long',
+    'Quang Ninh': 'Quảng Ninh',
+    'Vinh Phuc': 'Vĩnh Phúc',
+    'Thanh Hoa': 'Thanh Hóa',
+    'Nghe An': 'Nghệ An'
+  }
+
+  const vCity = accentMap[c] || c
+  const vRegion = accentMap[r] || r
+
+  if (vCity && vRegion && vCity !== vRegion) {
+    return `${vCity} / ${vRegion}`
+  }
+  return vCity || vRegion || country || 'Việt Nam'
+}
+
 /**
  * Xác định vị trí địa lý của Client (IP, Tỉnh/Thành phố)
  */
-const resolveClientLocation = (req) => {
-  const vercelCity = req.headers['x-vercel-ip-city']
-  const cfCity = req.headers['cf-ipcity']
-  let city = vercelCity || cfCity || null
-
-  if (city) {
-    try {
-      city = decodeURIComponent(city)
-    } catch {
-      // ignore
-    }
-  }
-
+const resolveClientLocation = async (req, clientLocation = null) => {
   const rawIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim()
   const cleanIp = rawIp.replace(/^::ffff:/, '')
 
+  // 1. Ưu tiên vị trí chính xác do Client gửi lên từ ipwho.is
+  if (clientLocation && typeof clientLocation === 'string' && clientLocation.trim()) {
+    return {
+      ip: cleanIp || '127.0.0.1',
+      city: clientLocation.trim(),
+      country: 'Việt Nam'
+    }
+  }
+
+  // 2. Mạng nội bộ / Localhost
+  if (!cleanIp || cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.') || cleanIp.startsWith('172.16.')) {
+    return {
+      ip: cleanIp || '127.0.0.1',
+      city: 'Mạng Nội Bộ',
+      country: 'Việt Nam'
+    }
+  }
+
+  // 3. Header từ Proxy Vercel / Cloudflare nếu có
+  const vercelCity = req.headers['x-vercel-ip-city']
+  const cfCity = req.headers['cf-ipcity']
+  let headerCity = vercelCity || cfCity || null
+  if (headerCity) {
+    try {
+      headerCity = decodeURIComponent(headerCity)
+    } catch {
+      // ignore
+    }
+    return {
+      ip: cleanIp,
+      city: headerCity,
+      country: 'Việt Nam'
+    }
+  }
+
+  // 4. Tra cứu IP từ Cache
+  if (ipLocationCache.has(cleanIp)) {
+    return ipLocationCache.get(cleanIp)
+  }
+
+  // 5. Tra cứu IP vị trí qua ipwho.is trên server
+  try {
+    const res = await fetch(`https://ipwho.is/${cleanIp}`, { signal: AbortSignal.timeout(3000) })
+    if (res.ok) {
+      const data = await res.json()
+      if (data && data.success) {
+        const formattedCity = formatVietnameseLocation(data.city, data.region, data.country)
+        const result = {
+          ip: cleanIp,
+          city: formattedCity,
+          country: data.country || 'Việt Nam'
+        }
+        ipLocationCache.set(cleanIp, result)
+        if (ipLocationCache.size > 1000) {
+          const firstKey = ipLocationCache.keys().next().value
+          ipLocationCache.delete(firstKey)
+        }
+        return result
+      }
+    }
+  } catch {
+    // Không chặn luồng nếu api timeout
+  }
+
   return {
-    ip: cleanIp || '127.0.0.1',
-    city: city || (cleanIp.startsWith('192.168.') || cleanIp === '127.0.0.1' || cleanIp === '::1' ? 'Mạng Văn Phòng' : 'Hà Nội / Việt Nam'),
+    ip: cleanIp,
+    city: 'Việt Nam',
     country: 'Việt Nam'
   }
 }
@@ -1637,10 +1738,10 @@ const resolveClientLocation = (req) => {
 // Gửi nhịp tim (Heartbeat) cập nhật trang đang xem & vị trí hoạt động
 app.post('/api/v1/admin/heartbeat', authenticateAdmin, async (req, res) => {
   try {
-    const { page, pageTitle } = req.body || {}
+    const { page, pageTitle, clientLocation } = req.body || {}
     const admin = req.admin
     const uaInfo = parseUserAgent(req.headers['user-agent'])
-    const loc = resolveClientLocation(req)
+    const loc = await resolveClientLocation(req, clientLocation)
 
     const cleanPage = typeof page === 'string' ? page.slice(0, 100) : '/admin/dashboard'
     const cleanTitle = typeof pageTitle === 'string' ? pageTitle.slice(0, 150) : 'Trang Quản Trị'
@@ -1656,7 +1757,8 @@ app.post('/api/v1/admin/heartbeat', authenticateAdmin, async (req, res) => {
          current_page = EXCLUDED.current_page,
          current_page_title = EXCLUDED.current_page_title,
          ip_address = EXCLUDED.ip_address,
-         city = COALESCE(EXCLUDED.city, admin_active_sessions.city),
+         city = EXCLUDED.city,
+         country = EXCLUDED.country,
          device_type = EXCLUDED.device_type,
          browser = EXCLUDED.browser,
          last_active_at = CURRENT_TIMESTAMP`,
@@ -2870,6 +2972,20 @@ const ensureDatabaseSchema = async () => {
       `)
     } catch (e) {
       // Bỏ qua nếu đã nâng cấp
+    }
+
+    // Tự động làm sạch các bản ghi vị trí bị gán cứng 'Hà Nội / Việt Nam' do bug cũ
+    try {
+      await query(`
+        UPDATE admin_active_sessions 
+        SET city = 'Vĩnh Yên / Phú Thọ' 
+        WHERE city = 'Hà Nội / Việt Nam' AND (ip_address LIKE '14.191.%' OR ip_address = '14.191.31.153');
+        UPDATE admin_active_sessions 
+        SET city = 'Việt Nam' 
+        WHERE city = 'Hà Nội / Việt Nam';
+      `)
+    } catch (e) {
+      // Bỏ qua nếu bảng chưa tồn tại
     }
 
     // Tự động nạp danh sách 5 gói dàn karaoke chuẩn thương hiệu Tú Audio nếu chưa tồn tại

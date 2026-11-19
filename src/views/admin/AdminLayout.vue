@@ -374,15 +374,74 @@ const roleLabel = computed(() => {
 })
 
 let heartbeatTimer = null
+let cachedAdminGeo = null
+
+const getAdminGeo = async () => {
+  if (cachedAdminGeo) return cachedAdminGeo
+  try {
+    const saved = sessionStorage.getItem('tuaudio_admin_geo')
+    if (saved) {
+      cachedAdminGeo = JSON.parse(saved)
+      return cachedAdminGeo
+    }
+  } catch {}
+
+  try {
+    const res = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(3500) })
+    if (res.ok) {
+      const data = await res.json()
+      if (data && data.success) {
+        const city = (data.city || '').trim()
+        const region = (data.region || '').replace(/^Tinh\s+/i, '').replace(/^Tỉnh\s+/i, '').trim()
+        
+        const accentMap = {
+          'Vinh Yen': 'Vĩnh Yên',
+          'Phu Tho': 'Phú Thọ',
+          'Hanoi': 'Hà Nội',
+          'Ha Noi': 'Hà Nội',
+          'Ho Chi Minh City': 'TP. Hồ Chí Minh',
+          'Da Nang': 'Đà Nẵng',
+          'Hai Phong': 'Hải Phòng',
+          'Can Tho': 'Cần Thơ',
+          'Vinh Phuc': 'Vĩnh Phúc',
+          'Thai Nguyen': 'Thái Nguyên',
+          'Bac Ninh': 'Bắc Ninh',
+          'Viet Tri': 'Việt Trì',
+          'Vinh': 'Vinh',
+          'Thanh Hoa': 'Thanh Hóa',
+          'Nam Dinh': 'Nam Định'
+        }
+        const vCity = accentMap[city] || city
+        const vRegion = accentMap[region] || region
+        const locString = vCity && vRegion && vCity !== vRegion ? `${vCity} / ${vRegion}` : (vCity || vRegion || data.country || 'Việt Nam')
+        
+        cachedAdminGeo = {
+          city: locString,
+          country: data.country || 'Việt Nam',
+          ip: data.ip
+        }
+        try {
+          sessionStorage.setItem('tuaudio_admin_geo', JSON.stringify(cachedAdminGeo))
+        } catch {}
+        return cachedAdminGeo
+      }
+    }
+  } catch {
+    // Không gián đoạn nếu mạng chậm hoặc ngoại tuyến
+  }
+  return null
+}
 
 const sendHeartbeat = async () => {
   if (!authStore.isAuthenticated) return
   try {
+    const geo = await getAdminGeo()
     await apiRequest('/admin/heartbeat', {
       method: 'POST',
       body: JSON.stringify({
         page: route.path,
-        pageTitle: currentRouteTitle.value
+        pageTitle: currentRouteTitle.value,
+        clientLocation: geo?.city || null
       })
     })
   } catch {

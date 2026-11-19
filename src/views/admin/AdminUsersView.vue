@@ -323,7 +323,7 @@
                   <!-- Thông tin vị trí & thiết bị nếu đang có phiên -->
                   <div v-if="getUserSession(user)" class="session-meta">
                     <span class="session-loc" :title="'IP mạng: ' + (getUserSession(user).ipAddress || '—')">
-                      📍 {{ getUserSession(user).city || 'Việt Nam' }} • {{ getUserSession(user).deviceType || 'PC' }}
+                      📍 {{ formatSessionCity(getUserSession(user).city) }} • {{ getUserSession(user).deviceType || 'PC' }}
                     </span>
                     <span v-if="getUserSession(user).currentPageTitle" class="session-page" :title="getUserSession(user).currentPage">
                       👁 {{ getUserSession(user).currentPageTitle }}
@@ -698,7 +698,7 @@
               <div class="c-details-list">
                 <div class="c-detail-item">
                   <span class="c-label">Vị trí địa lý:</span>
-                  <span class="c-val text-gold">📍 {{ user.city || 'Việt Nam' }} <small v-if="user.ipAddress">({{ user.ipAddress }})</small></span>
+                  <span class="c-val text-gold">📍 {{ formatSessionCity(user.city) }} <small v-if="user.ipAddress">({{ user.ipAddress }})</small></span>
                 </div>
                 <div class="c-detail-item">
                   <span class="c-label">Thiết bị &amp; Môi trường:</span>
@@ -830,6 +830,16 @@ const formatTimeAgo = (seconds) => {
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `${hours} giờ trước`
   return `${Math.floor(hours / 24)} ngày trước`
+}
+
+const formatSessionCity = (city) => {
+  if (!city) return 'Việt Nam'
+  return String(city)
+    .replace(/\bTinh Phu Tho\b/gi, 'Phú Thọ')
+    .replace(/\bVinh Yen\b/gi, 'Vĩnh Yên')
+    .replace(/\bHa Noi\b/gi, 'Hà Nội')
+    .replace(/\bHanoi\b/gi, 'Hà Nội')
+    .replace(/^Tinh\s+/i, 'Tỉnh ')
 }
 
 const findUserById = (userId) => {
