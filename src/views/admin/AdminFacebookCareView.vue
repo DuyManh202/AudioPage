@@ -1981,13 +1981,115 @@ onBeforeUnmount(() => {
   .hud-right { align-items: flex-start; }
   .quick-status-pills { align-items: flex-start; }
 }
-@media(max-width: 800px) {
+
+@media(max-width: 768px) {
+  /* Tabs điều hướng chính cuộn ngang mượt mà trên điện thoại */
+  .view-tabs {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 3px;
+  }
+  .view-tabs::-webkit-scrollbar { display: none; }
+  .view-tab-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    padding: 8px 12px;
+  }
+
+  /* Nhóm nút chọn ngày & trạng thái dạng cuộn ngang chuẩn iOS */
+  .period-btn-group,
+  .status-btn-group {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px;
+  }
+  .period-btn-group::-webkit-scrollbar,
+  .status-btn-group::-webkit-scrollbar { display: none; }
+  .period-btn,
+  .status-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .table-card-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .head-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .custom-date-box {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .date-picker-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 16px !important;
+  }
+  .refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .table-sub-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  /* Bảng dữ liệu Meta Ads có min-width để không bị bẹp cột */
+  .futuristic-table {
+    min-width: 860px;
+  }
+
+  /* Tab Chăm sóc CRM trên Mobile */
   .workspace { grid-template-columns: 1fr; }
-  .customer-list { max-height: 260px; border-right: 0; border-bottom: 1px solid #f2f2f7; }
-  .form-grid, .edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .customer-list { max-height: 280px; border-right: 0; border-bottom: 1px solid #f2f2f7; }
+  .form-grid, .edit-grid { grid-template-columns: 1fr; }
   .search { margin: 0; width: 100%; }
+  .ad-filter { width: 100%; justify-content: space-between; }
+  .ad-filter select { flex: 1; max-width: none; }
 }
-@media(max-width: 600px) {
-  .cockpit-hero-grid { grid-template-columns: 1fr; }
+
+@media(max-width: 520px) {
+  .cockpit-hero-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .cockpit-card {
+    padding: 12px;
+    min-height: 120px;
+    border-radius: 14px;
+  }
+  .card-main-val {
+    font-size: 1.25rem;
+    margin: 4px 0 2px;
+  }
+  .card-title {
+    font-size: 0.66rem;
+  }
+  .val-sub {
+    font-size: 0.72rem;
+  }
+  .card-foot {
+    font-size: 0.68rem;
+  }
+}
+
+@media(max-width: 380px) {
+  .cockpit-hero-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

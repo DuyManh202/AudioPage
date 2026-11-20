@@ -814,22 +814,161 @@
   }
 }
 
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE SYSTEM (< 680px) — Đồng Bộ Điện Thoại & PC
+   ========================================================================== */
 @media (max-width: 680px) {
-  .adm-kpi-grid,
-  .adm-kpi-grid.cols-3,
-  .adm-form-grid,
-  .adm-form-grid.cols-3 {
-    grid-template-columns: 1fr;
+  /* Header Trang */
+  .adm-page-head {
+    gap: 12px;
+  }
+  .adm-page-title {
+    font-size: 1.25rem;
+  }
+  .adm-page-sub {
+    font-size: 0.78rem;
+  }
+  .adm-head-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .adm-head-actions .adm-btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 130px;
+    height: 36px;
+    font-size: 0.76rem;
+    padding: 0 10px;
+    justify-content: center;
   }
 
+  /* Lưới Thống Kê KPI 2 Cột Gọn Gàng Chuẩn Mobile */
+  .adm-kpi-grid,
+  .adm-kpi-grid.cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .adm-kpi-card {
+    padding: 12px 14px;
+    border-radius: 14px;
+    gap: 8px;
+  }
+  .adm-kpi-label {
+    font-size: 0.67rem;
+    letter-spacing: 0.02em;
+  }
+  .adm-kpi-value {
+    font-size: 1.18rem;
+    line-height: 1.2;
+  }
+  .adm-kpi-meta {
+    font-size: 0.69rem;
+    line-height: 1.35;
+  }
+  .adm-kpi-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  /* Thanh Tìm Kiếm & Bộ Lọc Toolbar */
+  .adm-toolbar {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .adm-toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
   .adm-search-box {
     max-width: 100%;
     min-width: 100%;
+    width: 100%;
+  }
+  .adm-search-box input {
+    height: 38px;
+    font-size: 16px !important; /* Chống auto-zoom trên iOS */
+  }
+  .adm-select-filter {
+    width: 100%;
+    font-size: 16px !important;
+  }
+  .adm-date-filter {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .adm-date-filter label {
+    width: 100%;
+  }
+  .adm-date-filter input {
+    width: 100%;
+    font-size: 16px !important;
+  }
+  .adm-tabs {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .adm-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .adm-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
+  /* Bảng Dữ Liệu Cuộn Mượt Tránh Bẹp Cột */
+  .adm-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .adm-table {
+    min-width: 660px;
+  }
+  .adm-table th,
+  .adm-table td {
+    padding: 10px 10px;
+  }
+
+  /* Form & Modal dạng Bottom Sheet trên Mobile */
+  .adm-form-grid,
+  .adm-form-grid.cols-3 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .adm-field input,
+  .adm-field select,
+  .adm-field textarea {
+    font-size: 16px !important;
+  }
+
+  .adm-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .adm-modal {
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 88vh;
+    border-bottom: none;
+  }
   .adm-modal-body,
   .adm-modal-head,
   .adm-modal-foot {
     padding: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .adm-kpi-grid,
+  .adm-kpi-grid.cols-3 {
+    grid-template-columns: 1fr;
   }
 }

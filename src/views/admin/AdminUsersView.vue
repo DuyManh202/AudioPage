@@ -2176,4 +2176,15 @@ onUnmounted(() => {
   align-items: center;
   margin-top: auto;
 }
+
+@media (max-width: 600px) {
+  .online-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .monitor-summary-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
 </style>

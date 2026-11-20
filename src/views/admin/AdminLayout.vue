@@ -352,6 +352,40 @@
           </Transition>
         </router-view>
       </main>
+
+      <!-- Thanh Điều Hướng Dưới Mobile (Apple iOS Style Bottom Tab Bar) -->
+      <nav class="admin-mobile-tabbar" aria-label="Điều hướng nhanh điện thoại">
+        <router-link to="/admin/dashboard" class="mobile-tab-item">
+          <AdminIcon name="dashboard" :size="20" />
+          <span>Tổng quan</span>
+        </router-link>
+
+        <router-link to="/admin/facebook-care" class="mobile-tab-item">
+          <AdminIcon name="message" :size="20" />
+          <span>Facebook</span>
+        </router-link>
+
+        <router-link to="/admin/leads" class="mobile-tab-item">
+          <div class="tab-icon-wrap">
+            <AdminIcon name="leads" :size="20" />
+            <span v-if="adminStore.newLeadsCount > 0" class="mobile-badge">{{ adminStore.newLeadsCount }}</span>
+          </div>
+          <span>Khách CRM</span>
+        </router-link>
+
+        <router-link to="/admin/orders" class="mobile-tab-item">
+          <div class="tab-icon-wrap">
+            <AdminIcon name="orders" :size="20" />
+            <span v-if="adminStore.newOrdersCount > 0" class="mobile-badge">{{ adminStore.newOrdersCount }}</span>
+          </div>
+          <span>Đơn hàng</span>
+        </router-link>
+
+        <button type="button" class="mobile-tab-item" @click="mobileNavOpen = true" aria-label="Mở tất cả menu">
+          <AdminIcon name="menu" :size="20" />
+          <span>Menu</span>
+        </button>
+      </nav>
     </div>
   </div>
 </template>
@@ -1211,6 +1245,86 @@ const handleLogout = async () => {
   display: none;
 }
 
+/* ========================================================
+   APPLE iOS MOBILE BOTTOM TAB BAR (<768PX)
+   ======================================================== */
+.admin-mobile-tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .admin-mobile-tabbar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .admin-viewport {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .mobile-tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #8e8e93;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-tab-item:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-tab-item.router-link-active {
+    color: #007aff;
+    font-weight: 750;
+  }
+
+  .tab-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    background: #ff3b30;
+    color: #ffffff;
+    font-size: 0.58rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 999px;
+    min-width: 14px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(255, 59, 48, 0.4);
+  }
+}
+
 @media (max-width: 1120px) {
   .db-time,
   .topbar-order-pill {
@@ -1257,8 +1371,51 @@ const handleLogout = async () => {
 
 @media (max-width: 680px) {
   .admin-topbar {
-    padding: 0 14px;
-    height: 56px;
+    padding: 0 10px;
+    height: 52px;
+  }
+
+  .topbar-left {
+    gap: 8px;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .topbar-right {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .topbar-geo-pill {
+    max-width: 100px;
+    padding: 0 8px;
+    height: 30px;
+  }
+
+  .topbar-geo-pill .geo-text {
+    max-width: 62px;
+    font-size: 0.67rem;
+  }
+
+  .topbar-sync-btn span {
+    display: none;
+  }
+
+  .topbar-sync-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .topbar-store-btn,
+  .topbar-logout {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
   }
 
   .db-label,
@@ -1268,17 +1425,18 @@ const handleLogout = async () => {
   }
 
   .db-indicator {
-    padding: 0 9px;
+    padding: 0 8px;
+    height: 28px;
   }
 
   .admin-viewport {
-    padding: 14px;
+    padding: 12px;
   }
 
   .admin-toast {
-    top: max(68px, calc(env(safe-area-inset-top) + 62px));
-    right: 12px;
-    width: calc(100vw - 24px);
+    top: max(60px, calc(env(safe-area-inset-top) + 54px));
+    right: 10px;
+    width: calc(100vw - 20px);
   }
 }
 

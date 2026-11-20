@@ -1714,7 +1714,8 @@ const executeDeleteCombo = async () => {
 
 @media (max-width: 768px) {
   .combo-kpi-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
   .combos-catalog-grid {
     grid-template-columns: 1fr;
@@ -1724,6 +1725,12 @@ const executeDeleteCombo = async () => {
   }
   .field-span-2 {
     grid-column: span 1;
+  }
+}
+
+@media (max-width: 380px) {
+  .combo-kpi-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

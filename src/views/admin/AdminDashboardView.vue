@@ -667,4 +667,27 @@ const getOrderStatusLabel = (st) => ({
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 680px) {
+  .alerts-strip {
+    gap: 6px;
+  }
+  .op-alert-item {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .op-cta {
+    margin-left: 0;
+    font-size: 0.76rem;
+  }
+  .q-stat-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .q-stat-row .adm-badge {
+    align-self: flex-start;
+  }
+}
 </style>

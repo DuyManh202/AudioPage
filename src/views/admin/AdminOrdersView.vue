@@ -624,6 +624,16 @@ onBeforeUnmount(() => { if (ordersRefreshTimer) clearInterval(ordersRefreshTimer
   color: #dc2626;
 }
 
+@media (max-width: 600px) {
+  .slip-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .slip-meta {
+    text-align: left;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
