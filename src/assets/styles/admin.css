@@ -975,3 +975,21 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Responsive display utilities */
+.desktop-only {
+  display: block;
+}
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+}
+

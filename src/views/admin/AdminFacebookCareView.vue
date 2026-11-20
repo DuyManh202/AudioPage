@@ -912,6 +912,15 @@ onBeforeUnmount(() => {
   display: none !important;
 }
 
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
 /* ==========================================================================
    iOS SEGMENTED CONTROL TABS (TOP NAVIGATION)
    ========================================================================== */
