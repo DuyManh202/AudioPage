@@ -1,13 +1,18 @@
 <template>
   <div class="adm-page fb-care">
+    <!-- Đầu trang Facebook Care & Phân Tích Quảng Cáo -->
     <div class="adm-page-head">
-      <div>
-        <h1 class="adm-page-title">Chăm sóc khách từ Facebook & Phân tích quảng cáo</h1>
-        <p class="adm-page-sub">Theo sát khách hàng từ lúc nhắn tin đến khi chốt đơn, đo lường chi phí và doanh thu thực tế của từng quảng cáo Meta.</p>
+      <div class="fb-title-wrap">
+        <h1 class="adm-page-title">Chăm Sóc Khách & Phân Tích Ads</h1>
+        <p class="adm-page-sub">Theo sát khách hàng từ lúc nhắn tin đến khi chốt đơn, đo lường chi phí Meta Ads thực tế.</p>
       </div>
       <div class="head-btn-group">
-        <button v-if="currentTab === 'CARE'" class="adm-btn adm-btn-gold" @click="showCreate = !showCreate">＋ Thêm khách Facebook</button>
-        <button v-else class="adm-btn adm-btn-gold" :disabled="analyticsBusy" @click="loadAnalytics">↻ Tải Lại Số Liệu</button>
+        <button v-if="currentTab === 'CARE'" class="ios-action-pill" @click="showCreate = !showCreate">
+          ＋ Thêm Khách Mới
+        </button>
+        <button v-else class="ios-action-pill" :disabled="analyticsBusy" @click="loadAnalytics">
+          ↻ Tải Lại Số Liệu
+        </button>
       </div>
     </div>
 
@@ -28,51 +33,236 @@
       >
         <span class="tab-label-full">📊 Phân Tích Hiệu Quả Quảng Cáo & ROI</span>
         <span class="tab-label-short">📊 Phân Tích & ROI</span>
-        <span class="tab-badge-hot hide-mobile">Đo Lường Doanh Thu</span>
       </button>
     </div>
 
     <!-- TAB 1: CHĂM SÓC KHÁCH HÀNG CRM -->
     <div v-if="currentTab === 'CARE'" class="care-tab-content">
-      <div :class="['connection', { online: messengerConnected }]">
-        <span class="offline-dot"></span>
-        <div>
-          <strong>{{ messengerConnected ? 'Facebook Messenger đã kết nối · Tự động đồng bộ' : 'Hệ Thống Chăm Sóc Khách Hàng Facebook (CRM)' }}</strong>
-          <small v-if="messengerConnected">{{ `Tin nhắn tự động làm mới${lastSyncedAt ? ' · Cập nhật lúc ' + displayTime(lastSyncedAt) : ''}` }}</small>
-          <small v-else>Hồ sơ khách từ Fanpage và Website sẵn sàng tiếp nhận, chăm sóc và theo dõi tiến độ chốt đơn.</small>
+      <!-- Thẻ kết nối Facebook Messenger (Apple Grouped Inset Card) -->
+      <div :class="['connection-card', { online: messengerConnected }]">
+        <div class="conn-top-row">
+          <div class="conn-title-group">
+            <span class="conn-dot"></span>
+            <strong>{{ messengerConnected ? 'Facebook Messenger' : 'Hệ Thống CRM Facebook' }}</strong>
+          </div>
+          <span class="connection-tag">{{ messengerConnected ? 'Messenger Live' : 'CRM Sẵn Sàng' }}</span>
         </div>
-        <button v-if="messengerConnected" class="adm-btn sync-btn" @click="forceSync" :disabled="syncBusy">{{ syncBusy ? 'Đang quét…' : '↻ Quét ngay' }}</button>
-        <span class="connection-tag">{{ messengerConnected ? 'Messenger Live' : 'CRM Sẵn Sàng' }}</span>
+        <p class="conn-desc-text">
+          {{ messengerConnected ? `Tin nhắn tự động đồng bộ từ Fanpage${lastSyncedAt ? ' · Cập nhật ' + displayTime(lastSyncedAt) : ''}` : 'Hồ sơ khách từ Fanpage và Website sẵn sàng tiếp nhận, chăm sóc và theo dõi tiến độ chốt đơn.' }}
+        </p>
+        <div v-if="messengerConnected" class="conn-action-row">
+          <button class="sync-action-btn" @click="forceSync" :disabled="syncBusy">
+            {{ syncBusy ? 'Đang quét tin nhắn…' : '↻ Quét tin nhắn mới ngay' }}
+          </button>
+        </div>
       </div>
 
-      <div v-if="newArrivals.length" class="new-arrivals"><strong>🔔 {{ newArrivals.length }} khách mới vừa vào</strong><button v-for="customer in newArrivals" :key="customer.id" type="button" @click="selectNewArrival(customer)">{{ customer.customerName }}{{ customer.phone ? ` · ${customer.phone}` : '' }}</button><button type="button" class="dismiss-arrivals" @click="newArrivals = []">Ẩn</button></div>
+      <div v-if="newArrivals.length" class="new-arrivals">
+        <strong>🔔 {{ newArrivals.length }} khách mới vừa vào:</strong>
+        <button v-for="customer in newArrivals" :key="customer.id" type="button" @click="selectNewArrival(customer)">
+          {{ customer.customerName }}{{ customer.phone ? ` · ${customer.phone}` : '' }}
+        </button>
+        <button type="button" class="dismiss-arrivals" @click="newArrivals = []">Ẩn</button>
+      </div>
 
+      <!-- Danh sách quảng cáo đang chạy (Responsive Desktop Table + Mobile Cards) -->
       <section v-if="adsConfigured && ads.length > 0" class="ads-card adm-card">
-        <div class="ads-head"><div><h2>Quảng cáo đang chạy</h2><p>Số liệu hiệu quả trong 30 ngày gần nhất</p></div><button class="adm-btn" @click="loadAds" :disabled="adsBusy">{{ adsBusy ? 'Đang tải…' : '↻ Làm mới' }}</button></div>
-        <div class="ads-table-wrap"><table class="ads-table"><thead><tr><th>Quảng cáo</th><th>Chiến dịch</th><th>Hiển thị</th><th>Nhấp</th><th>Chi tiêu (30 ngày)</th></tr></thead><tbody><tr v-for="ad in ads" :key="ad.id"><td><strong>{{ ad.name }}</strong><small>{{ ad.adsetName || ad.id }}</small></td><td>{{ ad.campaignName || '—' }}</td><td>{{ formatNumber(ad.impressions) }}</td><td>{{ formatNumber(ad.clicks) }}</td><td>{{ formatMoney(ad.spend) }}</td></tr></tbody></table></div>
+        <div class="ads-head">
+          <div>
+            <h2>Quảng Cáo Meta Đang Chạy</h2>
+            <p>Số liệu phân phối & chi tiêu 30 ngày gần nhất từ Ads Manager</p>
+          </div>
+          <button class="refresh-ads-btn" @click="loadAds" :disabled="adsBusy">
+            {{ adsBusy ? 'Đang tải…' : '↻ Làm mới' }}
+          </button>
+        </div>
+
+        <!-- Desktop View: Bảng dữ liệu Inset Table chuẩn -->
+        <div class="ads-table-wrap desktop-only">
+          <table class="ads-table">
+            <thead>
+              <tr>
+                <th>Quảng Cáo</th>
+                <th>Chiến Dịch</th>
+                <th>Lượt Hiển Thị</th>
+                <th>Lượt Nhấp</th>
+                <th class="text-right">Chi Tiêu (30 Ngày)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="ad in ads" :key="ad.id">
+                <td>
+                  <strong>{{ ad.name }}</strong>
+                  <small>{{ ad.adsetName || ('ID: ' + ad.id) }}</small>
+                </td>
+                <td>{{ ad.campaignName || '—' }}</td>
+                <td>{{ formatNumber(ad.impressions) }}</td>
+                <td>{{ formatNumber(ad.clicks) }}</td>
+                <td class="text-right text-red font-bold">{{ formatMoney(ad.spend) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile View: Danh sách thẻ Apple Inset Cards gọn gàng -->
+        <div class="ads-mobile-list mobile-only">
+          <div v-for="ad in ads" :key="ad.id" class="ad-item-card">
+            <div class="ad-item-top">
+              <strong class="ad-item-name">{{ ad.name }}</strong>
+              <span class="ad-item-spend">{{ formatMoney(ad.spend) }}</span>
+            </div>
+            <span class="ad-item-sub">{{ ad.campaignName || ad.adsetName || ('ID: ' + ad.id) }}</span>
+            <div class="ad-item-stats">
+              <span class="ad-stat-chip">👁 <b>{{ formatNumber(ad.impressions) }}</b> hiển thị</span>
+              <span class="ad-stat-chip">👆 <b>{{ formatNumber(ad.clicks) }}</b> nhấp</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       <form v-if="showCreate" class="adm-card create-form" @submit.prevent="createCustomer">
         <h2>Thêm khách cần chăm sóc</h2>
-        <div class="form-grid"><label>Tên khách *<input v-model="draft.customerName" required placeholder="Tên hiển thị Facebook"></label><label>Facebook ID / link hồ sơ<input v-model="draft.facebookId" placeholder="Tùy chọn"></label><label>Số điện thoại<input v-model="draft.phone" placeholder="Nếu khách đã cung cấp"></label><label>Sản phẩm quan tâm<input v-model="draft.interest" placeholder="Ví dụ: Dàn karaoke 29 triệu"></label><label>Địa chỉ khách<input v-model="draft.address" placeholder="Số nhà, đường, xã/phường"></label><label>Tỉnh/thành<input v-model="draft.province" list="fb-province-options" placeholder="Chọn hoặc nhập tỉnh/thành"></label><label>Nhắc chăm sóc lúc<input v-model="draft.followUpAt" type="datetime-local"></label><label>Ghi chú<textarea v-model="draft.notes" rows="2" placeholder="Nhu cầu, khu vực, vấn đề đang gặp"></textarea></label></div>
-        <button class="adm-btn adm-btn-gold" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Lưu hồ sơ' }}</button>
+        <div class="form-grid">
+          <label>Tên khách *<input v-model="draft.customerName" required placeholder="Tên hiển thị Facebook"></label>
+          <label>Facebook ID / link hồ sơ<input v-model="draft.facebookId" placeholder="Tùy chọn"></label>
+          <label>Số điện thoại<input v-model="draft.phone" placeholder="Nếu khách đã cung cấp"></label>
+          <label>Sản phẩm quan tâm<input v-model="draft.interest" placeholder="Ví dụ: Dàn karaoke 29 triệu"></label>
+          <label>Địa chỉ khách<input v-model="draft.address" placeholder="Số nhà, đường, xã/phường"></label>
+          <label>Tỉnh/thành<input v-model="draft.province" list="fb-province-options" placeholder="Chọn hoặc nhập tỉnh/thành"></label>
+          <label>Nhắc chăm sóc lúc<input v-model="draft.followUpAt" type="datetime-local"></label>
+          <label class="form-span-full">Ghi chú<textarea v-model="draft.notes" rows="2" placeholder="Nhu cầu, khu vực, vấn đề đang gặp"></textarea></label>
+        </div>
+        <button class="ios-action-pill" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Lưu hồ sơ' }}</button>
       </form>
       <datalist id="fb-province-options"><option v-for="p in VIETNAM_PROVINCES" :key="p.name" :value="p.displayName" /></datalist>
 
-      <div class="stats"><button v-for="item in statusOptions" :key="item.key" :class="['stat', { selected: filter === item.key }]" @click="filter = item.key"><span>{{ item.label }}</span><b>{{ item.key === 'ALL' ? customers.length : customers.filter(c => c.status === item.key).length }}</b></button><label class="ad-filter">Nguồn quảng cáo<select v-model="adFilter"><option value="ALL">Tất cả nguồn</option><option value="NONE">Chưa xác định quảng cáo</option><option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} · {{ ad.count }}</option></select></label><button type="button" class="adm-btn adm-btn-sm adm-btn-gold auto-match-btn" :disabled="autoMatchingBusy || resetMatchingBusy" @click="autoMatchAds" title="Tự động phân tích hội thoại theo ngày và nội dung cụ thể để gắn nguồn quảng cáo">{{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn QC' }}</button><button type="button" class="adm-btn adm-btn-sm adm-btn-outline" :disabled="autoMatchingBusy || resetMatchingBusy" @click="resetMatchedAds" title="Khôi phục toàn bộ khách hàng về trạng thái Chưa xác định nguồn quảng cáo">{{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp nguồn' }}</button><div class="search"><input v-model="keyword" placeholder="Tìm tên, số điện thoại, nhu cầu…"></div></div>
+      <!-- Thanh công cụ Tìm kiếm & Bộ lọc (Apple iOS Grouped Toolbar) -->
+      <div class="fb-toolbar">
+        <div class="fb-search-wrap">
+          <span class="search-ico">🔍</span>
+          <input v-model="keyword" placeholder="Tìm tên khách, số điện thoại, nhu cầu…" />
+        </div>
+
+        <div class="fb-status-scroll">
+          <button
+            v-for="item in statusOptions"
+            :key="item.key"
+            :class="['fb-pill-btn', { active: filter === item.key }]"
+            @click="filter = item.key"
+          >
+            <span>{{ item.label }}</span>
+            <b class="pill-count">{{ item.key === 'ALL' ? customers.length : customers.filter(c => c.status === item.key).length }}</b>
+          </button>
+        </div>
+
+        <div class="fb-source-row">
+          <select v-model="adFilter" class="fb-source-select" aria-label="Lọc nguồn quảng cáo">
+            <option value="ALL">Tất cả nguồn quảng cáo</option>
+            <option value="NONE">Chưa xác định quảng cáo</option>
+            <option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} ({{ ad.count }})</option>
+          </select>
+          <div class="fb-match-btns">
+            <button
+              type="button"
+              class="fb-btn-match"
+              :disabled="autoMatchingBusy || resetMatchingBusy"
+              @click="autoMatchAds"
+              title="Tự động phân tích hội thoại theo ngày và nội dung cụ thể để gắn nguồn quảng cáo"
+            >
+              {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn' }}
+            </button>
+            <button
+              type="button"
+              class="fb-btn-unmatch"
+              :disabled="autoMatchingBusy || resetMatchingBusy"
+              @click="resetMatchedAds"
+              title="Khôi phục toàn bộ khách hàng về trạng thái Chưa xác định nguồn quảng cáo"
+            >
+              {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="workspace adm-card">
-        <div class="customer-list"><div class="list-title">Danh sách khách <span>{{ visibleCustomers.length }}</span></div><button v-for="c in visibleCustomers" :key="c.id" :class="['customer-row', { active: selected?.id === c.id }]" @click="select(c)"><strong>{{ c.customerName }}</strong><small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small><small>{{ c.phone || c.facebookId || c.id }}</small><small v-if="c.sourceAdName || c.sourceAdId" class="source-small">Nguồn quảng cáo: {{ c.sourceAdName || c.sourceAdId }}</small><small v-else-if="c.sourceType">Nguồn: {{ c.sourceType }}</small><span :class="['status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span><em v-if="c.followUpAt">Nhắc: {{ displayDate(c.followUpAt) }}</em></button><p v-if="!visibleCustomers.length" class="empty">Chưa có khách. Hệ thống tự động đồng bộ tin nhắn từ Fanpage.</p></div>
+        <div class="customer-list">
+          <div class="list-title">Danh sách khách <span>{{ visibleCustomers.length }}</span></div>
+          <button
+            v-for="c in visibleCustomers"
+            :key="c.id"
+            :class="['customer-row', { active: selected?.id === c.id }]"
+            @click="select(c)"
+          >
+            <strong>{{ c.customerName }}</strong>
+            <small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small>
+            <small>{{ c.phone || c.facebookId || c.id }}</small>
+            <small v-if="c.sourceAdName || c.sourceAdId" class="source-small">Nguồn QC: {{ c.sourceAdName || c.sourceAdId }}</small>
+            <small v-else-if="c.sourceType">Nguồn: {{ c.sourceType }}</small>
+            <span :class="['status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span>
+            <em v-if="c.followUpAt">Nhắc: {{ displayDate(c.followUpAt) }}</em>
+          </button>
+          <p v-if="!visibleCustomers.length" class="empty">Chưa có khách. Hệ thống tự động đồng bộ tin nhắn từ Fanpage.</p>
+        </div>
+
         <section v-if="selected" class="detail">
-          <div class="detail-head"><div><h2>{{ selected.customerName }}</h2><p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId"> · {{ selected.facebookId }}</span></p></div><select v-model="edit.status" @change="save"><option v-for="s in statusOptions.slice(1)" :key="s.key" :value="s.key">{{ s.label }}</option></select></div>
-          <div class="edit-grid"><label>Nhu cầu<input v-model="edit.interest" @change="save"></label><label>Điện thoại<input v-model="edit.phone" @change="save"></label><label>Địa chỉ<input v-model="edit.address" placeholder="Địa chỉ lắp đặt" @change="save"></label><label>Tỉnh/thành<input v-model="edit.province" list="fb-province-options" @change="save"></label><label>Nhắc chăm sóc<input v-model="edit.followUpAt" type="datetime-local" @change="save"></label><label>Phụ trách<input v-model="edit.assignedTo" @change="save"></label><label class="ad-select-label">Gắn nguồn quảng cáo<select v-model="edit.sourceAdId" @change="onSourceAdChange"><option value="">-- Chưa gắn quảng cáo --</option><option v-for="ad in ads" :key="ad.id" :value="ad.id">{{ ad.name }}</option></select></label></div>
+          <div class="detail-head">
+            <div>
+              <h2>{{ selected.customerName }}</h2>
+              <p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId"> · {{ selected.facebookId }}</span></p>
+            </div>
+            <select v-model="edit.status" @change="save">
+              <option v-for="s in statusOptions.slice(1)" :key="s.key" :value="s.key">{{ s.label }}</option>
+            </select>
+          </div>
+
+          <div class="edit-grid">
+            <label>Nhu cầu<input v-model="edit.interest" @change="save"></label>
+            <label>Điện thoại<input v-model="edit.phone" @change="save"></label>
+            <label>Địa chỉ<input v-model="edit.address" placeholder="Địa chỉ lắp đặt" @change="save"></label>
+            <label>Tỉnh/thành<input v-model="edit.province" list="fb-province-options" @change="save"></label>
+            <label>Nhắc chăm sóc<input v-model="edit.followUpAt" type="datetime-local" @change="save"></label>
+            <label>Phụ trách<input v-model="edit.assignedTo" @change="save"></label>
+            <label class="ad-select-label form-span-full">Gắn nguồn quảng cáo<select v-model="edit.sourceAdId" @change="onSourceAdChange"><option value="">-- Chưa gắn quảng cáo --</option><option v-for="ad in ads" :key="ad.id" :value="ad.id">{{ ad.name }}</option></select></label>
+          </div>
+
           <label class="notes">Ghi chú khách hàng<textarea v-model="edit.notes" rows="3" @change="save"></textarea></label>
-          <div v-if="selected.sourceAdId || selected.sourceType" class="ad-context"><span class="ad-context-icon">▣</span><div><strong>{{ selected.sourceAdId ? 'Cuộc trò chuyện này đến từ quảng cáo' : 'Nguồn cuộc trò chuyện từ Meta' }}</strong><span>{{ selected.sourceAdName || (selected.sourceAdId ? `Quảng cáo ID ${selected.sourceAdId}` : selected.sourceType) }}</span><small v-if="selected.sourceCampaignName">Chiến dịch: {{ selected.sourceCampaignName }}</small></div><span v-if="selected.sourceAdId" class="ad-context-tag">QUẢNG CÁO</span></div>
-          <div class="history-head"><h3>Lịch sử tư vấn</h3><span>{{ messengerConnected ? 'Tin nhắn OUT sẽ gửi qua Messenger' : 'Ghi nhận nội bộ · Messenger chưa kết nối' }}</span></div>
-          <div class="history"><div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in']"><small>{{ m.direction === 'OUT' ? 'Đã tư vấn' : 'Khách nhắn' }} · {{ displayDate(m.createdAt) }}</small><p>{{ m.body }}</p></div><p v-if="!selected.messages?.length" class="empty">Chưa có ghi nhận hội thoại.</p></div>
-          <form class="message-form" @submit.prevent="addMessage"><select v-model="messageDirection"><option value="IN">Khách nhắn</option><option value="OUT">{{ messengerConnected ? 'Trả lời khách' : 'Đã tư vấn' }}</option></select><input v-model="messageBody" :placeholder="messageDirection === 'OUT' && messengerConnected ? 'Soạn tin nhắn gửi khách…' : 'Ghi nội dung trao đổi…'" required><button class="adm-btn adm-btn-gold" :disabled="busy">{{ busy ? 'Đang gửi…' : messageDirection === 'OUT' && messengerConnected ? 'Gửi Messenger' : 'Ghi lại' }}</button></form>
+          <div v-if="selected.sourceAdId || selected.sourceType" class="ad-context">
+            <span class="ad-context-icon">▣</span>
+            <div>
+              <strong>{{ selected.sourceAdId ? 'Cuộc trò chuyện này đến từ quảng cáo' : 'Nguồn cuộc trò chuyện từ Meta' }}</strong>
+              <span>{{ selected.sourceAdName || (selected.sourceAdId ? `Quảng cáo ID ${selected.sourceAdId}` : selected.sourceType) }}</span>
+              <small v-if="selected.sourceCampaignName">Chiến dịch: {{ selected.sourceCampaignName }}</small>
+            </div>
+            <span v-if="selected.sourceAdId" class="ad-context-tag">QUẢNG CÁO</span>
+          </div>
+
+          <div class="history-head">
+            <h3>Lịch sử tư vấn</h3>
+            <span>{{ messengerConnected ? 'Tin nhắn OUT sẽ gửi qua Messenger' : 'Ghi nhận nội bộ · Messenger chưa kết nối' }}</span>
+          </div>
+          <div class="history">
+            <div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in']">
+              <small>{{ m.direction === 'OUT' ? 'Đã tư vấn' : 'Khách nhắn' }} · {{ displayDate(m.createdAt) }}</small>
+              <p>{{ m.body }}</p>
+            </div>
+            <p v-if="!selected.messages?.length" class="empty">Chưa có ghi nhận hội thoại.</p>
+          </div>
+
+          <form class="message-form" @submit.prevent="addMessage">
+            <select v-model="messageDirection">
+              <option value="IN">Khách nhắn</option>
+              <option value="OUT">{{ messengerConnected ? 'Trả lời khách' : 'Đã tư vấn' }}</option>
+            </select>
+            <input v-model="messageBody" :placeholder="messageDirection === 'OUT' && messengerConnected ? 'Soạn tin nhắn gửi khách…' : 'Ghi nội dung trao đổi…'" required>
+            <button class="ios-action-pill" :disabled="busy">{{ busy ? 'Đang gửi…' : messageDirection === 'OUT' && messengerConnected ? 'Gửi Messenger' : 'Ghi lại' }}</button>
+          </form>
         </section>
-        <section v-else class="placeholder"><div>💬</div><h2>Chọn hồ sơ khách hàng</h2><p>Thông tin và lịch sử chăm sóc sẽ hiển thị tại đây.</p></section>
+
+        <section v-else class="placeholder">
+          <div>💬</div>
+          <h2>Chọn hồ sơ khách hàng</h2>
+          <p>Thông tin và lịch sử chăm sóc sẽ hiển thị tại đây.</p>
+        </section>
       </div>
       <p v-if="orderSyncNotice" class="order-sync-notice">{{ orderSyncNotice }}</p>
       <p v-if="autoMatchNotice" class="auto-match-notice">⚡ {{ autoMatchNotice }}</p>
@@ -687,6 +877,41 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
+/* iOS Pill Button Primary */
+.ios-action-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--ios-blue);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 122, 255, 0.25);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.ios-action-pill:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+.ios-action-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive display helpers */
+.desktop-only {
+  display: block;
+}
+.mobile-only {
+  display: none !important;
+}
+
 /* ==========================================================================
    iOS SEGMENTED CONTROL TABS (TOP NAVIGATION)
    ========================================================================== */
@@ -735,78 +960,354 @@ onBeforeUnmount(() => {
 .tab-label-full {
   display: inline;
 }
-.ads-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.ads-table {
-  min-width: 520px;
-  width: 100%;
-}
 
 /* ==========================================================================
-   TAB 1: CRM CARE ELEMENTS (Apple Cleaned)
+   TAB 1: CRM CARE ELEMENTS (Apple iOS Cleaned)
    ========================================================================== */
-.connection {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #fff;
+/* Connection Card: Clean vertical stacking, no horizontal crushing */
+.connection-card {
+  background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   padding: 14px 18px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   margin-bottom: 16px;
+  transition: all 0.2s ease;
 }
-.connection>div {
-  flex: 1;
-  min-width: 0;
-}
-.connection strong {
-  display: block;
-  font-size: 0.88rem;
-  color: var(--ios-label);
-  font-weight: 650;
-}
-.connection small {
-  display: block;
-  font-size: 0.76rem;
-  color: var(--ios-secondary);
-  margin-top: 2px;
-}
-.connection.online {
+.connection-card.online {
   border-left: 4px solid var(--ios-green);
 }
-.offline-dot {
-  width: 9px;
-  height: 9px;
+.conn-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.conn-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.conn-title-group strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ios-label);
+}
+.conn-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ios-green);
-  flex: none;
-  box-shadow: 0 0 6px rgba(52, 199, 89, 0.5);
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
+  flex-shrink: 0;
 }
 .connection-tag {
   font-size: 0.72rem;
   font-weight: 700;
   background: rgba(52, 199, 89, 0.12);
   color: #248a3d;
-  padding: 5px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
   white-space: nowrap;
 }
-.sync-btn {
-  font-size: 0.74rem;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: none;
+.conn-desc-text {
+  font-size: 0.78rem;
+  color: var(--ios-secondary);
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+.conn-action-row {
+  display: flex;
+  gap: 8px;
+}
+.sync-action-btn {
   background: var(--ios-fill);
   color: var(--ios-label);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.sync-btn:hover {
+.sync-action-btn:hover:not(:disabled) {
   background: #d1d1d6;
+}
+.sync-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Meta Ads Section */
+.ads-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  max-width: 100%;
+  overflow: hidden;
+}
+.ads-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ads-head h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ios-label);
+  margin: 0 0 2px;
+}
+.ads-head p {
+  font-size: 0.76rem;
+  color: var(--ios-secondary);
+  margin: 0;
+}
+.refresh-ads-btn {
+  background: var(--ios-fill);
+  color: var(--ios-label);
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.refresh-ads-btn:hover {
+  background: #d1d1d6;
+}
+.ads-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ads-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.ads-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  color: var(--ios-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.ads-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  vertical-align: middle;
+}
+.ads-table td strong {
+  display: block;
+  font-weight: 650;
+  color: var(--ios-label);
+}
+.ads-table td small {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ios-secondary);
+}
+
+/* Mobile Apple Inset Cards for Meta Ads */
+.ads-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ad-item-card {
+  background: #f8f8fa;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ad-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ad-item-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ios-label);
+  line-height: 1.35;
+  flex: 1;
+}
+.ad-item-spend {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--ios-red);
+  white-space: nowrap;
+}
+.ad-item-sub {
+  font-size: 0.73rem;
+  color: var(--ios-secondary);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.ad-item-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ad-stat-chip {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  color: #3a3a3c;
+}
+.ad-stat-chip b {
+  color: var(--ios-label);
+}
+
+/* Toolbar & Filters (Apple iOS Style) */
+.fb-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.fb-search-wrap {
+  position: relative;
+  width: 100%;
+}
+.fb-search-wrap .search-ico {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.fb-search-wrap input {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 9px 12px 9px 36px;
+  font-size: 0.84rem;
+  background: #ffffff;
+  color: var(--ios-label);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.fb-search-wrap input:focus {
+  border-color: var(--ios-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+.fb-status-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.fb-status-scroll::-webkit-scrollbar {
+  display: none;
+}
+.fb-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #636366;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.fb-pill-btn:hover {
+  background: #f2f2f7;
+  color: var(--ios-label);
+}
+.fb-pill-btn.active {
+  background: var(--ios-blue);
+  color: #ffffff;
+  border-color: var(--ios-blue);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+.fb-pill-btn .pill-count {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.fb-pill-btn.active .pill-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+.fb-source-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fb-source-select {
+  flex: 1;
+  min-width: 200px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: #ffffff;
+  color: var(--ios-label);
+  font-size: 0.78rem;
+  outline: none;
+}
+.fb-match-btns {
+  display: flex;
+  gap: 6px;
+}
+.fb-btn-match {
+  background: var(--ios-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fb-btn-match:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.fb-btn-reset {
+  background: var(--ios-fill);
+  color: var(--ios-label);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fb-btn-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .new-arrivals {
@@ -1463,6 +1964,9 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(0, 0, 0, 0.05);
   background: #ffffff;
   box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .table-card-head {
   display: flex;
@@ -1659,7 +2163,11 @@ onBeforeUnmount(() => {
    SMART TABLE ROWS (Apple Inset Card Rows)
    ========================================================================== */
 .analytics-table-wrap {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
 .futuristic-table {
   width: 100%;
@@ -2078,7 +2586,50 @@ onBeforeUnmount(() => {
   }
 
   /* Tab Chăm sóc CRM trên Mobile */
-  .workspace { grid-template-columns: 1fr; }
+  .adm-page.fb-care {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .adm-page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .head-btn-group {
+    width: 100%;
+  }
+  .head-btn-group .ios-action-pill {
+    width: 100%;
+    justify-content: center;
+  }
+  .fb-source-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .fb-source-select {
+    width: 100%;
+    max-width: 100%;
+  }
+  .fb-match-btns {
+    width: 100%;
+  }
+  .fb-match-btns button {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+  .analytics-table-card {
+    padding: 14px 12px;
+    border-radius: 16px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+    overflow: hidden;
+  }
   .customer-list { max-height: 280px; border-right: 0; border-bottom: 1px solid #f2f2f7; }
   .form-grid, .edit-grid { grid-template-columns: 1fr; }
   .search { margin: 0; width: 100%; }

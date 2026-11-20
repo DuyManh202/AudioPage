@@ -665,6 +665,9 @@ const handleLogout = async () => {
   min-height: 100vh;
   background: #f1f5f9;
   color: #0f172a;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -888,6 +891,8 @@ const handleLogout = async () => {
 .admin-main {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1239,6 +1244,8 @@ const handleLogout = async () => {
   padding: 24px;
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .sidebar-backdrop {
