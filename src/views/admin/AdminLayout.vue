@@ -63,6 +63,16 @@
         </router-link>
 
         <router-link
+          v-if="can('ai-chat')"
+          to="/admin/ai-chat"
+          class="nav-item"
+          @click="mobileNavOpen = false"
+        >
+          <AdminIcon name="bot" :size="18" />
+          <span class="nav-text">Trợ Lý AI Chatbot</span>
+        </router-link>
+
+        <router-link
           v-if="can('customer-map')"
           to="/admin/customer-map"
           class="nav-item"

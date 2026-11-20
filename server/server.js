@@ -246,9 +246,34 @@ const validOptionalText = (value, maxLength) => value === undefined || value ===
 const validRoles = new Set(['SUPER_ADMIN', 'SALES', 'INVENTORY', 'PENDING', 'CUSTOM'])
 const validCategories = new Set(['loa-full', 'loa-sub', 'cuc-day', 'vang-so-micro', 'loa-di-dong'])
 
+const getSystemSetting = async (key, defaultValue) => {
+  try {
+    const res = await query('SELECT value FROM system_settings WHERE key = $1', [key])
+    return res.rows[0]?.value !== undefined ? res.rows[0].value : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+const setSystemSetting = async (key, value) => {
+  await query(`
+    INSERT INTO system_settings (key, value, updated_at)
+    VALUES ($1, $2::jsonb, CURRENT_TIMESTAMP)
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+  `, [key, JSON.stringify(value)])
+}
+
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
 const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
-const isFacebookAiEnabled = () => Boolean(process.env.GEMINI_API_KEY)
+const isFacebookAiEnabled = async () => {
+  if (!process.env.GEMINI_API_KEY) return false
+  const enabled = await getSystemSetting('facebook_ai_enabled', true)
+  return Boolean(enabled)
+}
+const isWebAiEnabled = async () => {
+  const enabled = await getSystemSetting('web_ai_enabled', true)
+  return Boolean(enabled)
+}
 const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && process.env.META_ADS_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 
 const fetchFacebookProfileName = async (psid) => {
@@ -440,7 +465,7 @@ const sendFacebookText = async (psid, text, tag = null) => {
 }
 
 const autoReplyToFacebookCustomer = async (customerId, psid) => {
-  if (!isFacebookAiEnabled() || !isFacebookMessengerConfigured()) return
+  if (!(await isFacebookAiEnabled()) || !isFacebookMessengerConfigured()) return
   try {
     const [customerResult, historyResult, productsResult, combosResult] = await Promise.all([
       query('SELECT customer_name, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
@@ -590,7 +615,11 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
         const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
           VALUES ($1,$2,$3,'IN','Facebook Page',$4) ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`, [randomUUID(), customer.rows[0].id, text, platformMessageId])
-        if (inserted.rows[0] && isFacebookAiEnabled()) setImmediate(() => autoReplyToFacebookCustomer(customer.rows[0].id, psid))
+        if (inserted.rows[0]) {
+          isFacebookAiEnabled().then(enabled => {
+            if (enabled) autoReplyToFacebookCustomer(customer.rows[0].id, psid)
+          }).catch(() => {})
+        }
       }
     }
     return res.sendStatus(200)
@@ -3090,7 +3119,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
       success: true,
       data: result.rows.map(mapFbCare),
       connected,
-      aiEnabled: isFacebookAiEnabled(),
+      aiEnabled: await isFacebookAiEnabled(),
       lastSyncedAt: fbLastSyncedAt,
       syncError: fbLastSyncError || ''
     })
@@ -3815,9 +3844,69 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
+app.get('/api/v1/ai-chat/status', async (req, res) => {
+  try {
+    const enabled = await isWebAiEnabled()
+    res.json({ success: true, enabled })
+  } catch (err) {
+    res.json({ success: true, enabled: true })
+  }
+})
+
+app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const [webAi, fbAi] = await Promise.all([
+      isWebAiEnabled(),
+      isFacebookAiEnabled()
+    ])
+    res.json({
+      success: true,
+      data: {
+        webAiEnabled: webAi,
+        facebookAiEnabled: fbAi,
+        geminiConfigured: Boolean(process.env.GEMINI_API_KEY)
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { webAiEnabled, facebookAiEnabled } = req.body
+    if (typeof webAiEnabled === 'boolean') {
+      await setSystemSetting('web_ai_enabled', webAiEnabled)
+    }
+    if (typeof facebookAiEnabled === 'boolean') {
+      await setSystemSetting('facebook_ai_enabled', facebookAiEnabled)
+    }
+    const [newWeb, newFb] = await Promise.all([
+      isWebAiEnabled(),
+      isFacebookAiEnabled()
+    ])
+    res.json({
+      success: true,
+      message: 'Cập nhật cấu hình Bật/Tắt AI thành công!',
+      data: {
+        webAiEnabled: newWeb,
+        facebookAiEnabled: newFb,
+        geminiConfigured: Boolean(process.env.GEMINI_API_KEY)
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // Tự động đảm bảo cột bảo mật cần thiết tồn tại trên CSDL khi khởi động
 const ensureDatabaseSchema = async () => {
   try {
+    await query(`CREATE TABLE IF NOT EXISTS system_settings (
+      key VARCHAR(100) PRIMARY KEY,
+      value JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`)
     await query('ALTER TABLE admins ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0')
     await query('ALTER TABLE admins ADD COLUMN IF NOT EXISTS email VARCHAR(255)')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_username_lower ON admins (LOWER(username))')

@@ -50,9 +50,21 @@
         <p class="conn-desc-text">
           {{ messengerConnected ? `Tin nhắn tự động đồng bộ từ Fanpage${lastSyncedAt ? ' · Cập nhật ' + displayTime(lastSyncedAt) : ''}` : 'Hồ sơ khách từ Fanpage và Website sẵn sàng tiếp nhận, chăm sóc và theo dõi tiến độ chốt đơn.' }}
         </p>
-        <div v-if="messengerConnected" class="conn-action-row">
-          <button class="sync-action-btn" @click="forceSync" :disabled="syncBusy">
+        <div class="conn-action-row">
+          <button v-if="messengerConnected" class="sync-action-btn" @click="forceSync" :disabled="syncBusy">
             {{ syncBusy ? 'Đang quét tin nhắn…' : '↻ Quét tin nhắn mới ngay' }}
+          </button>
+          <button
+            type="button"
+            class="ai-toggle-btn"
+            :class="{ active: aiEnabled }"
+            :disabled="togglingAi"
+            @click="toggleFacebookAi"
+            title="Bật/Tắt chế độ AI Gemini tự động trả lời khách khi có tin nhắn mới tới Fanpage"
+          >
+            <span class="ai-status-dot"></span>
+            <span>AI Tự Động Trả Lời: <strong>{{ aiEnabled ? 'ĐANG BẬT' : 'ĐÃ TẮT' }}</strong></span>
+            <small class="ai-toggle-hint">({{ aiEnabled ? 'Bấm để Tắt' : 'Bấm để Bật' }})</small>
           </button>
         </div>
       </div>
@@ -785,6 +797,23 @@ async function load({ silent = false, force = false } = {}) {
   }
 }
 async function forceSync() { syncBusy.value = true; error.value = ''; try { await load({ force: true }) } finally { syncBusy.value = false } }
+const togglingAi = ref(false)
+async function toggleFacebookAi() {
+  togglingAi.value = true
+  try {
+    const nextState = !aiEnabled.value
+    await apiRequest('/admin/ai-settings', {
+      method: 'POST',
+      body: JSON.stringify({ facebookAiEnabled: nextState })
+    })
+    aiEnabled.value = nextState
+    adminStore.showNotice(`Đã ${nextState ? 'BẬT' : 'TẮT'} AI tự động trả lời trên Fanpage Facebook!`, 'success')
+  } catch (e) {
+    adminStore.showNotice(e.message || 'Không thể đổi trạng thái AI', 'error')
+  } finally {
+    togglingAi.value = false
+  }
+}
 async function loadAds() { adsBusy.value = true; adsError.value = ''; try { const r = await apiRequest('/admin/facebook-ads'); ads.value = r.data || []; adsConfigured.value = Boolean(r.configured) } catch (e) { adsError.value = e.message; adsConfigured.value = e.status !== 503 } finally { adsBusy.value = false } }
 const messengerPolicyInfo = computed(() => {
   if (!selected.value) return { canSend: false, within24h: false, label: '' }
@@ -1215,6 +1244,44 @@ onBeforeUnmount(() => {
 .sync-action-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.ai-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ai-toggle-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+.ai-toggle-btn.active {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+.ai-toggle-btn .ai-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  display: inline-block;
+}
+.ai-toggle-btn.active .ai-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+.ai-toggle-hint {
+  font-size: 0.72rem;
+  opacity: 0.8;
 }
 
 /* Meta Ads Section */

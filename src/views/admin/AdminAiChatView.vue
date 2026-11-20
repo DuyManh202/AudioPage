@@ -26,6 +26,86 @@
       </div>
     </header>
 
+    <!-- Bảng Điều Khiển Bật / Tắt AI Chatbot Trực Tuyến -->
+    <section class="ai-control-panel adm-card">
+      <div class="control-panel-header">
+        <div class="control-header-left">
+          <span class="control-icon">⚡</span>
+          <div>
+            <h2 class="control-title">Trung Tâm Bật / Tắt AI Chatbot</h2>
+            <p class="control-sub">Chủ động Bật hoặc Tắt tính năng AI tự động trên từng kênh của Tú Audio</p>
+          </div>
+        </div>
+        <div class="control-header-status">
+          <span class="gemini-pill" :class="{ active: geminiConfigured }">
+            {{ geminiConfigured ? '🟢 Google Gemini AI: Đang Sẵn Sàng' : '🔴 Gemini AI: Chưa cấu hình Token' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="ai-switches-grid">
+        <!-- Switch 1: AI Website -->
+        <div class="ai-switch-card" :class="{ active: webAiEnabled }">
+          <div class="switch-content">
+            <div class="switch-badge-row">
+              <span class="status-indicator-chip" :class="webAiEnabled ? 'chip-on' : 'chip-off'">
+                {{ webAiEnabled ? '● ĐANG BẬT' : '○ ĐÃ TẮT' }}
+              </span>
+              <span class="switch-channel-tag">Kênh: Website Amek.io.vn</span>
+            </div>
+            <h3 class="switch-name">Chatbot AI Trên Website</h3>
+            <p class="switch-desc">
+              Khi BẬT: Khách truy cập web sẽ thấy nút chat tròn nổi ở góc dưới, có thể hỏi giá dàn, cấu hình và xin tư vấn 24/7.<br>
+              Khi TẮT: Widget chat trên website sẽ tự động ẩn hoàn toàn.
+            </p>
+          </div>
+          <div class="switch-action-wrap">
+            <button
+              type="button"
+              class="modern-toggle-btn"
+              :class="{ checked: webAiEnabled }"
+              :disabled="savingKey === 'web'"
+              @click="toggleWebAi"
+              :title="webAiEnabled ? 'Bấm để Tắt AI Website' : 'Bấm để Bật AI Website'"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+            <span class="toggle-label-text">{{ webAiEnabled ? 'BẬT' : 'TẮT' }}</span>
+          </div>
+        </div>
+
+        <!-- Switch 2: AI Fanpage Facebook -->
+        <div class="ai-switch-card" :class="{ active: facebookAiEnabled }">
+          <div class="switch-content">
+            <div class="switch-badge-row">
+              <span class="status-indicator-chip" :class="facebookAiEnabled ? 'chip-on' : 'chip-off'">
+                {{ facebookAiEnabled ? '● ĐANG BẬT' : '○ ĐÃ TẮT' }}
+              </span>
+              <span class="switch-channel-tag">Kênh: Fanpage Messenger</span>
+            </div>
+            <h3 class="switch-name">AI Tự Động Trả Lời Fanpage</h3>
+            <p class="switch-desc">
+              Khi BẬT: AI Gemini sẽ tự động phản hồi ngay lập tức khi khách gửi tin nhắn đầu tiên tới Fanpage, hỗ trợ tư vấn và xin SĐT.<br>
+              Khi TẮT: AI sẽ không tự động gửi bất kỳ tin nhắn nào, nhường quyền hoàn toàn cho anh Tú và nhân sự trực tiếp chat.
+            </p>
+          </div>
+          <div class="switch-action-wrap">
+            <button
+              type="button"
+              class="modern-toggle-btn"
+              :class="{ checked: facebookAiEnabled }"
+              :disabled="savingKey === 'fb'"
+              @click="toggleFacebookAi"
+              :title="facebookAiEnabled ? 'Bấm để Tắt AI Fanpage' : 'Bấm để Bật AI Fanpage'"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+            <span class="toggle-label-text">{{ facebookAiEnabled ? 'BẬT' : 'TẮT' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Stat Cards -->
     <section class="stat-grid">
       <div class="adm-card stat-card">
@@ -201,13 +281,71 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { apiRequest } from '../../utils/api'
+import { useAdminStore } from '../../stores/adminStore'
 
+const adminStore = useAdminStore()
 const loading = ref(false)
 const inputTest = ref('')
 const testMessagesContainer = ref(null)
+
+const webAiEnabled = ref(true)
+const facebookAiEnabled = ref(true)
+const geminiConfigured = ref(false)
+const savingKey = ref('')
+
+const loadAiSettings = async () => {
+  try {
+    const res = await apiRequest('/admin/ai-settings')
+    if (res?.data) {
+      webAiEnabled.value = Boolean(res.data.webAiEnabled)
+      facebookAiEnabled.value = Boolean(res.data.facebookAiEnabled)
+      geminiConfigured.value = Boolean(res.data.geminiConfigured)
+    }
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Chưa tải được cài đặt AI', 'error')
+  }
+}
+
+const toggleWebAi = async () => {
+  const next = !webAiEnabled.value
+  savingKey.value = 'web'
+  try {
+    await apiRequest('/admin/ai-settings', {
+      method: 'POST',
+      body: JSON.stringify({ webAiEnabled: next })
+    })
+    webAiEnabled.value = next
+    adminStore.showNotice(`Đã ${next ? 'BẬT' : 'TẮT'} Chatbot AI trên Website!`, 'success')
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể cập nhật cấu hình', 'error')
+  } finally {
+    savingKey.value = ''
+  }
+}
+
+const toggleFacebookAi = async () => {
+  const next = !facebookAiEnabled.value
+  savingKey.value = 'fb'
+  try {
+    await apiRequest('/admin/ai-settings', {
+      method: 'POST',
+      body: JSON.stringify({ facebookAiEnabled: next })
+    })
+    facebookAiEnabled.value = next
+    adminStore.showNotice(`Đã ${next ? 'BẬT' : 'TẮT'} AI tự động trả lời trên Fanpage Facebook!`, 'success')
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể cập nhật cấu hình', 'error')
+  } finally {
+    savingKey.value = ''
+  }
+}
+
+onMounted(() => {
+  loadAiSettings()
+})
 
 const scenarios = [
   { label: '📍 Hỏi địa chỉ cửa hàng', prompt: 'Cửa hàng Tú Audio mình ở đâu vậy shop?' },
@@ -356,6 +494,190 @@ const sendTestMessage = async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Control Panel */
+.ai-control-panel {
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+}
+
+.control-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.control-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-icon {
+  font-size: 1.8rem;
+  background: #fef3c7;
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.control-sub {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.gemini-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.gemini-pill.active {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.ai-switches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.ai-switch-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.ai-switch-card.active {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.switch-content {
+  flex: 1;
+}
+
+.switch-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.status-indicator-chip {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.status-indicator-chip.chip-on {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.status-indicator-chip.chip-off {
+  background: #94a3b8;
+  color: #ffffff;
+}
+
+.switch-channel-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.switch-name {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.switch-desc {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.switch-action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.modern-toggle-btn {
+  width: 52px;
+  height: 30px;
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.25s ease;
+  padding: 3px;
+}
+
+.modern-toggle-btn.checked {
+  background: #22c55e;
+}
+
+.modern-toggle-btn .toggle-knob {
+  display: block;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s ease;
+}
+
+.modern-toggle-btn.checked .toggle-knob {
+  transform: translateX(22px);
+}
+
+.toggle-label-text {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.modern-toggle-btn.checked + .toggle-label-text {
+  color: #166534;
 }
 
 /* Stat Cards */

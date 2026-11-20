@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="ai-chat-root">
+  <div v-if="isWidgetEnabled" class="ai-chat-root">
     <!-- Nút kích hoạt nổi (Floating Widget Button) -->
     <div v-if="!isOpen" class="ai-chat-launcher-wrapper">
       <!-- Bong bóng chào mời xuất hiện sau vài giây -->
@@ -190,6 +190,7 @@ import { apiRequest } from '../../utils/api'
 
 const STORAGE_KEY = 'tuaudio_ai_chat_v1'
 
+const isWidgetEnabled = ref(true)
 const isOpen = ref(false)
 const showGreetingBubble = ref(false)
 const unreadCount = ref(0)
@@ -313,7 +314,21 @@ const sendMessage = async () => {
   }
 }
 
+const checkStatus = async () => {
+  try {
+    const res = await apiRequest('/ai-chat/status')
+    if (res && res.enabled === false) {
+      isWidgetEnabled.value = false
+    } else {
+      isWidgetEnabled.value = true
+    }
+  } catch {
+    // Giữ mặc định nếu mạng chậm
+  }
+}
+
 onMounted(() => {
+  checkStatus()
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {

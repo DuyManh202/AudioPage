@@ -143,6 +143,11 @@ export const checkDeterministicAiResponse = (message) => {
 
 export const handleAiChatRequest = async (req, res) => {
   try {
+    const settingRes = await query("SELECT value FROM system_settings WHERE key = 'web_ai_enabled'").catch(() => ({ rows: [] }))
+    if (settingRes.rows[0]?.value === false) {
+      return res.status(503).json({ success: false, message: 'Trợ lý AI trên website hiện đang tạm tắt để nhân viên trực tiếp hỗ trợ.' })
+    }
+
     const { message, history = [], sessionId, customerName: inputName } = req.body
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ success: false, message: 'Nội dung tin nhắn không được để trống.' })
