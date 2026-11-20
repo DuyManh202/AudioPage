@@ -263,10 +263,21 @@ const setSystemSetting = async (key, value) => {
   `, [key, JSON.stringify(value)])
 }
 
+const getGeminiApiKey = async () => {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY
+  return await getSystemSetting('gemini_api_key', '')
+}
+
+const getGeminiModel = async () => {
+  if (process.env.GEMINI_MODEL) return process.env.GEMINI_MODEL
+  return await getSystemSetting('gemini_model', 'gemini-3.8-flash')
+}
+
 const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
 const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 const isFacebookAiEnabled = async () => {
-  if (!process.env.GEMINI_API_KEY) return false
+  const apiKey = await getGeminiApiKey()
+  if (!apiKey) return false
   const enabled = await getSystemSetting('facebook_ai_enabled', true)
   return Boolean(enabled)
 }
@@ -511,8 +522,9 @@ BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
 8. Luôn khéo léo mời khách để lại SĐT/Zalo hoặc nhắn qua Zalo 0984.259.898 để em Tú gửi video test dàn thực tế.`
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY
-      const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+      const apiKey = await getGeminiApiKey()
+      const model = await getGeminiModel()
+      if (!apiKey) return
       const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
 
       const geminiRes = await fetch(geminiUrl, {
@@ -3855,16 +3867,24 @@ app.get('/api/v1/ai-chat/status', async (req, res) => {
 
 app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const [webAi, fbAi] = await Promise.all([
+    const [webAi, fbAi, apiKey, model] = await Promise.all([
       isWebAiEnabled(),
-      isFacebookAiEnabled()
+      isFacebookAiEnabled(),
+      getGeminiApiKey(),
+      getGeminiModel()
     ])
+    const maskedKey = apiKey && apiKey.length > 12 
+      ? apiKey.slice(0, 8) + '•'.repeat(Math.min(16, apiKey.length - 12)) + apiKey.slice(-4)
+      : (apiKey ? '••••••••' : '')
     res.json({
       success: true,
       data: {
         webAiEnabled: webAi,
         facebookAiEnabled: fbAi,
-        geminiConfigured: Boolean(process.env.GEMINI_API_KEY)
+        geminiConfigured: Boolean(apiKey),
+        hasKey: Boolean(apiKey),
+        maskedKey,
+        model: model || 'gemini-3.8-flash'
       }
     })
   } catch (err) {
@@ -3874,24 +3894,38 @@ app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_AD
 
 app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const { webAiEnabled, facebookAiEnabled } = req.body
+    const { webAiEnabled, facebookAiEnabled, apiKey, model } = req.body
     if (typeof webAiEnabled === 'boolean') {
       await setSystemSetting('web_ai_enabled', webAiEnabled)
     }
     if (typeof facebookAiEnabled === 'boolean') {
       await setSystemSetting('facebook_ai_enabled', facebookAiEnabled)
     }
-    const [newWeb, newFb] = await Promise.all([
+    if (typeof apiKey === 'string' && apiKey.trim()) {
+      await setSystemSetting('gemini_api_key', apiKey.trim())
+    }
+    if (typeof model === 'string' && model.trim()) {
+      await setSystemSetting('gemini_model', model.trim())
+    }
+    const [newWeb, newFb, currentKey, currentModel] = await Promise.all([
       isWebAiEnabled(),
-      isFacebookAiEnabled()
+      isFacebookAiEnabled(),
+      getGeminiApiKey(),
+      getGeminiModel()
     ])
+    const maskedKey = currentKey && currentKey.length > 12 
+      ? currentKey.slice(0, 8) + '•'.repeat(Math.min(16, currentKey.length - 12)) + currentKey.slice(-4)
+      : (currentKey ? '••••••••' : '')
     res.json({
       success: true,
-      message: 'Cập nhật cấu hình Bật/Tắt AI thành công!',
+      message: 'Cập nhật cấu hình Bật/Tắt & Token AI thành công!',
       data: {
         webAiEnabled: newWeb,
         facebookAiEnabled: newFb,
-        geminiConfigured: Boolean(process.env.GEMINI_API_KEY)
+        geminiConfigured: Boolean(currentKey),
+        hasKey: Boolean(currentKey),
+        maskedKey,
+        model: currentModel || 'gemini-3.8-flash'
       }
     })
   } catch (err) {

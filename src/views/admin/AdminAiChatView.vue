@@ -38,8 +38,11 @@
         </div>
         <div class="control-header-status">
           <span class="gemini-pill" :class="{ active: geminiConfigured }">
-            {{ geminiConfigured ? '🟢 Google Gemini AI: Đang Sẵn Sàng' : '🔴 Gemini AI: Chưa cấu hình Token' }}
+            {{ geminiConfigured ? `🟢 Gemini AI: Sẵn Sàng (${activeModel})` : '🔴 Gemini AI: Chưa cấu hình Token' }}
           </span>
+          <button type="button" class="token-config-btn" @click="showTokenModal = true">
+            🔑 {{ hasKey ? (maskedKey ? maskedKey : 'Đổi Token') : 'Nhập Token AI' }}
+          </button>
         </div>
       </div>
 
@@ -106,6 +109,44 @@
       </div>
     </section>
 
+    <!-- Modal Nhập / Đổi Gemini API Key -->
+    <div v-if="showTokenModal" class="token-modal-backdrop" @click="showTokenModal = false">
+      <div class="token-modal-card" @click.stop>
+        <div class="modal-head">
+          <div class="head-left">
+            <span class="modal-icon">🔑</span>
+            <div>
+              <h3>Cấu Hình Google Gemini API Key</h3>
+              <p>Token được lưu an toàn trong CSDL PostgreSQL, dùng cho cả Web & Fanpage</p>
+            </div>
+          </div>
+          <button type="button" class="modal-close-btn" @click="showTokenModal = false">✕</button>
+        </div>
+
+        <form class="token-modal-form" @submit.prevent="saveApiKey">
+          <div v-if="hasKey" class="current-token-info">
+            <span class="token-tag">Token hiện tại:</span>
+            <code>{{ maskedKey }}</code>
+          </div>
+          <label class="token-input-label">
+            <span>{{ hasKey ? 'Nhập Token mới (để thay thế):' : 'Dán Google Gemini API Key vào đây:' }}</span>
+            <input 
+              v-model="inputApiKey" 
+              type="text" 
+              placeholder="VD: AIzaSy... hoặc AQ.Ab8RN..." 
+              required
+            />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="adm-btn adm-btn-light" @click="showTokenModal = false">Hủy bỏ</button>
+            <button type="submit" class="adm-btn adm-btn-blue" :disabled="savingToken">
+              {{ savingToken ? 'Đang lưu…' : 'Lưu Token Ngay' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Stat Cards -->
     <section class="stat-grid">
       <div class="adm-card stat-card">
@@ -114,7 +155,7 @@
         </div>
         <div>
           <span class="stat-label">Model Trí Tuệ Nhân Tạo</span>
-          <strong class="stat-value">Gemini 2.5 Flash</strong>
+          <strong class="stat-value">{{ activeModel }}</strong>
           <small class="stat-desc">Tier 1 Standard · Phản hồi &lt; 1 giây</small>
         </div>
       </div>
@@ -294,6 +335,12 @@ const testMessagesContainer = ref(null)
 const webAiEnabled = ref(true)
 const facebookAiEnabled = ref(true)
 const geminiConfigured = ref(false)
+const hasKey = ref(false)
+const maskedKey = ref('')
+const activeModel = ref('gemini-3.8-flash')
+const showTokenModal = ref(false)
+const inputApiKey = ref('')
+const savingToken = ref(false)
 const savingKey = ref('')
 
 const loadAiSettings = async () => {
@@ -303,9 +350,31 @@ const loadAiSettings = async () => {
       webAiEnabled.value = Boolean(res.data.webAiEnabled)
       facebookAiEnabled.value = Boolean(res.data.facebookAiEnabled)
       geminiConfigured.value = Boolean(res.data.geminiConfigured)
+      hasKey.value = Boolean(res.data.hasKey)
+      maskedKey.value = res.data.maskedKey || ''
+      activeModel.value = res.data.model || 'gemini-3.8-flash'
     }
   } catch (err) {
     adminStore.showNotice(err.message || 'Chưa tải được cài đặt AI', 'error')
+  }
+}
+
+const saveApiKey = async () => {
+  if (!inputApiKey.value.trim()) return
+  savingToken.value = true
+  try {
+    await apiRequest('/admin/ai-settings', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey: inputApiKey.value.trim() })
+    })
+    inputApiKey.value = ''
+    showTokenModal.value = false
+    await loadAiSettings()
+    adminStore.showNotice('Đã lưu Google Gemini API Key vào CSDL thành công!', 'success')
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể lưu Token', 'error')
+  } finally {
+    savingToken.value = false
   }
 }
 
@@ -544,6 +613,148 @@ const sendTestMessage = async () => {
   font-size: 0.8rem;
   color: #64748b;
   margin: 2px 0 0;
+}
+
+.control-header-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.token-config-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.token-config-btn:hover {
+  background: #e2e8f0;
+}
+
+.token-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.token-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.head-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.modal-icon {
+  font-size: 1.8rem;
+  background: #e0f2fe;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.modal-head p {
+  margin: 3px 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #94a3b8;
+}
+
+.current-token-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.token-tag {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.current-token-info code {
+  font-size: 0.82rem;
+  color: #0f172a;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.token-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 20px;
+}
+
+.token-input-label input {
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  outline: none;
+  font-family: monospace;
+}
+
+.token-input-label input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .gemini-pill {

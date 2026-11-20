@@ -141,6 +141,26 @@ export const checkDeterministicAiResponse = (message) => {
   return null
 }
 
+const getDbGeminiApiKey = async () => {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY
+  try {
+    const res = await query("SELECT value FROM system_settings WHERE key = 'gemini_api_key'")
+    return res.rows[0]?.value || ''
+  } catch {
+    return ''
+  }
+}
+
+const getDbGeminiModel = async () => {
+  if (process.env.GEMINI_MODEL) return process.env.GEMINI_MODEL
+  try {
+    const res = await query("SELECT value FROM system_settings WHERE key = 'gemini_model'")
+    return res.rows[0]?.value || 'gemini-3.8-flash'
+  } catch {
+    return 'gemini-3.8-flash'
+  }
+}
+
 export const handleAiChatRequest = async (req, res) => {
   try {
     const settingRes = await query("SELECT value FROM system_settings WHERE key = 'web_ai_enabled'").catch(() => ({ rows: [] }))
@@ -265,8 +285,8 @@ ${JSON.stringify(catalogContext)}`
 
     const recentHistory = Array.isArray(history) ? history.slice(-6).map(h => `${h.role === 'user' ? 'Khách' : 'Tú Audio'}: ${h.content}`).join('\n') : ''
 
-    const apiKey = process.env.GEMINI_API_KEY
-    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+    const apiKey = await getDbGeminiApiKey()
+    const model = await getDbGeminiModel()
     const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
 
     const promptText = systemInstruction + '\n\n' + (recentHistory ? 'LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ:\n' + recentHistory + '\n\n' : '') + 'TIN NHẮN MỚI CỦA KHÁCH:\n"' + trimmedMsg + '"\n\nHãy phân tích kỹ ý định thực sự của khách và trả lời đúng trọng tâm câu hỏi, chuẩn phong cách chuyên gia âm thanh Tú Audio:'
