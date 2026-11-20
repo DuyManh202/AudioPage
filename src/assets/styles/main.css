@@ -11,6 +11,8 @@
 html {
   scroll-behavior: smooth;
   color-scheme: light;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -24,6 +26,7 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
 }
 
 a {
@@ -36,12 +39,21 @@ button {
   border: none;
   outline: none;
   font-family: inherit;
+  touch-action: manipulation;
 }
 
 input,
 select,
 textarea {
   font-family: inherit;
+}
+
+@media screen and (max-width: 860px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important; /* Chuẩn Apple iOS: Chặn 100% hiện tượng tự động phóng to viewport khi chạm vào ô nhập */
+  }
 }
 
 img,

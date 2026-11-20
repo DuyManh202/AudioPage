@@ -224,6 +224,51 @@
       ]
     }
     </script>
+    <!-- Chặn triệt để hành vi phóng to (zoom) trang web trên iOS Safari & Mobile -->
+    <script>
+      (function() {
+        if (typeof window === 'undefined') return;
+
+        // 1. Chặn cử chỉ chụm/xòe 2 ngón tay (Pinch-to-zoom) ngoài vùng bản đồ Leaflet
+        document.addEventListener('gesturestart', function(e) {
+          if (!e.target.closest || !e.target.closest('.leaflet-container')) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+
+        document.addEventListener('gesturechange', function(e) {
+          if (!e.target.closest || !e.target.closest('.leaflet-container')) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+
+        document.addEventListener('gestureend', function(e) {
+          if (!e.target.closest || !e.target.closest('.leaflet-container')) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+
+        // 2. Chặn đa điểm chạm gây zoom trang (trừ khi thao tác phóng to thu nhỏ bản đồ)
+        document.addEventListener('touchstart', function(e) {
+          if (e.touches && e.touches.length > 1) {
+            if (!e.target.closest || !e.target.closest('.leaflet-container')) {
+              e.preventDefault();
+            }
+          }
+        }, { passive: false });
+
+        // 3. Chặn gõ 2 lần liên tiếp để zoom (Double-tap to zoom)
+        var lastTouch = 0;
+        document.addEventListener('touchend', function(e) {
+          if (e.target && e.target.closest && e.target.closest('input, textarea, select, button, a')) return;
+          var now = Date.now();
+          if (now - lastTouch <= 300) {
+            e.preventDefault();
+          }
+          lastTouch = now;
+        }, false);
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
