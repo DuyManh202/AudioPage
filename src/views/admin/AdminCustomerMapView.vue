@@ -213,11 +213,13 @@
               :class="['map-customer-item', { active: selected?.id === customer.id && selected?.recordType === customer.recordType, 'is-custom': customer.recordType === 'CUSTOM' }]"
               @click="selectCustomer(customer)"
             >
-              <div :class="['customer-pin-dot', { visited: customer.visitedAt, custom: customer.recordType === 'CUSTOM' }]"></div>
+              <div :class="['customer-pin-dot', { visited: customer.visitedAt, custom: customer.recordType === 'CUSTOM', fb: customer.recordType === 'FACEBOOK' }]"></div>
               <div class="customer-item-main">
                 <div class="item-title-row">
+                  <span class="source-pill" :class="customer.recordType.toLowerCase()">
+                    {{ customer.recordType === 'CUSTOM' ? '📍 Tự thêm' : (customer.recordType === 'FACEBOOK' ? '💬 Facebook' : '📋 CRM') }}
+                  </span>
                   <span class="item-name">{{ customer.customerName }}</span>
-                  <span v-if="customer.recordType === 'CUSTOM'" class="item-custom-tag">📍 Tự thêm</span>
                   <span v-if="customer.visitedAt" class="item-visited-badge">Đã đi</span>
                 </div>
                 <div class="item-sub-row">
@@ -263,65 +265,48 @@
             <button v-if="keyword" type="button" class="search-clear" @click="keyword = ''">✕</button>
           </div>
 
-          <!-- Bộ lọc Tab Nguồn (Tất cả, Điểm tự thêm, Facebook, CRM) -->
-          <div class="xanhsm-source-chips">
+          <!-- Bộ lọc 1 hàng duy nhất: Nguồn & Trạng thái cực kỳ trực quan -->
+          <div class="xanhsm-combined-chips">
             <button
               type="button"
-              :class="['xanhsm-src-chip', { active: sourceFilter === 'ALL' }]"
+              :class="['xanhsm-chip', { active: sourceFilter === 'ALL' }]"
               @click="sourceFilter = 'ALL'"
             >
               Tất cả ({{ customers.length }})
             </button>
             <button
               type="button"
-              :class="['xanhsm-src-chip', 'custom', { active: sourceFilter === 'CUSTOM' }]"
+              :class="['xanhsm-chip', 'custom', { active: sourceFilter === 'CUSTOM' }]"
               @click="sourceFilter = 'CUSTOM'"
             >
               📍 Tự thêm ({{ customPointsCount }})
             </button>
             <button
               type="button"
-              :class="['xanhsm-src-chip', 'fb', { active: sourceFilter === 'FACEBOOK' }]"
+              :class="['xanhsm-chip', 'fb', { active: sourceFilter === 'FACEBOOK' }]"
               @click="sourceFilter = 'FACEBOOK'"
             >
               💬 FB ({{ fbPointsCount }})
             </button>
-            <button
-              type="button"
-              :class="['xanhsm-src-chip', 'lead', { active: sourceFilter === 'LEAD' }]"
-              @click="sourceFilter = 'LEAD'"
-            >
-              📋 CRM ({{ leadPointsCount }})
-            </button>
-          </div>
-
-          <!-- Bộ lọc chip nổi dạng Xanh SM (Tất cả, Chưa đi, Đã đi) -->
-          <div class="xanhsm-filter-chips">
-            <button
-              type="button"
-              :class="['xanhsm-chip', { active: visitFilter === 'ALL' }]"
-              @click="visitFilter = 'ALL'"
-            >
-              Tất cả ({{ currentFilteredTotal }})
-            </button>
+            <span class="xanhsm-chip-sep">|</span>
             <button
               type="button"
               :class="['xanhsm-chip', 'warn', { active: visitFilter === 'NOT_VISITED' }]"
-              @click="visitFilter = 'NOT_VISITED'"
+              @click="visitFilter = visitFilter === 'NOT_VISITED' ? 'ALL' : 'NOT_VISITED'"
             >
               ● Chưa đi ({{ currentFilteredUnvisited }})
             </button>
             <button
               type="button"
               :class="['xanhsm-chip', 'done', { active: visitFilter === 'VISITED' }]"
-              @click="visitFilter = 'VISITED'"
+              @click="visitFilter = visitFilter === 'VISITED' ? 'ALL' : 'VISITED'"
             >
               ✓ Đã đi ({{ currentFilteredVisited }})
             </button>
           </div>
         </header>
 
-        <!-- Các nút tiện ích nổi góc phải phong cách App (Vị trí tôi, Toàn bộ, Danh sách) -->
+        <!-- Các nút tiện ích nổi tinh gọn góc phải (＋ Thêm điểm & 📍 Định vị GPS) -->
         <div class="xanhsm-fab-group">
           <button
             type="button"
@@ -333,14 +318,6 @@
           </button>
           <button
             type="button"
-            class="xanhsm-fab-btn"
-            title="Xem toàn bộ khách hàng"
-            @click="fitAllMarkers"
-          >
-            ⛶
-          </button>
-          <button
-            type="button"
             class="xanhsm-fab-btn my-location"
             :class="{ active: trackingLocation }"
             title="Định vị vị trí của bạn"
@@ -349,23 +326,14 @@
             <span class="gps-dot"></span>
             📍
           </button>
-          <button
-            type="button"
-            class="xanhsm-fab-btn list-toggle"
-            :class="{ active: sheetState === 'expanded' }"
-            title="Xem danh sách khách"
-            @click="toggleSheetList"
-          >
-            📋
-          </button>
         </div>
 
-        <!-- Backdrop mờ khi mở full danh sách hoặc chi tiết khách -->
+        <!-- Backdrop mờ khi mở full danh sách hoặc chi tiết khách (Chạm vào để thu gọn về bản đồ) -->
         <transition name="fade">
           <div
             v-if="sheetState === 'expanded' || (sheetState === 'detail' && selected)"
             class="xanhsm-backdrop"
-            @click="handleBackdropClick"
+            @click="sheetState = 'peek'"
           ></div>
         </transition>
 
@@ -379,33 +347,36 @@
           class="xanhsm-bottom-drawer"
           :class="[`state-${sheetState}`]"
         >
-          <!-- Thanh kéo drag handle chuẩn app -->
+          <!-- Thanh kéo drag handle chuẩn app (Chạm để đóng/mở) -->
           <div class="xanhsm-drag-handle-wrap" @click="handleHandleClick">
             <div class="xanhsm-drag-bar"></div>
+            <span v-if="sheetState === 'expanded'" class="drag-hint-text">▼ Chạm hoặc vuốt xuống để xem bản đồ</span>
           </div>
 
           <!-- TRẠNG THÁI 1: THU GỌN (PEEK) - Chạm để xem danh sách -->
           <div v-if="sheetState === 'peek'" class="xanhsm-peek-content" @click="sheetState = 'expanded'">
             <div class="peek-left">
-              <div class="peek-badge-car">🚗 Tú Audio CRM</div>
-              <strong class="peek-title">{{ visibleCustomers.length }} khách hàng trên lộ trình</strong>
+              <div class="peek-badge-car">🚗 Bản Đồ Khách Hàng</div>
+              <strong class="peek-title">{{ visibleCustomers.length }} điểm hiển thị trên bản đồ</strong>
               <small class="peek-sub">
                 Gần nhất: {{ visibleCustomers[0] ? `${visibleCustomers[0].customerName} (~${distanceFromStore(visibleCustomers[0])} km)` : 'Không có' }}
               </small>
             </div>
             <button type="button" class="peek-open-btn">
-              Xem danh sách ❯
+              Xem danh sách ▲
             </button>
           </div>
 
           <!-- TRẠNG THÁI 2: DANH SÁCH KHÁCH (EXPANDED LIST) -->
           <div v-else-if="sheetState === 'expanded'" class="xanhsm-list-content">
-            <div class="drawer-header">
+            <div class="drawer-header sticky-header">
               <div>
-                <h3 class="drawer-title">Danh sách khách theo khoảng cách</h3>
-                <small class="drawer-sub">Ưu tiên khách gần vị trí của bạn nhất</small>
+                <h3 class="drawer-title">📋 Danh sách ({{ visibleCustomers.length }})</h3>
+                <small class="drawer-sub">Chạm khách để xem vị trí trên bản đồ</small>
               </div>
-              <button type="button" class="drawer-close-btn" @click="sheetState = 'peek'">✕</button>
+              <button type="button" class="drawer-close-btn-prominent" @click="sheetState = 'peek'">
+                🗺 Về bản đồ ✕
+              </button>
             </div>
 
             <div class="xanhsm-cards-scroll">
@@ -416,15 +387,17 @@
                 @click="focusAndSelectCustomer(customer)"
               >
                 <div class="card-left">
-                  <span class="card-num" :class="{ custom: customer.recordType === 'CUSTOM' }">
-                    {{ customer.recordType === 'CUSTOM' ? '📍' : (idx + 1) }}
+                  <span class="card-num" :class="{ custom: customer.recordType === 'CUSTOM', fb: customer.recordType === 'FACEBOOK' }">
+                    {{ customer.recordType === 'CUSTOM' ? '📍' : (customer.recordType === 'FACEBOOK' ? '💬' : '📋') }}
                   </span>
                   <div class="card-info">
                     <div class="card-name-row">
-                      <strong>{{ customer.customerName }}</strong>
-                      <span v-if="customer.recordType === 'CUSTOM'" class="mobile-custom-tag">📍 Tự thêm</span>
+                      <span class="source-pill" :class="customer.recordType.toLowerCase()">
+                        {{ customer.recordType === 'CUSTOM' ? '📍 Tự thêm' : (customer.recordType === 'FACEBOOK' ? '💬 Facebook' : '📋 CRM') }}
+                      </span>
+                      <strong class="card-cust-name">{{ customer.customerName }}</strong>
                       <span :class="['card-status-badge', { visited: customer.visitedAt }]">
-                        {{ customer.visitedAt ? '✓ Đã ghé' : '● Chưa đi' }}
+                        {{ customer.visitedAt ? '✓ Đã đi' : '● Chưa đi' }}
                       </span>
                     </div>
                     <p class="card-address">
@@ -451,6 +424,13 @@
               <p v-if="!visibleCustomers.length" class="map-empty">
                 Không tìm thấy điểm hoặc khách hàng nào theo bộ lọc.
               </p>
+
+              <!-- Nút ghim chân danh sách giúp người dùng cuộn đến đâu cũng quay về bản đồ được -->
+              <div class="drawer-floating-foot">
+                <button type="button" class="btn-back-to-map" @click="sheetState = 'peek'">
+                  🗺 Về bản đồ (Đóng danh sách ✕)
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1359,18 +1339,20 @@ function renderMarkers() {
       const allVisited = group.every(customer => customer.visitedAt)
       const someVisited = group.some(customer => customer.visitedAt)
       const visitClass = allVisited ? 'visited' : someVisited ? 'mixed' : ''
+      const hasFb = group.some(customer => customer.recordType === 'FACEBOOK')
       const marker = L.marker([group[0].lat, group[0].lng], {
         icon: L.divIcon({
-          className: 'customer-cluster-pin',
-          html: `<span class="${visitClass}">${group.length}</span>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
+          className: `customer-cluster-pin ${hasFb ? 'is-fb' : ''}`,
+          html: `<span class="${visitClass} ${hasFb ? 'fb-cluster-badge' : ''}">${hasFb ? '<small class="fb-tag-icon">💬 FB</small>' : ''}<b>${group.length}</b></span>`,
+          iconSize: [hasFb ? 52 : 36, 36],
+          iconAnchor: [hasFb ? 26 : 18, 18]
         })
       })
       marker.clusterCustomers = group
       const rows = group.map((customer, index) =>
         `<button type="button" class="cluster-btn-row" data-map-customer="${index}">
           <span class="c-dot ${customer.visitedAt ? 'visited' : ''}"></span>
+          <span class="cluster-src-tag ${customer.recordType.toLowerCase()}">${customer.recordType === 'FACEBOOK' ? '💬 FB' : '📋 CRM'}</span>
           <strong>${escapeHtml(customer.customerName)}</strong>
           ${customer.phone ? `<small>📞 ${escapeHtml(customer.phone)}</small>` : ''}
         </button>`
@@ -1398,12 +1380,16 @@ function renderMarkers() {
       continue
     }
     const customer = group[0]
-    const marker = L.circleMarker([customer.lat, customer.lng], {
-      radius: 9,
-      color: customer.visitedAt ? '#166534' : '#991b1b',
-      weight: 1.5,
-      fillColor: customer.visitedAt ? '#22c55e' : '#ef4444',
-      fillOpacity: 0.92
+    const isFb = customer.recordType === 'FACEBOOK'
+    const marker = L.marker([customer.lat, customer.lng], {
+      icon: L.divIcon({
+        className: 'customer-single-pin-wrap',
+        html: isFb
+          ? `<div class="fb-single-pin ${customer.visitedAt ? 'visited' : ''}" title="Facebook: ${escapeHtml(customer.customerName)}"><span class="fb-pin-ico">💬</span></div>`
+          : `<div class="crm-single-pin ${customer.visitedAt ? 'visited' : ''}" title="CRM: ${escapeHtml(customer.customerName)}"><span class="crm-pin-ico">📋</span></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 28]
+      })
     })
     marker.customerRecord = customer
     if (!isMobile.value) {
@@ -2401,19 +2387,28 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
+    overflow: hidden;
   }
 
   .xanhsm-drag-handle-wrap {
     padding: 10px 0 6px;
     cursor: pointer;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex: none;
   }
   .xanhsm-drag-bar {
     width: 44px;
     height: 5px;
     background: #cbd5e1;
     border-radius: 999px;
+  }
+  .drag-hint-text {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-weight: 600;
   }
 
   /* TRẠNG THÁI 1: PEEK (THU GỌN - CHỈ CAO ~85PX) */
@@ -2460,14 +2455,15 @@ onBeforeUnmount(() => {
   }
   .peek-open-btn {
     border: 0;
-    background: #f1f5f9;
-    color: #0f172a;
+    background: #0f172a;
+    color: #ffffff;
     font-weight: 700;
     font-size: 0.78rem;
-    padding: 8px 12px;
+    padding: 8px 14px;
     border-radius: 999px;
     white-space: nowrap;
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
   }
 
   /* TRẠNG THÁI 2: EXPANDED LIST (MỞ RỘNG DANH SÁCH KHÁCH) */
@@ -2479,14 +2475,17 @@ onBeforeUnmount(() => {
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    padding: 0 16px 10px;
+    overflow: hidden;
+    padding: 0 16px 6px;
   }
-  .drawer-header {
+  .drawer-header.sticky-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     padding-bottom: 10px;
     border-bottom: 1px solid #f1f5f9;
+    flex: none;
+    background: #ffffff;
   }
   .drawer-title {
     font-size: 0.98rem;
@@ -2498,27 +2497,57 @@ onBeforeUnmount(() => {
     font-size: 0.72rem;
     color: #64748b;
   }
-  .drawer-close-btn {
-    border: 0;
-    background: #f1f5f9;
-    color: #64748b;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    font-size: 0.88rem;
+  .drawer-close-btn-prominent {
+    border: 1px solid #0f172a;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 999px;
     cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  }
+  .drawer-close-btn-prominent:active {
+    transform: scale(0.95);
   }
 
   .xanhsm-cards-scroll {
     overflow-y: auto;
     flex: 1;
-    padding: 10px 0;
+    padding: 10px 0 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
     -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+  .drawer-floating-foot {
+    position: sticky;
+    bottom: 0;
+    padding: 8px 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.95) 30%, #ffffff 100%);
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+  }
+  .btn-back-to-map {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 22px;
+    background: #0f172a;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.35);
+    cursor: pointer;
+  }
+  .btn-back-to-map:active {
+    transform: scale(0.96);
   }
   .xanhsm-customer-card {
     display: flex;
@@ -2876,6 +2905,99 @@ onBeforeUnmount(() => {
   border-color: #b45309;
 }
 
+/* Cluster dành riêng cho cụm Facebook (Màu xanh dương đặc trưng của Meta) */
+:global(.customer-cluster-pin.is-fb span) {
+  border: 2px solid #1d4ed8 !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.45) !important;
+  border-radius: 999px !important;
+  padding: 0 8px !important;
+  width: auto !important;
+  min-width: 48px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+}
+:global(.customer-cluster-pin.is-fb span .fb-tag-icon) {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.95;
+}
+:global(.customer-cluster-pin.is-fb span b) {
+  font-size: 13px;
+  font-weight: 800;
+}
+:global(.customer-cluster-pin.is-fb span.visited) {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  border-color: #166534 !important;
+}
+
+:global(.cluster-src-tag) {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 4px;
+}
+:global(.cluster-src-tag.facebook) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+:global(.cluster-src-tag.lead) {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+/* Single Pins: Facebook (Xanh dương 💬), CRM (Cam 📋) */
+:global(.customer-single-pin-wrap) {
+  display: grid;
+  place-items: center;
+  border: none !important;
+  background: transparent !important;
+}
+:global(.fb-single-pin) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: 2px solid #ffffff;
+  box-shadow: 0 3px 8px rgba(29, 78, 216, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+:global(.fb-single-pin.visited) {
+  background: linear-gradient(135deg, #10b981, #047857);
+}
+:global(.fb-pin-ico) {
+  transform: rotate(45deg);
+  font-size: 12px;
+}
+
+:global(.crm-single-pin) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 2px solid #ffffff;
+  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.45);
+  cursor: pointer;
+}
+:global(.crm-pin-ico) {
+  transform: rotate(45deg);
+  font-size: 12px;
+}
+
 /* ========================================================
    CSS NGUỒN ĐIỂM (SOURCE FILTER & CUSTOM POINTS)
    ======================================================== */
@@ -3007,45 +3129,70 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
-.xanhsm-source-chips {
+.xanhsm-combined-chips {
+  pointer-events: auto;
   display: flex;
   gap: 6px;
+  align-items: center;
   overflow-x: auto;
   padding: 2px 2px 4px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
-.xanhsm-source-chips::-webkit-scrollbar {
+.xanhsm-combined-chips::-webkit-scrollbar {
   display: none;
 }
-.xanhsm-src-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
+.xanhsm-chip-sep {
+  color: #cbd5e1;
+  font-weight: 300;
+  margin: 0 2px;
+  font-size: 0.85rem;
+  user-select: none;
 }
-.xanhsm-src-chip.active {
-  background: #0f172a;
-  border-color: #0f172a;
-  color: #ffffff;
-}
-.xanhsm-src-chip.custom.active {
+.xanhsm-chip.custom.active {
   background: #7c3aed;
-  border-color: #7c3aed;
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
 }
-.xanhsm-src-chip.fb.active {
+.xanhsm-chip.fb.active {
   background: #1d4ed8;
-  border-color: #1d4ed8;
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.35);
 }
-.xanhsm-src-chip.lead.active {
-  background: #d97706;
-  border-color: #d97706;
-  color: #ffffff;
+
+/* Nhãn nguồn nổi bật trên thẻ khách hàng */
+.source-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex: none;
+}
+.source-pill.custom {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+.source-pill.facebook {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+.source-pill.lead {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.card-num.fb {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.card-num.custom {
+  background: #f5f3ff;
+  color: #7c3aed;
 }
 
 .add-custom-fab {
