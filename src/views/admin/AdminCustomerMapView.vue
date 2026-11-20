@@ -2195,14 +2195,20 @@ onBeforeUnmount(() => {
    ======================================================== */
 @media (max-width: 860px) {
   .customer-map-page.mobile-app-mode {
-    /* Đẩy tràn viền chuẩn xác theo padding 12px của admin-viewport */
-    margin: -12px;
-    height: calc(100dvh - 54px - 62px);
-    width: calc(100% + 24px);
-    max-width: calc(100% + 24px);
-    overflow: hidden;
-    position: relative;
+    position: fixed !important;
+    top: 64px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    z-index: 50 !important;
     background: #e2e8f0;
+    touch-action: none;
   }
 
   .xanhsm-app-container {
@@ -3775,5 +3781,11 @@ onBeforeUnmount(() => {
   font-size: 11px;
   font-weight: 700;
   margin-bottom: 2px;
+}
+
+@media (max-width: 680px) {
+  .customer-map-page.mobile-app-mode {
+    top: 52px !important;
+  }
 }
 </style>
