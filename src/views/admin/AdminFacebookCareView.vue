@@ -18,15 +18,17 @@
         :class="['view-tab-btn', { active: currentTab === 'CARE' }]"
         @click="currentTab = 'CARE'"
       >
-        💬 Chăm Sóc Tin Nhắn & Khách Hàng ({{ customers.length }})
+        <span class="tab-label-full">💬 Chăm Sóc Tin Nhắn & Khách Hàng ({{ customers.length }})</span>
+        <span class="tab-label-short">💬 Khách Hàng ({{ customers.length }})</span>
       </button>
       <button
         type="button"
         :class="['view-tab-btn', { active: currentTab === 'ANALYTICS' }]"
         @click="switchTab('ANALYTICS')"
       >
-        📊 Phân Tích Hiệu Quả Quảng Cáo & ROI
-        <span class="tab-badge-hot">Đo Lường Doanh Thu</span>
+        <span class="tab-label-full">📊 Phân Tích Hiệu Quả Quảng Cáo & ROI</span>
+        <span class="tab-label-short">📊 Phân Tích & ROI</span>
+        <span class="tab-badge-hot hide-mobile">Đo Lường Doanh Thu</span>
       </button>
     </div>
 
@@ -726,6 +728,20 @@ onBeforeUnmount(() => {
   padding: 2px 7px;
   border-radius: 999px;
   font-weight: 700;
+}
+.tab-label-short {
+  display: none;
+}
+.tab-label-full {
+  display: inline;
+}
+.ads-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ads-table {
+  min-width: 520px;
+  width: 100%;
 }
 
 /* ==========================================================================
@@ -1983,21 +1999,29 @@ onBeforeUnmount(() => {
 }
 
 @media(max-width: 768px) {
-  /* Tabs điều hướng chính cuộn ngang mượt mà trên điện thoại */
+  /* Tabs điều hướng chính: Nhãn ngắn vừa khít 100% màn hình, không bị tràn cắt chữ */
+  .tab-label-short {
+    display: inline;
+  }
+  .tab-label-full {
+    display: none;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
   .view-tabs {
     display: flex;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
     padding: 3px;
+    gap: 3px;
   }
-  .view-tabs::-webkit-scrollbar { display: none; }
   .view-tab-btn {
-    flex-shrink: 0;
+    flex: 1 1 50%;
+    justify-content: center;
+    text-align: center;
     white-space: nowrap;
-    font-size: 0.78rem;
-    padding: 8px 12px;
+    font-size: 0.79rem;
+    padding: 8px 6px;
   }
 
   /* Nhóm nút chọn ngày & trạng thái dạng cuộn ngang chuẩn iOS */
