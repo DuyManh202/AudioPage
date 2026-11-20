@@ -799,18 +799,11 @@ const messengerPolicyInfo = computed(() => {
       within24h: true,
       label: `🟢 Cửa sổ 24h đang mở: Còn ${h} giờ ${m} phút để nhắn tin trực tiếp qua Messenger`
     }
-  } else if (diffHours <= 7 * 24) {
-    const days = Math.floor(diffHours / 24)
-    return {
-      canSend: true,
-      within24h: false,
-      label: `🟡 Đã quá 24h (${days} ngày trước): Thử gửi qua CSKH Human Agent hoặc gọi điện/Zalo`
-    }
   } else {
     return {
       canSend: false,
       within24h: false,
-      label: '⚠️ Đã quá thời hạn Facebook Messenger: Meta khóa gửi tự do để chống spam'
+      label: '⚠️ Đã quá 24h: Facebook Meta khóa gửi tin tự do để chống spam. Vui lòng bấm [💬 Mở Zalo] hoặc chọn [📝 Ghi chú nội bộ].'
     }
   }
 })
@@ -830,7 +823,12 @@ function select(c) {
       assignedTo: c.assignedTo,
       sourceAdId: c.sourceAdId || ''
     })
-    messageDirection.value = messengerConnected.value ? 'OUT' : 'IN'
+    // Tự động kiểm tra thời hạn: nếu trong 24h thì mặc định Trả lời khách qua Messenger ('OUT'), nếu quá 24h thì tự động chuyển sang Ghi chú nội bộ ('IN')
+    const msgs = c.messages || []
+    const realIn = msgs.filter(m => m.direction === 'IN' && m.platformMessageId).slice(-1)[0]
+      || msgs.filter(m => m.direction === 'IN').slice(-1)[0]
+    const diffHours = realIn ? (Date.now() - new Date(realIn.createdAt).getTime()) / (1000 * 60 * 60) : 9999
+    messageDirection.value = (messengerConnected.value && diffHours <= 24) ? 'OUT' : 'IN'
   }
 }
 function onSourceAdChange() { const chosen = ads.value.find(a => a.id === edit.sourceAdId); if (chosen) { Object.assign(edit, { sourceAdName: chosen.name, sourceCampaignId: chosen.campaignId || '', sourceCampaignName: chosen.campaignName || '', sourceType: 'AD' }) } else { Object.assign(edit, { sourceAdName: '', sourceCampaignId: '', sourceCampaignName: '', sourceType: '' }) }; save() }
@@ -950,6 +948,10 @@ const scrollToTop = () => {
 async function addMessage() {
   if (!messageBody.value.trim()) return
   error.value = ''
+  if (messageDirection.value === 'OUT' && messengerConnected.value && !messengerPolicyInfo.value.within24h) {
+    error.value = 'Khách hàng này đã quá 24 giờ kể từ tin nhắn cuối trên Messenger. Meta (Facebook) chặn gửi tự do để chống spam. Anh vui lòng bấm nút [💬 Mở Zalo] hoặc đổi sang [📝 Ghi chú nội bộ] nhé.'
+    return
+  }
   busy.value = true
   try {
     const customerId = selected.value.id

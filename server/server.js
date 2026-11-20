@@ -3784,42 +3784,30 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
     const lastInboundRow = lastInboundResult.rows[0] || fallbackInbound?.rows[0]
     const diffHours = lastInboundRow ? (Date.now() - new Date(lastInboundRow.created_at).getTime()) / (1000 * 60 * 60) : 9999
 
+    if (diffHours > 24) {
+      return res.status(409).json({ 
+        success: false, 
+        message: `Đã quá 24 giờ kể từ tin nhắn Messenger gần nhất của khách. Meta (Facebook) chặn gửi tin nhắn tự do để chống spam. Vui lòng bấm [Nhắn Zalo] hoặc [Gọi điện] qua SĐT ${customer.phone ? `(${customer.phone})` : ''} để tiếp tục tư vấn.` 
+      })
+    }
+
     let sentPayload
-    let usedTag = null
     try {
-      if (diffHours <= 24) {
-        // Trong 24h: Gửi Standard Response bình thường
-        sentPayload = await sendFacebookText(customer.facebook_id, text)
-      } else if (diffHours <= 7 * 24) {
-        // Từ 24h - 7 ngày: Thử gửi với tag HUMAN_AGENT hỗ trợ tư vấn trực tiếp
-        usedTag = 'HUMAN_AGENT'
-        sentPayload = await sendFacebookText(customer.facebook_id, text, 'HUMAN_AGENT')
-      } else {
-        return res.status(409).json({ 
-          success: false, 
-          message: `Đã quá 24 giờ kể từ tin nhắn Messenger gần nhất của khách. Meta Facebook chặn gửi tin nhắn tự do để chống spam. Vui lòng gọi điện hoặc nhắn Zalo qua SĐT ${customer.phone || 'của khách'}.` 
-        })
-      }
+      sentPayload = await sendFacebookText(customer.facebook_id, text)
     } catch (err) {
-      // Nếu gửi standard thất bại do vượt khung 24h, thử cứu bằng HUMAN_AGENT (trong 7 ngày)
-      const isWindowError = err.message && (err.message.includes('outside of allowed window') || err.message.includes('2018278'))
-      if (!usedTag && isWindowError && diffHours <= 7 * 24) {
-        try {
-          sentPayload = await sendFacebookText(customer.facebook_id, text, 'HUMAN_AGENT')
-        } catch (tagErr) {
-          return res.status(409).json({ 
-            success: false, 
-            message: `Đã quá 24 giờ kể từ tin nhắn gần nhất của khách trên Messenger. Meta yêu cầu khách phải nhắn trước hoặc liên hệ qua SĐT/Zalo ${customer.phone ? `(${customer.phone})` : ''}.` 
-          })
-        }
-      } else if (isWindowError) {
+      const isWindowError = err.message && (
+        err.message.includes('outside of allowed window') || 
+        err.message.includes('2018278') ||
+        err.message.includes('HUMAN_AGENT') ||
+        err.message.includes('phê duyệt trước')
+      )
+      if (isWindowError) {
         return res.status(409).json({ 
           success: false, 
-          message: `Đã quá 24 giờ kể từ tin nhắn Messenger gần nhất của khách. Meta Facebook chặn gửi tự do. Vui lòng liên hệ qua SĐT/Zalo ${customer.phone ? `(${customer.phone})` : ''}.` 
+          message: `Đã quá 24 giờ kể từ tin nhắn Messenger gần nhất của khách. Meta (Facebook) chặn gửi tin nhắn tự do để chống spam. Vui lòng bấm [Nhắn Zalo] hoặc [Gọi điện] qua SĐT ${customer.phone ? `(${customer.phone})` : ''}.` 
         })
-      } else {
-        return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' })
       }
+      return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' })
     }
     const saved = await query("INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id) VALUES ($1,$2,$3,'OUT',$4,$5) ON CONFLICT (platform_message_id) DO UPDATE SET created_by=EXCLUDED.created_by RETURNING id, body, direction, created_at", [randomUUID(), customer.id, text, req.admin.name, sentPayload?.message_id || null])
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [text, customer.id])
