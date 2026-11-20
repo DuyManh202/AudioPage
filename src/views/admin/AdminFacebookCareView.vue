@@ -201,6 +201,35 @@
             <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Hôm nay' }}) với các chỉ số kỹ thuật CTR, CPM, Freq và doanh thu thực tế</p>
           </div>
           <div class="head-actions">
+            <!-- Bộ lọc trạng thái hoạt động / tạm dừng -->
+            <div class="status-btn-group">
+              <button
+                type="button"
+                :class="['status-btn', { active: analyticsStatusFilter === 'ALL' }]"
+                @click="analyticsStatusFilter = 'ALL'"
+                title="Xem tất cả chiến dịch"
+              >
+                Tất cả ({{ analyticsData.length }})
+              </button>
+              <button
+                type="button"
+                :class="['status-btn status-btn-active', { active: analyticsStatusFilter === 'ACTIVE' }]"
+                @click="analyticsStatusFilter = 'ACTIVE'"
+                title="Chỉ hiển thị các chiến dịch đang chạy trên Meta"
+              >
+                🟢 Đang chạy ({{ activeAdsCount }})
+              </button>
+              <button
+                type="button"
+                :class="['status-btn status-btn-paused', { active: analyticsStatusFilter === 'PAUSED' }]"
+                @click="analyticsStatusFilter = 'PAUSED'"
+                title="Chỉ hiển thị các chiến dịch đã tắt hoặc tạm dừng"
+              >
+                ⏸️ Đã tạm dừng ({{ pausedAdsCount }})
+              </button>
+            </div>
+
+            <!-- Bộ lọc khoảng thời gian -->
             <div class="period-btn-group">
               <button
                 type="button"
@@ -251,7 +280,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in analyticsData" :key="item.id" :class="`row-status-${item.isMetaActive ? 'active' : 'paused'}`">
+              <tr v-for="item in filteredAnalyticsData" :key="item.id" :class="`row-status-${item.isMetaActive ? 'active' : 'paused'}`">
                 <!-- Cột 1: Chiến Dịch & Trạng Thái -->
                 <td class="col-campaign">
                   <div class="campaign-cell">
@@ -340,8 +369,10 @@
                   </button>
                 </td>
               </tr>
-              <tr v-if="!analyticsData.length">
-                <td colspan="7" class="empty">Chưa có dữ liệu phân tích chiến dịch. Bấm "Tải Lại Số Liệu" để đối soát.</td>
+              <tr v-if="!filteredAnalyticsData.length">
+                <td colspan="7" class="empty">
+                  {{ analyticsBusy ? 'Đang tải dữ liệu chiến dịch...' : (analyticsStatusFilter === 'ACTIVE' ? 'Không có chiến dịch nào đang chạy trên Meta.' : (analyticsStatusFilter === 'PAUSED' ? 'Không có chiến dịch nào đã tạm dừng.' : 'Chưa có dữ liệu phân tích chiến dịch.')) }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -362,6 +393,14 @@ const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCrea
 const currentTab = ref('CARE')
 const analyticsData = ref([])
 const analyticsPeriod = ref('maximum')
+const analyticsStatusFilter = ref('ALL') // 'ALL' | 'ACTIVE' | 'PAUSED'
+const activeAdsCount = computed(() => analyticsData.value.filter(a => a.isMetaActive).length)
+const pausedAdsCount = computed(() => analyticsData.value.filter(a => !a.isMetaActive).length)
+const filteredAnalyticsData = computed(() => {
+  if (analyticsStatusFilter.value === 'ACTIVE') return analyticsData.value.filter(a => a.isMetaActive)
+  if (analyticsStatusFilter.value === 'PAUSED') return analyticsData.value.filter(a => !a.isMetaActive)
+  return analyticsData.value
+})
 const analyticsSummary = ref({
   totalSpend: 0,
   totalLeads: 0,
@@ -613,8 +652,14 @@ onBeforeUnmount(() => {
 .table-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .table-card-head h3{font-size:1rem;margin:0;color:#0f172a;font-weight:800}
 .table-card-head p{font-size:.76rem;color:#64748b;margin:3px 0 0}
-.head-actions{display:flex;gap:8px;align-items:center}
+.head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .analytics-table-wrap{overflow-x:auto}
+.status-btn-group{display:inline-flex;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;background:#f8fafc}
+.status-btn{padding:6px 12px;font-size:.74rem;font-weight:700;border:none;background:transparent;color:#475569;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.status-btn:hover{background:#e2e8f0;color:#0f172a}
+.status-btn.active{background:#0f172a;color:#fff}
+.status-btn.status-btn-active.active{background:#16a34a;color:#fff;box-shadow:0 0 10px rgba(22,163,74,0.35)}
+.status-btn.status-btn-paused.active{background:#64748b;color:#fff}
 .period-btn-group{display:inline-flex;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;background:#f8fafc}
 .period-btn{padding:6px 12px;font-size:.74rem;font-weight:700;border:none;background:transparent;color:#475569;cursor:pointer;transition:all .15s}
 .period-btn:hover{background:#e2e8f0}
