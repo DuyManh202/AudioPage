@@ -1381,14 +1381,16 @@ const handleLogout = async () => {
     top: 0;
     bottom: 0;
     transform: translateX(-100%);
-    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 20px 0 50px rgba(15, 23, 42, 0.3);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.25s;
+    box-shadow: none;
+    visibility: hidden;
     z-index: 2010;
   }
 
   .admin-sidebar.is-open {
     transform: translateX(0);
-    z-index: 2010;
+    box-shadow: 20px 0 50px rgba(15, 23, 42, 0.3);
+    visibility: visible;
   }
 
   .mobile-close-nav,
