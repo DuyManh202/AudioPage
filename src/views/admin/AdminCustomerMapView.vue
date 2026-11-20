@@ -564,13 +564,33 @@
     <transition name="slide-down">
       <div v-if="isPickingLocationOnMap" class="map-pick-banner">
         <div class="pick-banner-content">
-          <span class="pick-pulse-dot"></span>
-          <span class="pick-text">
-            🎯 <strong>Chế độ chọn tọa độ:</strong> Chạm hoặc nhấp chuột vào bất kỳ vị trí nào trên bản đồ để lấy vị trí cho điểm.
-          </span>
-          <button type="button" class="pick-cancel-btn" @click="cancelPickingLocation">
-            ✕ Hủy chọn
-          </button>
+          <div class="pick-top-row">
+            <span class="pick-pulse-dot"></span>
+            <span class="pick-text">
+              🎯 <strong>Chế độ chọn tọa độ:</strong> Chạm vào bản đồ hoặc tìm vị trí để bay nhanh tới địa điểm cần ghim:
+            </span>
+            <button type="button" class="pick-cancel-btn" @click="cancelPickingLocation">
+              ✕ Xong / Quay lại form
+            </button>
+          </div>
+          <div class="pick-search-bar">
+            <span class="pick-search-ico">🔍</span>
+            <input
+              v-model="pickMapSearchQuery"
+              type="search"
+              placeholder="Gõ địa điểm để bản đồ bay tới… (VD: TP Việt Trì, Phù Ninh, Cẩm Khê)"
+              class="pick-search-input"
+              @keydown.enter.prevent="executePickMapSearch"
+            >
+            <button
+              type="button"
+              class="pick-search-btn"
+              :disabled="isSearchingPickMap"
+              @click="executePickMapSearch"
+            >
+              {{ isSearchingPickMap ? '…' : 'Bay tới vị trí' }}
+            </button>
+          </div>
         </div>
       </div>
     </transition>
@@ -591,6 +611,52 @@
           </div>
 
           <form class="modal-card-body" @submit.prevent="saveCustomPoint">
+            <!-- TÌM KIẾM VỊ TRÍ / ĐỊA CHỈ NHANH -->
+            <div class="form-row search-location-row">
+              <label>
+                🔍 Tìm kiếm vị trí / Địa chỉ trên bản đồ
+                <span class="sub-hint">(Tự động nhận diện Tỉnh &amp; Tọa độ GPS)</span>
+              </label>
+              <div class="location-search-box">
+                <input
+                  v-model="locationSearchQuery"
+                  type="search"
+                  placeholder="Gõ tên xã, phường, huyện, đường, chợ... (VD: Cẩm Khê, Lâm Thao, Việt Trì)"
+                  class="form-input location-search-input"
+                  @input="handleLocationSearchInput"
+                  @keydown.enter.prevent="executeLocationSearch"
+                >
+                <button
+                  type="button"
+                  class="btn-search-location"
+                  :disabled="isSearchingLocation"
+                  @click="executeLocationSearch"
+                >
+                  {{ isSearchingLocation ? 'Đang tìm…' : 'Tìm vị trí' }}
+                </button>
+              </div>
+
+              <!-- Gợi ý kết quả tìm kiếm vị trí -->
+              <div v-if="locationSearchResults.length > 0" class="location-results-dropdown">
+                <div
+                  v-for="(item, idx) in locationSearchResults"
+                  :key="idx"
+                  class="location-result-item"
+                  @click="applySearchResult(item)"
+                >
+                  <span class="res-pin">📍</span>
+                  <div class="res-info">
+                    <strong>{{ item.name }}</strong>
+                    <small>{{ item.displayName }}</small>
+                  </div>
+                  <span class="res-apply-btn">Ghim vị trí ❯</span>
+                </div>
+              </div>
+              <div v-if="searchSuccessMessage" class="search-success-msg">
+                {{ searchSuccessMessage }}
+              </div>
+            </div>
+
             <div class="form-row">
               <label>Tên điểm / Tên khách hàng <span class="req">*</span></label>
               <input
@@ -780,6 +846,16 @@ const formPoint = ref({
   interest: ''
 })
 
+// Quản lý tìm kiếm vị trí / địa chỉ tự động
+const locationSearchQuery = ref('')
+const locationSearchResults = ref([])
+const isSearchingLocation = ref(false)
+const searchSuccessMessage = ref('')
+let locationSearchTimer = null
+
+const pickMapSearchQuery = ref('')
+const isSearchingPickMap = ref(false)
+
 // Trạng thái của Bottom Drawer trên Mobile: 'peek' (thu gọn) | 'expanded' (danh sách) | 'detail' (chi tiết khách)
 const sheetState = ref('peek')
 
@@ -859,9 +935,120 @@ function onProvinceChange() {
   }
 }
 
+function fallbackSearchLocationClient(q) {
+  const norm = normalizePlaceText(q)
+  return VIETNAM_PROVINCES_LIST.filter(p =>
+    normalizePlaceText(p.displayName).includes(norm) ||
+    normalizePlaceText(p.name).includes(norm)
+  ).slice(0, 6).map(p => ({
+    name: p.displayName,
+    displayName: `${p.displayName}, Việt Nam`,
+    lat: p.lat,
+    lng: p.lng,
+    province: p.displayName
+  }))
+}
+
+function handleLocationSearchInput() {
+  if (searchSuccessMessage.value) searchSuccessMessage.value = ''
+  if (locationSearchTimer) clearTimeout(locationSearchTimer)
+  const q = locationSearchQuery.value.trim()
+  if (!q || q.length < 2) {
+    locationSearchResults.value = []
+    return
+  }
+  locationSearchTimer = setTimeout(() => {
+    executeLocationSearch()
+  }, 350)
+}
+
+async function executeLocationSearch() {
+  const q = locationSearchQuery.value.trim()
+  if (!q || q.length < 2) return
+  isSearchingLocation.value = true
+  searchSuccessMessage.value = ''
+  try {
+    const res = await apiRequest(`/admin/customer-map/search-location?q=${encodeURIComponent(q)}`)
+    let items = Array.isArray(res?.data) ? res.data : []
+    if (items.length === 0) {
+      items = fallbackSearchLocationClient(q)
+    }
+    locationSearchResults.value = items
+  } catch {
+    locationSearchResults.value = fallbackSearchLocationClient(q)
+  } finally {
+    isSearchingLocation.value = false
+  }
+}
+
+function applySearchResult(item) {
+  formPoint.value.lat = Number(item.lat.toFixed(6))
+  formPoint.value.lng = Number(item.lng.toFixed(6))
+  if (item.province) {
+    const matched = VIETNAM_PROVINCES_LIST.find(p =>
+      normalizePlaceText(p.displayName) === normalizePlaceText(item.province) ||
+      normalizePlaceText(item.displayName).includes(normalizePlaceText(p.displayName))
+    )
+    if (matched) {
+      formPoint.value.province = matched.displayName
+    }
+  }
+  if (!formPoint.value.name || formPoint.value.name.trim() === '') {
+    formPoint.value.name = item.name
+  }
+  formPoint.value.address = item.displayName || item.name
+  locationSearchQuery.value = item.name
+  locationSearchResults.value = []
+  searchSuccessMessage.value = `✓ Đã định vị: ${item.name} (Tọa độ: ${formPoint.value.lat}, ${formPoint.value.lng})`
+}
+
+async function executePickMapSearch() {
+  const q = pickMapSearchQuery.value.trim()
+  if (!q || !map) return
+  isSearchingPickMap.value = true
+  try {
+    let items = []
+    try {
+      const res = await apiRequest(`/admin/customer-map/search-location?q=${encodeURIComponent(q)}`)
+      items = Array.isArray(res?.data) ? res.data : []
+    } catch {
+      items = fallbackSearchLocationClient(q)
+    }
+    if (items.length > 0) {
+      const target = items[0]
+      formPoint.value.lat = Number(target.lat.toFixed(6))
+      formPoint.value.lng = Number(target.lng.toFixed(6))
+      if (target.province) {
+        const matched = VIETNAM_PROVINCES_LIST.find(p => normalizePlaceText(p.displayName) === normalizePlaceText(target.province))
+        if (matched) formPoint.value.province = matched.displayName
+      }
+      if (target.displayName) formPoint.value.address = target.displayName
+
+      map.flyTo([target.lat, target.lng], 14, { animate: true, duration: 1.2 })
+
+      if (tempPickLayer) {
+        tempPickLayer.clearLayers()
+        L.circleMarker([target.lat, target.lng], {
+          radius: 12,
+          color: '#5b21b6',
+          fillColor: '#8b5cf6',
+          fillOpacity: 0.95,
+          weight: 3
+        }).addTo(tempPickLayer)
+      }
+    }
+  } finally {
+    isSearchingPickMap.value = false
+  }
+}
+
 function openAddModal() {
   modalMode.value = 'add'
   modalError.value = ''
+  locationSearchQuery.value = ''
+  locationSearchResults.value = []
+  searchSuccessMessage.value = ''
+  pickMapSearchQuery.value = ''
   formPoint.value = {
     id: '',
     name: '',
@@ -880,6 +1067,10 @@ function openAddModal() {
 function openEditModal(point) {
   modalMode.value = 'edit'
   modalError.value = ''
+  locationSearchQuery.value = point.customerName || ''
+  locationSearchResults.value = []
+  searchSuccessMessage.value = ''
+  pickMapSearchQuery.value = ''
   formPoint.value = {
     id: point.id,
     name: point.customerName || '',
@@ -2860,7 +3051,7 @@ onBeforeUnmount(() => {
 }
 
 /* ========================================================
-   MAP PICK BANNER (CHẾ ĐỘ CHỌN TỌA ĐỘ TRÊN BẢN ĐỒ)
+   MAP PICK BANNER (CHẾ ĐỘ CHỌN TỌA ĐỘ TRỰC TIẾP TRÊN BẢN ĐỒ)
    ======================================================== */
 .map-pick-banner {
   position: absolute;
@@ -2868,20 +3059,25 @@ onBeforeUnmount(() => {
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  width: 90%;
-  max-width: 600px;
+  width: 92%;
+  max-width: 680px;
 }
 .pick-banner-content {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   background: #1e1b4b;
   color: #ffffff;
   padding: 10px 16px;
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   border: 1px solid #4338ca;
-  animation: pulse-glow 2s infinite ease-in-out;
+  animation: pulse-glow 2.5s infinite ease-in-out;
+}
+.pick-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .pick-pulse-dot {
   width: 10px;
@@ -2892,7 +3088,7 @@ onBeforeUnmount(() => {
   flex: none;
 }
 .pick-text {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   line-height: 1.35;
   flex: 1;
 }
@@ -2900,7 +3096,7 @@ onBeforeUnmount(() => {
   padding: 5px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-size: 0.74rem;
   font-weight: 700;
@@ -2908,7 +3104,155 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .pick-cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.22);
+}
+.pick-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.pick-search-ico {
+  font-size: 13px;
+  opacity: 0.8;
+}
+.pick-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 0.78rem;
+}
+.pick-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+.pick-search-btn {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: none;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pick-search-btn:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+/* ========================================================
+   CSS TÌM KIẾM VỊ TRÍ TRONG MODAL
+   ======================================================== */
+.search-location-row {
+  background: #f5f3ff;
+  border: 1px dashed #c4b5fd;
+  padding: 12px;
+  border-radius: 12px;
+}
+.sub-hint {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #7c3aed;
+  margin-left: 4px;
+}
+.location-search-box {
+  display: flex;
+  gap: 8px;
+}
+.location-search-input {
+  flex: 1;
+  background: #ffffff;
+  border-color: #c4b5fd;
+}
+.btn-search-location {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.btn-search-location:hover:not(:disabled) {
+  background: #6d28d9;
+}
+.location-results-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #ddd6fe;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.12);
+  padding: 4px;
+}
+.location-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.location-result-item:hover {
+  background: #faf5ff;
+}
+.res-pin {
+  font-size: 15px;
+  flex: none;
+}
+.res-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.res-info strong {
+  font-size: 0.78rem;
+  color: #1e1b4b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.res-info small {
+  font-size: 0.68rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.res-apply-btn {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #7c3aed;
+  padding: 3px 8px;
+  background: #f5f3ff;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex: none;
+}
+.search-success-msg {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 @keyframes pulse-glow {

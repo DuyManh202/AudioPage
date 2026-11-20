@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { query, withTransaction } from './db.js'
-import { findProvince } from './vietnamProvinces.js'
+import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
 
@@ -3212,6 +3212,112 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
       return province ? [{ id: row.id, customerName: row.customer_name || 'Khách đặt hàng', phone: row.customer_phone || '', address: row.shipping_address || '', status: row.status, lat: province.lat, lng: province.lng, province: province.displayName, locationPrecision: 'PROVINCE' }] : []
     })
     res.json({ success: true, data: [...byPhone.values(), ...customPoints], deliveryOrders, unlocatedCount, origin: { address: '43 Hùng Vương, Phường Vĩnh Yên, Phú Thọ', lat: 21.31, lng: 105.60 } })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.get('/api/v1/admin/customer-map/search-location', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim()
+    if (!q || q.length < 2) {
+      return res.json({ success: true, data: [] })
+    }
+
+    const results = []
+    // 1. Thử gọi Photon Geocoding API (OpenStreetMap dữ liệu thế giới & Việt Nam)
+    try {
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lat=21.32&lon=105.40`
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 3500)
+      const resp = await fetch(photonUrl, {
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      })
+      clearTimeout(timer)
+      if (resp.ok) {
+        const json = await resp.json()
+        if (Array.isArray(json?.features)) {
+          for (const f of json.features) {
+            const props = f.properties || {}
+            const coords = f.geometry?.coordinates || []
+            if (coords.length >= 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+              const name = props.name || props.street || q
+              const parts = [props.name, props.street, props.district || props.city, props.state, props.country].filter(Boolean)
+              const displayName = parts.join(', ') || name
+              const detected = findProvince(displayName) || findProvince(props.state || props.city)
+              results.push({
+                name,
+                displayName,
+                lat: Number(coords[1]),
+                lng: Number(coords[0]),
+                province: detected?.displayName || props.state || props.city || ''
+              })
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi Photon nếu timeout hoặc mạng chặn
+    }
+
+    // 2. Nếu chưa có kết quả, thử Nominatim OpenStreetMap
+    if (results.length === 0) {
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=vn&limit=8&addressdetails=1`
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 4000)
+        const resp = await fetch(nomUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'TuAudioApp/2.0 (contact@amek.io.vn)'
+          },
+          signal: controller.signal
+        })
+        clearTimeout(timer)
+        if (resp.ok) {
+          const json = await resp.json()
+          if (Array.isArray(json)) {
+            for (const item of json) {
+              const lat = Number(item.lat)
+              const lng = Number(item.lon)
+              if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                const detected = findProvince(item.display_name) || findProvince(item.address?.state || item.address?.province)
+                results.push({
+                  name: item.name || item.display_name?.split(',')[0] || q,
+                  displayName: item.display_name,
+                  lat,
+                  lng,
+                  province: detected?.displayName || item.address?.state || item.address?.province || ''
+                })
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Bỏ qua lỗi Nominatim
+      }
+    }
+
+    // 3. Fallback đối chiếu với danh sách các tỉnh thành và alias nội bộ
+    if (results.length === 0) {
+      const qNorm = normalizeVietnamText(q)
+      const matchedProvinces = VIETNAM_PROVINCES.filter(p =>
+        normalizeVietnamText(p.displayName).includes(qNorm) ||
+        p.aliases.some(alias => normalizeVietnamText(alias).includes(qNorm))
+      )
+      for (const p of matchedProvinces.slice(0, 5)) {
+        results.push({
+          name: p.displayName,
+          displayName: `${p.displayName}, Việt Nam`,
+          lat: p.lat,
+          lng: p.lng,
+          province: p.displayName
+        })
+      }
+    }
+
+    res.json({ success: true, data: results })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
