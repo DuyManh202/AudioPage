@@ -1740,28 +1740,34 @@ onBeforeUnmount(() => {
 .status-switch-pill.sw-da_chot.active { background: #34c759; }
 .status-switch-pill.sw-da_huy.active { background: #8e8e93; }
 
-/* Floating Back-to-Top Button */
+/* Floating Back-to-Top Button (Mobile only to avoid covering PC chat send button) */
 .floating-top-pill {
-  position: fixed;
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  right: 18px;
-  z-index: 990;
-  background: rgba(28, 28, 30, 0.9);
-  color: #ffffff;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
-  cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none;
 }
-.floating-top-pill:hover {
-  background: rgba(0, 122, 255, 0.95);
-  transform: translateY(-2px);
+@media (max-width: 768px) {
+  .floating-top-pill {
+    display: block;
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 18px;
+    z-index: 990;
+    background: rgba(28, 28, 30, 0.9);
+    color: #ffffff;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .floating-top-pill:hover {
+    background: rgba(0, 122, 255, 0.95);
+    transform: translateY(-2px);
+  }
 }
 
 .edit-grid {
