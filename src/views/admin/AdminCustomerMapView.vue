@@ -1005,6 +1005,233 @@ async function deleteCustomPoint(point) {
   }
 }
 
+const distanceFromStore = customer => distanceBetween(deliveryLocation.value || origin, customer)
+const normalizePlaceText = value => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+  .toLocaleLowerCase('vi')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+const customerArea = customer => {
+  const address = String(customer?.address || '').replace(/^\s*(?:đc|địa\s*chỉ)\s*[:：-]?\s*/i, '').trim().replace(/[,\s]+$/, '')
+  const province = String(customer?.province || '').trim()
+  if (!address) return province
+  if (!province || normalizePlaceText(address).includes(normalizePlaceText(province))) return address
+  return `${address}, ${province}`
+}
+const distanceBetween = (from, to) => {
+  const rad = degree => degree * Math.PI / 180
+  const dLat = rad(to.lat - from.lat), dLng = rad(to.lng - from.lng)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(from.lat)) * Math.cos(rad(to.lat)) * Math.sin(dLng / 2) ** 2
+  return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
+}
+
+const safeImage = value => /^(https?:\/\/|data:image\/)/i.test(String(value || '')) ? value : ''
+const googleMapsUrl = customer => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${customer.lat},${customer.lng}`)}`
+const formatVisitTime = value => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+
+const popupContent = customer => {
+  if (customer.recordType === 'CUSTOM') {
+    return `<div class="customer-popup custom-pop">
+      <span class="custom-badge-pop">📍 Điểm tự thêm · ${escapeHtml(pointTypeLabel(customer.pointType))}</span>
+      <strong>${escapeHtml(customer.customerName)}</strong>
+      <b>${customer.visitedAt ? `✓ Đã đi${customer.visitedBy ? ` · ${escapeHtml(customer.visitedBy)}` : ''}` : '● Chưa đi'}</b>
+      ${customer.notes ? `<span>Ghi chú: ${escapeHtml(customer.notes)}</span>` : ''}
+      ${customer.phone ? `<a href="tel:${escapeHtml(customer.phone)}">📞 ${escapeHtml(customer.phone)}</a>` : ''}
+      <span>${escapeHtml(customerArea(customer))}</span>
+      <span>~${distanceFromStore(customer)} km</span>
+      <small>Vị trí chính xác do bạn tự chọn</small>
+    </div>`
+  }
+  const image = safeImage(customer.interestImage)
+  return `<div class="customer-popup">${image ? `<img src="${escapeHtml(image)}" alt="">` : ''}<strong>${escapeHtml(customer.customerName)}</strong><b>${customer.visitedAt ? `✓ Đã đi${customer.visitedBy ? ` · ${escapeHtml(customer.visitedBy)}` : ''}` : '● Chưa đi'}</b>${customer.interest ? `<span>${escapeHtml(customer.interest)}</span>` : ''}${customer.phone ? `<a href="tel:${escapeHtml(customer.phone)}">📞 ${escapeHtml(customer.phone)}</a>` : ''}<span>${escapeHtml(customerArea(customer))}</span><span>~${distanceFromStore(customer)} km</span><small>Vị trí ước tính theo trung tâm tỉnh/thành</small></div>`
+}
+
+function getActiveMapElement() {
+  return isMobile.value ? mapElementMobile.value : mapElementDesktop.value
+}
+
+function initMap() {
+  const targetEl = getActiveMapElement()
+  if (!targetEl || map) return
+  map = L.map(targetEl, {
+    scrollWheelZoom: true,
+    zoomControl: !isMobile.value
+  }).setView([origin.lat, origin.lng], 6)
+
+  const attribution = '&copy; Google Maps'
+  tileLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    attribution,
+    subdomains: ['0', '1', '2', '3']
+  }).addTo(map)
+  tileLayer.on('tileload', () => { tileLoadCount += 1 })
+  tileLayer.on('tileerror', () => {
+    tileErrorCount += 1
+    if (!usingFallbackTiles && tileErrorCount >= 3 && tileLoadCount === 0) {
+      usingFallbackTiles = true
+      tileLayer.remove()
+      tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+        subdomains: 'abc'
+      }).addTo(map)
+    }
+  })
+  markerLayer = L.layerGroup().addTo(map)
+  tempPickLayer = L.layerGroup().addTo(map)
+}
+
+function reInitMap() {
+  if (map) {
+    map.remove()
+    map = null
+    markerLayer = null
+    tempPickLayer = null
+    tileLayer = null
+  }
+  nextTick(() => {
+    initMap()
+    renderMarkers()
+  })
+}
+
+function renderMarkers() {
+  if (!map || !markerLayer) return
+  markerLayer.clearLayers()
+  L.circleMarker([origin.lat, origin.lng], { radius: 8, color: '#008080', weight: 2, fillColor: '#00b1a9', fillOpacity: 1 })
+    .bindPopup('<strong>Tú Audio</strong><br>Điểm gốc cửa hàng').addTo(markerLayer)
+  const bounds = [[origin.lat, origin.lng]]
+
+  // Phân chia nhóm marker
+  const byProvince = new Map()
+  for (const customer of visibleCustomers.value) {
+    if (customer.recordType === 'CUSTOM') {
+      const customMarker = L.marker([customer.lat, customer.lng], {
+        icon: L.divIcon({
+          className: 'customer-custom-pin-wrap',
+          html: `<div class="custom-pin-inner ${customer.visitedAt ? 'visited' : ''}" title="${escapeHtml(customer.customerName)}"><span class="custom-pin-icon">📍</span></div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 34]
+        })
+      })
+      customMarker.customerRecord = customer
+      if (!isMobile.value) {
+        customMarker.bindPopup(popupContent(customer), { maxWidth: 320 })
+      }
+      customMarker.on('click', () => {
+        selectCustomer(customer)
+      })
+      customMarker.addTo(markerLayer)
+      bounds.push([customer.lat, customer.lng])
+      continue
+    }
+
+    const key = `${customer.lat.toFixed(3)},${customer.lng.toFixed(3)}`
+    byProvince.set(key, [...(byProvince.get(key) || []), customer])
+  }
+
+  for (const group of byProvince.values()) {
+    if (group.length > 1) {
+      const allVisited = group.every(customer => customer.visitedAt)
+      const someVisited = group.some(customer => customer.visitedAt)
+      const visitClass = allVisited ? 'visited' : someVisited ? 'mixed' : ''
+      const marker = L.marker([group[0].lat, group[0].lng], {
+        icon: L.divIcon({
+          className: 'customer-cluster-pin',
+          html: `<span class="${visitClass}">${group.length}</span>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        })
+      })
+      marker.clusterCustomers = group
+      const rows = group.map((customer, index) =>
+        `<button type="button" class="cluster-btn-row" data-map-customer="${index}">
+          <span class="c-dot ${customer.visitedAt ? 'visited' : ''}"></span>
+          <strong>${escapeHtml(customer.customerName)}</strong>
+          ${customer.phone ? `<small>📞 ${escapeHtml(customer.phone)}</small>` : ''}
+        </button>`
+      ).join('')
+      marker.bindPopup(
+        `<div class="customer-popup cluster-pop">
+          <strong>${escapeHtml(group[0].province)} · cụm ${group.length} khách</strong>
+          <small>${group.every(customer => customer.locationPrecision !== 'EXACT')
+            ? 'Các khách này chỉ có vị trí ước tính theo tỉnh/thành, không phải cùng một địa chỉ nhà.'
+            : 'Có nhiều hồ sơ tại cùng vị trí. Chọn tên để xem riêng một khách.'}</small>
+          <div class="cluster-customer-list">${rows}</div>
+        </div>`,
+        { maxWidth: 300 }
+      )
+      marker.on('popupopen', event => {
+        event.popup.getElement()?.querySelectorAll('[data-map-customer]').forEach(button => {
+          button.addEventListener('click', () => {
+            const chosen = group[Number(button.dataset.mapCustomer)]
+            selectCustomer(chosen)
+          })
+        })
+      })
+      marker.addTo(markerLayer)
+      bounds.push([group[0].lat, group[0].lng])
+      continue
+    }
+    const customer = group[0]
+    const marker = L.circleMarker([customer.lat, customer.lng], {
+      radius: 9,
+      color: customer.visitedAt ? '#166534' : '#991b1b',
+      weight: 1.5,
+      fillColor: customer.visitedAt ? '#22c55e' : '#ef4444',
+      fillOpacity: 0.92
+    })
+    marker.customerRecord = customer
+    if (!isMobile.value) {
+      marker.bindPopup(popupContent(customer), { maxWidth: 300 })
+    }
+    marker.on('click', () => {
+      selectCustomer(customer)
+    })
+    marker.addTo(markerLayer)
+    bounds.push([customer.lat, customer.lng])
+  }
+
+  if (deliveryLocation.value) {
+    const current = deliveryLocation.value
+    L.circleMarker([current.lat, current.lng], {
+      radius: 11,
+      color: '#008080',
+      weight: 3,
+      fillColor: '#00b1a9',
+      fillOpacity: 1
+    }).bindPopup('<strong>Vị trí của bạn (Xanh SM Mode)</strong>').addTo(markerLayer)
+    bounds.push([current.lat, current.lng])
+  }
+
+  for (const order of deliveryOrders.value) {
+    const marker = L.circleMarker([order.lat, order.lng], {
+      radius: 9,
+      color: '#7c2d12',
+      weight: 2,
+      fillColor: '#f97316',
+      fillOpacity: 0.95
+    })
+    marker.orderRecord = order
+    marker.bindPopup(
+      `<div class="customer-popup">
+        <strong>Đơn ${escapeHtml(String(order.id).slice(0, 8))} · ${escapeHtml(order.customerName)}</strong>
+        <span>${escapeHtml(order.address)}</span>
+        <b>~${distanceBetween(deliveryLocation.value || origin, order)} km</b>
+      </div>`
+    )
+    marker.addTo(markerLayer)
+    bounds.push([order.lat, order.lng])
+  }
+
+  if (deliveryLocation.value) map.setView([deliveryLocation.value.lat, deliveryLocation.value.lng], 8)
+  else if (bounds.length > 1) map.fitBounds(bounds, { padding: [32, 32], maxZoom: 7 })
+  else map.setView([origin.lat, origin.lng], 8)
+}
+
 function selectCustomer(customer) {
   selected.value = customer
   if (isMobile.value) {
