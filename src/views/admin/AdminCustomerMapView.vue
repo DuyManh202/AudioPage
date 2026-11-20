@@ -261,9 +261,6 @@
               placeholder="Tìm khách hàng, số điện thoại, khu vực…"
             >
             <button v-if="keyword" type="button" class="search-clear" @click="keyword = ''">✕</button>
-            <button type="button" class="xanhsm-add-point-btn" @click="openAddModal" title="Thêm điểm mới">
-              ＋ Điểm mới
-            </button>
           </div>
 
           <!-- Bộ lọc Tab Nguồn (Tất cả, Điểm tự thêm, Facebook, CRM) -->
@@ -595,33 +592,42 @@
       </div>
     </transition>
 
-    <!-- MODAL THÊM / CHỈNH SỬA ĐIỂM BẢN ĐỒ (RIÊNG BIỆT) -->
+    <!-- MODAL THÊM / CHỈNH SỬA ĐIỂM BẢN ĐỒ (TINH GỌN & THÔNG MINH) -->
     <transition name="modal-fade">
       <div v-if="showCustomModal" class="custom-modal-backdrop" @click.self="closeCustomModal">
         <div class="custom-modal-card">
+          <!-- Drag Handle trên Mobile -->
+          <div class="mobile-modal-handle" @click="closeCustomModal">
+            <span class="handle-bar"></span>
+          </div>
+
           <div class="modal-card-head">
             <div class="modal-title-wrap">
               <span class="modal-pin-icon">📍</span>
               <div>
-                <h3>{{ modalMode === 'add' ? 'Thêm điểm mới trên bản đồ' : 'Chỉnh sửa điểm bản đồ' }}</h3>
-                <small>Điểm này được lưu độc lập, không gộp vào tin nhắn Facebook hay CRM</small>
+                <h3>{{ modalMode === 'add' ? 'Thêm điểm mới' : 'Chỉnh sửa điểm' }}</h3>
+                <small>Lưu độc lập, không gộp vào Facebook</small>
               </div>
             </div>
-            <button type="button" class="modal-close-btn" @click="closeCustomModal">✕</button>
+            <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeCustomModal">✕</button>
           </div>
 
           <form class="modal-card-body" @submit.prevent="saveCustomPoint">
-            <!-- TÌM KIẾM VỊ TRÍ / ĐỊA CHỈ NHANH -->
+            <!-- 1. VỊ TRÍ / ĐỊA CHỈ (TỰ ĐỘNG LẤY TỌA ĐỘ & TỈNH) -->
             <div class="form-row search-location-row">
-              <label>
-                🔍 Tìm kiếm vị trí / Địa chỉ trên bản đồ
-                <span class="sub-hint">(Tự động nhận diện Tỉnh &amp; Tọa độ GPS)</span>
-              </label>
+              <div class="compact-lbl-row">
+                <label class="compact-lbl">
+                  📍 Vị trí / Địa chỉ điểm <span class="req">*</span>
+                </label>
+                <button type="button" class="btn-text-pick-map" @click="startPickingLocationOnMap">
+                  🎯 Ghim trên bản đồ
+                </button>
+              </div>
               <div class="location-search-box">
                 <input
                   v-model="locationSearchQuery"
                   type="search"
-                  placeholder="Gõ tên xã, phường, huyện, đường, chợ... (VD: Cẩm Khê, Lâm Thao, Việt Trì)"
+                  placeholder="Gõ tên xã, huyện, đường, chợ... (VD: Cẩm Khê, Lâm Thao, Việt Trì)"
                   class="form-input location-search-input"
                   @input="handleLocationSearchInput"
                   @keydown.enter.prevent="executeLocationSearch"
@@ -632,11 +638,11 @@
                   :disabled="isSearchingLocation"
                   @click="executeLocationSearch"
                 >
-                  {{ isSearchingLocation ? 'Đang tìm…' : 'Tìm vị trí' }}
+                  {{ isSearchingLocation ? '…' : 'Tìm' }}
                 </button>
               </div>
 
-              <!-- Gợi ý kết quả tìm kiếm vị trí -->
+              <!-- Gợi ý địa điểm -->
               <div v-if="locationSearchResults.length > 0" class="location-results-dropdown">
                 <div
                   v-for="(item, idx) in locationSearchResults"
@@ -649,112 +655,135 @@
                     <strong>{{ item.name }}</strong>
                     <small>{{ item.displayName }}</small>
                   </div>
-                  <span class="res-apply-btn">Ghim vị trí ❯</span>
+                  <span class="res-apply-btn">Chọn ❯</span>
                 </div>
               </div>
+
               <div v-if="searchSuccessMessage" class="search-success-msg">
                 {{ searchSuccessMessage }}
               </div>
             </div>
 
+            <!-- 2. TÊN ĐIỂM / KHÁCH HÀNG -->
             <div class="form-row">
-              <label>Tên điểm / Tên khách hàng <span class="req">*</span></label>
+              <label class="compact-lbl">
+                👤 Tên điểm / Tên khách hàng <span class="req">*</span>
+              </label>
               <input
                 v-model="formPoint.name"
                 type="text"
-                placeholder="VD: Bác Tuấn - Dàn 29Tr, Kho Loa Lâm Thao, Nhà thử dàn..."
+                placeholder="VD: Bác Tuấn - Dàn 29Tr, Kho Loa Cẩm Khê..."
                 required
                 class="form-input"
               >
             </div>
 
-            <div class="form-grid-2">
-              <div class="form-row">
-                <label>Phân loại điểm</label>
-                <select v-model="formPoint.pointType" class="form-input">
-                  <option value="CUSTOMER">Khách lắp đặt</option>
-                  <option value="TESTING">Điểm thử dàn / Nghe thử</option>
-                  <option value="PARTNER">Đại lý / Showroom đối tác</option>
-                  <option value="DELIVERY">Điểm giao nhận / Bến xe</option>
-                  <option value="OTHER">Khác</option>
-                </select>
+            <!-- 3. PHÂN LOẠI NHANH 1 CHẠM (SEGMENTED CHIPS KIỂU IOS) -->
+            <div class="form-row">
+              <label class="compact-lbl">🏷 Phân loại điểm</label>
+              <div class="type-segmented-chips">
+                <button
+                  type="button"
+                  :class="['type-chip', { active: formPoint.pointType === 'CUSTOMER' }]"
+                  @click="formPoint.pointType = 'CUSTOMER'"
+                >
+                  🏠 Khách lắp
+                </button>
+                <button
+                  type="button"
+                  :class="['type-chip', { active: formPoint.pointType === 'TESTING' }]"
+                  @click="formPoint.pointType = 'TESTING'"
+                >
+                  🎧 Thử dàn
+                </button>
+                <button
+                  type="button"
+                  :class="['type-chip', { active: formPoint.pointType === 'PARTNER' }]"
+                  @click="formPoint.pointType = 'PARTNER'"
+                >
+                  🏢 Đại lý
+                </button>
+                <button
+                  type="button"
+                  :class="['type-chip', { active: formPoint.pointType === 'DELIVERY' }]"
+                  @click="formPoint.pointType = 'DELIVERY'"
+                >
+                  📦 Giao nhận
+                </button>
+                <button
+                  type="button"
+                  :class="['type-chip', { active: formPoint.pointType === 'OTHER' }]"
+                  @click="formPoint.pointType = 'OTHER'"
+                >
+                  Khác
+                </button>
               </div>
+            </div>
+
+            <!-- 4. SĐT & GHI CHÚ NHANH (TÙY CHỌN 1 HÀNG GỌN) -->
+            <div class="form-grid-2 form-row-compact">
               <div class="form-row">
-                <label>Số điện thoại (tùy chọn)</label>
+                <label class="compact-lbl">📞 Số điện thoại</label>
                 <input
                   v-model="formPoint.phone"
                   type="tel"
-                  placeholder="VD: 0987654321"
+                  placeholder="0987... (tùy chọn)"
                   class="form-input"
                 >
               </div>
-            </div>
-
-            <div class="form-grid-2">
               <div class="form-row">
-                <label>Tỉnh / Thành phố <span class="req">*</span></label>
-                <select v-model="formPoint.province" class="form-input" @change="onProvinceChange">
-                  <option v-for="p in VIETNAM_PROVINCES_LIST" :key="p.name" :value="p.displayName">
-                    {{ p.displayName }}
-                  </option>
-                </select>
-              </div>
-              <div class="form-row">
-                <label>Địa chỉ cụ thể</label>
+                <label class="compact-lbl">📝 Nhu cầu / Ghi chú</label>
                 <input
-                  v-model="formPoint.address"
+                  v-model="formPoint.notes"
                   type="text"
-                  placeholder="VD: Số 12 phố X, Phường Tiên Cát"
+                  placeholder="Loa, âm ly, lưu ý..."
                   class="form-input"
                 >
               </div>
             </div>
 
-            <div class="form-row coords-group">
-              <div class="coords-head">
-                <label>Tọa độ GPS (Vĩ độ &amp; Kinh độ) <span class="req">*</span></label>
-                <button type="button" class="btn-pick-map" @click="startPickingLocationOnMap">
-                  🎯 Chọn trực tiếp trên bản đồ
-                </button>
-              </div>
-              <div class="form-grid-2">
-                <div class="input-with-label">
-                  <span class="sub-lbl">Lat:</span>
-                  <input
-                    v-model.number="formPoint.lat"
-                    type="number"
-                    step="any"
-                    placeholder="Vĩ độ (VD: 21.32)"
-                    class="form-input"
-                    required
-                  >
-                </div>
-                <div class="input-with-label">
-                  <span class="sub-lbl">Lng:</span>
-                  <input
-                    v-model.number="formPoint.lng"
-                    type="number"
-                    step="any"
-                    placeholder="Kinh độ (VD: 105.40)"
-                    class="form-input"
-                    required
-                  >
-                </div>
-              </div>
-            </div>
+            <!-- MỞ RỘNG TỌA ĐỘ THỦ CÔNG (MẶC ĐỊNH ẨN GỌN GÀNG) -->
+            <div class="advanced-coords-toggle">
+              <button
+                type="button"
+                class="toggle-advanced-btn"
+                @click="showAdvancedCoords = !showAdvancedCoords"
+              >
+                <span>⚙ Tùy chỉnh tọa độ số &amp; Tỉnh thành</span>
+                <span class="toggle-arrow">{{ showAdvancedCoords ? '▲' : '▼' }}</span>
+              </button>
 
-            <div class="form-row">
-              <label>Ghi chú / Nhu cầu dàn / Thiết bị</label>
-              <textarea
-                v-model="formPoint.notes"
-                rows="2"
-                placeholder="Ghi chú cấu hình loa, âm ly, lưu ý khi ghé thăm..."
-                class="form-textarea"
-              ></textarea>
+              <div v-if="showAdvancedCoords" class="advanced-coords-content">
+                <div class="form-grid-2">
+                  <div class="form-row">
+                    <label class="compact-lbl">Tỉnh/Thành</label>
+                    <select v-model="formPoint.province" class="form-input" @change="onProvinceChange">
+                      <option v-for="p in VIETNAM_PROVINCES_LIST" :key="p.name" :value="p.displayName">
+                        {{ p.displayName }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label class="compact-lbl">Địa chỉ chi tiết</label>
+                    <input v-model="formPoint.address" type="text" class="form-input" placeholder="Số nhà, đường...">
+                  </div>
+                </div>
+                <div class="form-grid-2" style="margin-top: 8px;">
+                  <div class="form-row">
+                    <label class="compact-lbl">Vĩ độ (Lat)</label>
+                    <input v-model.number="formPoint.lat" type="number" step="any" class="form-input">
+                  </div>
+                  <div class="form-row">
+                    <label class="compact-lbl">Kinh độ (Lng)</label>
+                    <input v-model.number="formPoint.lng" type="number" step="any" class="form-input">
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div v-if="modalError" class="modal-form-error">{{ modalError }}</div>
 
+            <!-- FOOTER CỐ ĐỊNH Ở ĐÁY -->
             <div class="modal-card-foot">
               <button type="button" class="btn-modal-cancel" @click="closeCustomModal">Hủy bỏ</button>
               <button type="submit" class="btn-modal-submit" :disabled="modalBusy">
@@ -833,6 +862,7 @@ const modalMode = ref('add') // 'add' | 'edit'
 const modalBusy = ref(false)
 const modalError = ref('')
 const isPickingLocationOnMap = ref(false)
+const showAdvancedCoords = ref(false)
 const formPoint = ref({
   id: '',
   name: '',
@@ -2179,10 +2209,11 @@ onBeforeUnmount(() => {
    ======================================================== */
 @media (max-width: 860px) {
   .customer-map-page.mobile-app-mode {
-    /* Đẩy tràn viền khỏi padding mặc định của admin-viewport */
-    margin: -14px;
-    height: calc(100dvh - 56px);
-    width: calc(100% + 28px);
+    /* Đẩy tràn viền chuẩn xác theo padding 12px của admin-viewport */
+    margin: -12px;
+    height: calc(100dvh - 54px - 62px);
+    width: calc(100% + 24px);
+    max-width: calc(100% + 24px);
     overflow: hidden;
     position: relative;
     background: #e2e8f0;
@@ -3261,14 +3292,14 @@ onBeforeUnmount(() => {
 }
 
 /* ========================================================
-   MODAL THÊM / CHỈNH SỬA ĐIỂM
+   MODAL THÊM / CHỈNH SỬA ĐIỂM (TINH GỌN & THÔNG MINH)
    ======================================================== */
 .custom-modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(4px);
-  z-index: 2000;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3276,9 +3307,9 @@ onBeforeUnmount(() => {
 }
 .custom-modal-card {
   background: #ffffff;
-  border-radius: 18px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 540px;
+  max-width: 500px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -3286,24 +3317,36 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid #e2e8f0;
 }
+.mobile-modal-handle {
+  display: none;
+  justify-content: center;
+  padding: 10px 0 2px;
+  cursor: pointer;
+}
+.mobile-modal-handle .handle-bar {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
 .modal-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 14px 18px;
   background: #faf5ff;
   border-bottom: 1px solid #f3e8ff;
 }
 .modal-title-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 .modal-pin-icon {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   background: #ffffff;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3313,15 +3356,15 @@ onBeforeUnmount(() => {
 }
 .modal-title-wrap h3 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
   color: #4c1d95;
 }
 .modal-title-wrap small {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: #7c3aed;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .modal-close-btn {
   background: transparent;
@@ -3335,29 +3378,106 @@ onBeforeUnmount(() => {
   color: #0f172a;
 }
 .modal-card-body {
-  padding: 18px 20px;
+  padding: 16px 18px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 .form-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
-.form-row label {
+.compact-lbl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.compact-lbl {
   font-size: 0.78rem;
   font-weight: 700;
   color: #334155;
 }
-.form-row label .req {
+.compact-lbl .req {
   color: #ef4444;
+}
+.btn-text-pick-map {
+  font-size: 0.72rem;
+  color: #7c3aed;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-text-pick-map:hover {
+  background: #ede9fe;
+}
+.type-segmented-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.type-chip {
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.type-chip:hover {
+  border-color: #a78bfa;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+.type-chip.active {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+}
+.advanced-coords-toggle {
+  margin-top: 4px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 6px;
+}
+.toggle-advanced-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 0;
+  align-items: center;
+}
+.toggle-advanced-btn:hover {
+  color: #7c3aed;
+}
+.advanced-coords-content {
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 6px;
+  border: 1px solid #e2e8f0;
 }
 .form-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 .form-input,
 .form-textarea {
@@ -3377,44 +3497,6 @@ onBeforeUnmount(() => {
   border-color: #8b5cf6;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
-.coords-group {
-  background: #f8fafc;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-}
-.coords-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.btn-pick-map {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid #c4b5fd;
-  background: #ffffff;
-  color: #6d28d9;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.btn-pick-map:hover {
-  background: #f5f3ff;
-  border-color: #8b5cf6;
-}
-.input-with-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.input-with-label .sub-lbl {
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: #64748b;
-  width: 28px;
-}
 .modal-form-error {
   padding: 8px 12px;
   border-radius: 8px;
@@ -3427,7 +3509,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding-top: 6px;
+  padding-top: 4px;
 }
 .btn-modal-cancel {
   padding: 9px 16px;
@@ -3457,6 +3539,46 @@ onBeforeUnmount(() => {
 .btn-modal-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (max-width: 860px) {
+  .custom-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    z-index: 99999;
+  }
+  .custom-modal-card {
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    max-height: 85vh;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+    animation: slideUpBottom 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideUpBottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .mobile-modal-handle {
+    display: flex;
+  }
+  .modal-card-foot {
+    position: sticky;
+    bottom: 0;
+    background: #ffffff;
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+    border-top: 1px solid #f1f5f9;
+    z-index: 20;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+  }
+  .btn-modal-cancel {
+    flex: 1;
+    height: 44px;
+  }
+  .btn-modal-submit {
+    flex: 2;
+    height: 44px;
+    font-size: 0.85rem;
+  }
 }
 
 /* ========================================================
