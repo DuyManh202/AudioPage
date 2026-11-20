@@ -993,3 +993,139 @@
   }
 }
 
+/* ==========================================================================
+   APPLE iOS FLUID ANIMATIONS, MICRO-EFFECTS & HAPTIC TOUCH SYSTEM
+   ========================================================================== */
+
+/* Keyframe Animations */
+@keyframes applePageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.998);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes applePulseGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.55);
+  }
+  50% {
+    transform: scale(1.16);
+    box-shadow: 0 0 0 5px rgba(52, 199, 89, 0);
+  }
+}
+
+@keyframes appleBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes appleShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Smooth page load animation */
+.adm-page {
+  animation: applePageEnter 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Haptic touch feedback on tap/click for all interactive components */
+button:active,
+.adm-btn:active,
+.adm-tab:active,
+.ios-action-pill:active,
+.fb-pill-btn:active,
+.period-btn:active,
+.mobile-tab-item:active,
+.customer-row:active,
+.ad-item-card:active {
+  transform: scale(0.958) !important;
+  transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Interactive card elevation */
+.adm-card,
+.adm-kpi-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease;
+}
+
+.adm-card:hover {
+  box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.adm-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.12);
+  border-color: #93c5fd;
+}
+
+/* Live indicators & Pulse badges */
+.conn-dot,
+.live-status-dot,
+.offline-dot {
+  animation: applePulseGlow 2.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-badge,
+.nav-pill.alert {
+  animation: appleBadgePulse 3s infinite ease-in-out;
+}
+
+/* Interactive focus ring */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none !important;
+  border-color: #007aff !important;
+  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.18) !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Table row micro-interactions */
+.adm-table tbody tr {
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.adm-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Shimmer Loading Placeholder */
+.adm-shimmer {
+  background: linear-gradient(90deg, #f0f0f5 25%, #e4e4eb 50%, #f0f0f5 75%);
+  background-size: 200% 100%;
+  animation: appleShimmer 1.8s infinite linear;
+  border-radius: 8px;
+}
+
+/* Apple Smooth Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+

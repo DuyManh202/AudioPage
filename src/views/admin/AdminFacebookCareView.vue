@@ -141,6 +141,13 @@
         <div class="fb-search-wrap">
           <span class="search-ico">🔍</span>
           <input v-model="keyword" placeholder="Tìm tên khách, số điện thoại, nhu cầu…" />
+          <button
+            v-if="keyword"
+            type="button"
+            class="search-clear-btn"
+            @click="keyword = ''"
+            aria-label="Xóa tìm kiếm"
+          >✕</button>
         </div>
 
         <div class="fb-status-scroll">
@@ -190,29 +197,59 @@
           <button
             v-for="c in visibleCustomers"
             :key="c.id"
-            :class="['customer-row', { active: selected?.id === c.id }]"
+            :class="['customer-row', `status-border-${c.status.toLowerCase()}`, { active: selected?.id === c.id }]"
             @click="select(c)"
           >
-            <strong>{{ c.customerName }}</strong>
-            <small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small>
-            <small>{{ c.phone || c.facebookId || c.id }}</small>
-            <small v-if="c.sourceAdName || c.sourceAdId" class="source-small">Nguồn QC: {{ c.sourceAdName || c.sourceAdId }}</small>
-            <small v-else-if="c.sourceType">Nguồn: {{ c.sourceType }}</small>
-            <span :class="['status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span>
-            <em v-if="c.followUpAt">Nhắc: {{ displayDate(c.followUpAt) }}</em>
+            <div class="customer-row-main">
+              <strong>{{ c.customerName }}</strong>
+              <small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small>
+              <div class="customer-row-sub">
+                <small class="contact-num">{{ c.phone || c.facebookId || c.id }}</small>
+                <small v-if="c.sourceAdName || c.sourceAdId" class="source-small">QC: {{ c.sourceAdName || c.sourceAdId }}</small>
+              </div>
+            </div>
+            <div class="customer-row-right">
+              <span :class="['status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span>
+              <a
+                v-if="c.phone"
+                :href="'tel:' + c.phone"
+                class="row-phone-cta"
+                title="Gọi điện ngay"
+                @click.stop
+              >📞</a>
+            </div>
+            <em v-if="c.followUpAt" class="row-reminder">Nhắc: {{ displayDate(c.followUpAt) }}</em>
           </button>
           <p v-if="!visibleCustomers.length" class="empty">Chưa có khách. Hệ thống tự động đồng bộ tin nhắn từ Fanpage.</p>
         </div>
 
         <section v-if="selected" class="detail">
           <div class="detail-head">
-            <div>
+            <div class="detail-title-col">
               <h2>{{ selected.customerName }}</h2>
-              <p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId"> · {{ selected.facebookId }}</span></p>
+              <p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId"> · ID: {{ selected.facebookId }}</span></p>
             </div>
-            <select v-model="edit.status" @change="save">
-              <option v-for="s in statusOptions.slice(1)" :key="s.key" :value="s.key">{{ s.label }}</option>
-            </select>
+            <div class="detail-quick-actions">
+              <a v-if="selected.phone" :href="'tel:' + selected.phone" class="quick-call-pill">
+                📞 Gọi ngay
+              </a>
+              <a v-if="selected.facebookId" :href="'https://facebook.com/' + selected.facebookId" target="_blank" rel="noopener" class="quick-fb-pill">
+                💬 Facebook
+              </a>
+            </div>
+          </div>
+
+          <!-- Fast 1-Tap Status Switcher (Apple iOS Segmented Control) -->
+          <div class="status-quick-switch" aria-label="Đổi trạng thái nhanh">
+            <button
+              v-for="s in statusOptions.slice(1)"
+              :key="s.key"
+              type="button"
+              :class="['status-switch-pill', `sw-${s.key.toLowerCase()}`, { active: edit.status === s.key }]"
+              @click="setStatusQuick(s.key)"
+            >
+              {{ s.label }}
+            </button>
           </div>
 
           <div class="edit-grid">
@@ -618,6 +655,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Floating Back-to-Top Pill for Mobile & Desktop -->
+    <Transition name="fade-slide">
+      <button
+        v-if="showBackToTop"
+        type="button"
+        class="floating-top-pill"
+        @click="scrollToTop"
+        aria-label="Cuộn lên đầu trang"
+      >
+        ↑ Đầu trang
+      </button>
+    </Transition>
   </div>
 </template>
 
@@ -812,6 +862,17 @@ function filterByCampaign(adId) { currentTab.value = 'CARE'; adFilter.value = ad
 function selectNewArrival(customer) { select(customer); newArrivals.value = newArrivals.value.filter(item => item.id !== customer.id) }
 async function createCustomer() { busy.value = true; error.value = ''; orderSyncNotice.value = ''; try { const r = await apiRequest('/admin/facebook-care', { method: 'POST', body: JSON.stringify(draft) }); customers.value.unshift(r.data); select(r.data); if (r.syncedOrders) orderSyncNotice.value = `Đã đồng bộ thông tin sang ${r.syncedOrders} đơn chưa giao.`; Object.assign(draft, blank()); showCreate.value = false } catch (e) { error.value = e.message } finally { busy.value = false } }
 async function save() { if (!selected.value) return; try { const r = await apiRequest(`/admin/facebook-care/${selected.value.id}`, { method: 'PATCH', body: JSON.stringify(edit) }); Object.assign(selected.value, r.data); orderSyncNotice.value = r.syncedOrders ? `Đã đồng bộ thông tin sang ${r.syncedOrders} đơn chưa giao.` : '' } catch (e) { error.value = e.message } }
+async function setStatusQuick(key) {
+  edit.status = key
+  await save()
+}
+const showBackToTop = ref(false)
+const onScroll = () => {
+  showBackToTop.value = window.scrollY > 280
+}
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 async function addMessage() { if (!messageBody.value.trim()) return; busy.value = true; try { const customerId = selected.value.id; const endpoint = messageDirection.value === 'OUT' && messengerConnected.value ? `/admin/facebook-care/${customerId}/send` : `/admin/facebook-care/${customerId}/messages`; await apiRequest(endpoint, { method: 'POST', body: JSON.stringify({ body: messageBody.value, direction: messageDirection.value }) }); messageBody.value = ''; await load({ silent: true }); select(customers.value.find(c => c.id === customerId) || selected.value) } catch (e) { error.value = e.message } finally { busy.value = false } }
 const onVisible = () => { if (document.visibilityState === 'visible' && !busy.value && !syncBusy.value) load({ silent: true }) }
 onMounted(() => {
@@ -820,12 +881,14 @@ onMounted(() => {
   adsTimer = setInterval(() => { if (document.visibilityState === 'visible' && !adsBusy.value) loadAds() }, 180000)
   document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('focus', onVisible)
+  window.addEventListener('scroll', onScroll, { passive: true })
 })
 onBeforeUnmount(() => {
   if (careTimer) clearInterval(careTimer)
   if (adsTimer) clearInterval(adsTimer)
   document.removeEventListener('visibilitychange', onVisible)
   window.removeEventListener('focus', onVisible)
+  window.removeEventListener('scroll', onScroll)
 })
 </script>
 
@@ -1469,61 +1532,104 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   text-align: left;
-  border: 1px solid transparent;
+  border: 1px solid rgba(0, 0, 0, 0.05);
   background: #ffffff;
   border-radius: 12px;
-  padding: 12px 12px;
+  padding: 10px 12px;
   margin-bottom: 6px;
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
   cursor: pointer;
   color: var(--ios-label);
-  transition: all 0.15s ease;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .customer-row:hover {
-  background: #f2f2f7;
+  background: #f8f8fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 .customer-row.active {
-  background: rgba(0, 122, 255, 0.08);
-  border-color: rgba(0, 122, 255, 0.25);
+  background: rgba(0, 122, 255, 0.07);
+  border-color: rgba(0, 122, 255, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.15);
 }
-.customer-row strong {
+.customer-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.customer-row-main strong {
   font-size: 0.88rem;
-  padding-right: 64px;
-  font-weight: 650;
-}
-.customer-row small {
-  font-size: 0.72rem;
-  color: var(--ios-secondary);
-}
-.customer-row .status {
-  position: absolute;
-  right: 10px;
-  top: 12px;
-}
-.status {
-  font-size: 0.65rem;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: var(--ios-fill);
-  color: #636366;
   font-weight: 700;
+  color: var(--ios-label);
 }
-.status.moi {
-  background: rgba(255, 59, 48, 0.12);
-  color: var(--ios-red);
+.customer-row-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-.status.dang_tu_van {
-  background: rgba(0, 122, 255, 0.12);
-  color: var(--ios-blue);
+.customer-row-sub .contact-num {
+  font-size: 0.72rem;
+  color: #48484a;
+  font-weight: 600;
 }
-.status.cho_phan_hoi {
-  background: rgba(255, 149, 0, 0.12);
-  color: var(--ios-orange);
+.customer-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
 }
-.status.da_chot {
+.row-phone-cta {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
   background: rgba(52, 199, 89, 0.14);
   color: #248a3d;
+  text-decoration: none;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+.row-phone-cta:hover {
+  background: #34c759;
+  color: #ffffff;
+}
+
+/* Status border accents */
+.status-border-moi { border-left: 4px solid var(--ios-red) !important; }
+.status-border-dang_tu_van { border-left: 4px solid var(--ios-blue) !important; }
+.status-border-cho_phan_hoi { border-left: 4px solid var(--ios-orange) !important; }
+.status-border-da_chot { border-left: 4px solid var(--ios-green) !important; }
+.status-border-da_huy { border-left: 4px solid var(--ios-secondary) !important; }
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #c7c7cc;
+  color: #ffffff;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+  padding: 0;
+}
+.search-clear-btn:hover {
+  background: #8e8e93;
 }
 
 .detail {
@@ -1536,7 +1642,11 @@ onBeforeUnmount(() => {
   align-items: start;
   gap: 12px;
   border-bottom: 1px solid #f2f2f7;
-  padding-bottom: 16px;
+  padding-bottom: 14px;
+}
+.detail-title-col {
+  flex: 1;
+  min-width: 0;
 }
 .detail-head h2 {
   margin: 0 0 4px;
@@ -1547,12 +1657,111 @@ onBeforeUnmount(() => {
   font-size: 0.78rem;
   color: var(--ios-secondary);
 }
-.detail-head select {
+.detail-quick-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.quick-call-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #34c759;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.35);
+  transition: all 0.15s ease;
+}
+.quick-call-pill:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+.quick-fb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #007aff;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+  transition: all 0.15s ease;
+}
+.quick-fb-pill:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+/* Fast 1-Tap Status Switcher */
+.status-quick-switch {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid #f2f2f7;
+}
+.status-quick-switch::-webkit-scrollbar {
+  display: none;
+}
+.status-switch-pill {
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  background: #f8f8fa;
+  color: #636366;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.status-switch-pill:hover {
+  background: #e5e5ea;
+  color: var(--ios-label);
+}
+.status-switch-pill.active {
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  border-color: transparent;
+}
+.status-switch-pill.sw-moi.active { background: #ff3b30; }
+.status-switch-pill.sw-dang_tu_van.active { background: #007aff; }
+.status-switch-pill.sw-cho_phan_hoi.active { background: #ff9500; }
+.status-switch-pill.sw-da_chot.active { background: #34c759; }
+.status-switch-pill.sw-da_huy.active { background: #8e8e93; }
+
+/* Floating Back-to-Top Button */
+.floating-top-pill {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  right: 18px;
+  z-index: 990;
+  background: rgba(28, 28, 30, 0.9);
+  color: #ffffff;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.floating-top-pill:hover {
+  background: rgba(0, 122, 255, 0.95);
+  transform: translateY(-2px);
 }
 
 .edit-grid {

@@ -1283,6 +1283,7 @@ const handleLogout = async () => {
   }
 
   .mobile-tab-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1294,10 +1295,10 @@ const handleLogout = async () => {
     text-decoration: none;
     border: none;
     background: transparent;
-    padding: 6px 12px;
+    padding: 6px 12px 10px;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: color 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.12s ease;
   }
 
   .mobile-tab-item:active {
@@ -1307,6 +1308,18 @@ const handleLogout = async () => {
   .mobile-tab-item.router-link-active {
     color: #007aff;
     font-weight: 750;
+  }
+
+  .mobile-tab-item.router-link-active::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #007aff;
+    box-shadow: 0 0 6px rgba(0, 122, 255, 0.7);
+    animation: appleBadgePulse 2.5s infinite ease-in-out;
   }
 
   .tab-icon-wrap {
