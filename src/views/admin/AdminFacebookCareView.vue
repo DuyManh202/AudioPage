@@ -278,14 +278,18 @@
             <span>{{ messengerConnected ? 'Tin nhắn OUT sẽ gửi qua Messenger' : 'Ghi nhận nội bộ · Messenger chưa kết nối' }}</span>
           </div>
           <div class="history">
-            <div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in']">
+            <div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in', !m.platformMessageId && m.direction === 'IN' ? 'note' : '']">
               <small>
                 <template v-if="m.direction === 'OUT'">
-                  Đã tư vấn <span v-if="m.createdBy">({{ m.createdBy }})</span>
+                  <span class="sender-tag out">Tú Audio</span>
+                  <span v-if="m.createdBy && m.createdBy !== 'Tú Audio'"> ({{ m.createdBy }})</span>
+                </template>
+                <template v-else-if="m.platformMessageId">
+                  <span class="sender-tag fb-user">Khách hàng (Messenger)</span>
                 </template>
                 <template v-else>
-                  {{ m.platformMessageId ? 'Khách nhắn (Messenger)' : 'Khách nhắn (Ghi chú)' }}
-                  <span v-if="m.createdBy && m.createdBy !== 'Facebook Page'">({{ m.createdBy }})</span>
+                  <span class="sender-tag staff-note">📝 Ghi chú nội bộ</span>
+                  <span v-if="m.createdBy"> ({{ m.createdBy }})</span>
                 </template>
                 · {{ displayDate(m.createdAt) }}
               </small>
@@ -304,11 +308,15 @@
 
           <form class="message-form" @submit.prevent="addMessage">
             <select v-model="messageDirection">
-              <option value="OUT">{{ messengerConnected ? '🚀 Trả lời khách (Messenger)' : 'Đã tư vấn' }}</option>
-              <option value="IN">📝 Ghi chú nội bộ (Gọi/Zalo)</option>
+              <option value="OUT" :disabled="!messengerPolicyInfo.within24h">
+                {{ messengerConnected ? (messengerPolicyInfo.within24h ? '🚀 Trả lời khách (Messenger)' : '🚀 Messenger (Quá 24h - Khóa)') : 'Đã tư vấn' }}
+              </option>
+              <option value="IN">📝 Ghi chú nội bộ của Shop</option>
             </select>
-            <input v-model="messageBody" :placeholder="messageDirection === 'OUT' && messengerConnected ? 'Soạn tin nhắn gửi Messenger trực tiếp…' : 'Ghi chép nội dung khách trao đổi…'" required>
-            <button class="ios-action-pill" :disabled="busy">{{ busy ? 'Đang gửi…' : messageDirection === 'OUT' && messengerConnected ? 'Gửi Messenger' : 'Ghi lại' }}</button>
+            <input v-model="messageBody" :placeholder="messageDirection === 'OUT' && messengerConnected ? 'Soạn tin nhắn gửi Messenger trực tiếp…' : 'Ghi chép nội dung trao đổi nội bộ, cuộc gọi, Zalo…'" required>
+            <button class="ios-action-pill" :disabled="busy || (messageDirection === 'OUT' && !messengerPolicyInfo.within24h)">
+              {{ busy ? 'Đang gửi…' : messageDirection === 'OUT' ? 'Gửi Messenger' : 'Lưu ghi chú' }}
+            </button>
           </form>
         </section>
 
@@ -1934,6 +1942,26 @@ onBeforeUnmount(() => {
 }
 .message.out small {
   color: rgba(255, 255, 255, 0.75);
+}
+.message.note {
+  background: #fffbeb;
+  border: 1px solid #fef08a;
+  border-left: 3px solid #f59e0b;
+}
+.message.note small {
+  color: #92400e;
+}
+.sender-tag {
+  font-weight: 700;
+}
+.sender-tag.fb-user {
+  color: #2563eb;
+}
+.sender-tag.staff-note {
+  color: #b45309;
+}
+.sender-tag.out {
+  color: #ffffff;
 }
 .message small {
   color: var(--ios-secondary);
