@@ -196,73 +196,120 @@
       <!-- Bảng xếp hạng chi tiết từng quảng cáo (Futuristic 7-Column Layout) -->
       <div class="adm-card analytics-table-card">
         <div class="table-card-head">
-          <div>
+          <div class="head-title-wrap">
             <h3>Bảng Bắt Bệnh & Hiệu Quả Từng Quảng Cáo (ROI & Technical Ranking)</h3>
-            <p>Đối soát chi phí Meta ({{ analyticsSummary.periodLabel || 'Hôm nay' }}) với các chỉ số kỹ thuật CTR, CPM, Freq và doanh thu thực tế</p>
+            <p class="period-indicator-text">
+              Đang đối soát: <strong class="text-neon-blue">{{ analyticsSummary.periodLabel || 'Hôm nay' }}</strong> · CTR, CPM, Freq, Mess và Doanh thu thực tế
+            </p>
           </div>
-          <div class="head-actions">
-            <!-- Bộ lọc trạng thái hoạt động / tạm dừng -->
-            <div class="status-btn-group">
-              <button
-                type="button"
-                :class="['status-btn', { active: analyticsStatusFilter === 'ALL' }]"
-                @click="analyticsStatusFilter = 'ALL'"
-                title="Xem tất cả chiến dịch"
-              >
-                Tất cả ({{ analyticsData.length }})
-              </button>
-              <button
-                type="button"
-                :class="['status-btn status-btn-active', { active: analyticsStatusFilter === 'ACTIVE' }]"
-                @click="analyticsStatusFilter = 'ACTIVE'"
-                title="Chỉ hiển thị các chiến dịch đang chạy trên Meta"
-              >
-                🟢 Đang chạy ({{ activeAdsCount }})
-              </button>
-              <button
-                type="button"
-                :class="['status-btn status-btn-paused', { active: analyticsStatusFilter === 'PAUSED' }]"
-                @click="analyticsStatusFilter = 'PAUSED'"
-                title="Chỉ hiển thị các chiến dịch đã tắt hoặc tạm dừng"
-              >
-                ⏸️ Đã tạm dừng ({{ pausedAdsCount }})
-              </button>
-            </div>
 
-            <!-- Bộ lọc khoảng thời gian -->
+          <div class="head-actions">
+            <!-- Cụm chọn nhanh ngày chuẩn Facebook Ads -->
             <div class="period-btn-group">
               <button
                 type="button"
                 :class="['period-btn', { active: analyticsPeriod === 'today' }]"
                 @click="changePeriod('today')"
+                title="Xem chi phí & khách hôm nay"
               >
                 ⚡ Hôm nay
               </button>
               <button
                 type="button"
+                :class="['period-btn', { active: analyticsPeriod === 'yesterday' }]"
+                @click="changePeriod('yesterday')"
+                title="Xem chi phí & khách ngày hôm qua"
+              >
+                📅 Hôm qua
+              </button>
+              <button
+                type="button"
                 :class="['period-btn', { active: analyticsPeriod === '7d' }]"
                 @click="changePeriod('7d')"
+                title="Xem 7 ngày gần nhất"
               >
                 7 ngày qua
               </button>
               <button
                 type="button"
+                :class="['period-btn', { active: analyticsPeriod === 'this_month' }]"
+                @click="changePeriod('this_month')"
+                title="Xem toàn bộ tháng này"
+              >
+                Tháng này
+              </button>
+              <button
+                type="button"
                 :class="['period-btn', { active: analyticsPeriod === '30d' }]"
                 @click="changePeriod('30d')"
+                title="Xem 30 ngày gần nhất"
               >
-                30 ngày qua
+                30 ngày
               </button>
               <button
                 type="button"
                 :class="['period-btn', { active: analyticsPeriod === 'maximum' }]"
                 @click="changePeriod('maximum')"
+                title="Xem toàn bộ lịch sử (Trọn đời)"
               >
                 🌐 Trọn đời
               </button>
             </div>
+
+            <!-- Bộ chọn khoảng ngày tùy chỉnh (Custom Date Range) -->
+            <div :class="['custom-date-box', { active: analyticsPeriod === 'custom' }]">
+              <span class="custom-date-icon">🗓️</span>
+              <input type="date" v-model="customFrom" class="date-picker-input" title="Từ ngày (YYYY-MM-DD)" />
+              <span class="date-arrow">→</span>
+              <input type="date" v-model="customTo" class="date-picker-input" title="Đến ngày (YYYY-MM-DD)" />
+              <button
+                type="button"
+                class="apply-date-btn"
+                @click="applyCustomDateRange"
+                :disabled="!customFrom || !customTo || analyticsBusy"
+                title="Bấm để lọc theo khoảng ngày đã chọn"
+              >
+                Lọc ngày
+              </button>
+            </div>
+
+            <!-- Nút làm mới dữ liệu -->
             <button type="button" class="refresh-btn" @click="loadAnalytics()" :disabled="analyticsBusy">
               {{ analyticsBusy ? 'Đang tải...' : '↻ Làm Mới' }}
             </button>
+          </div>
+        </div>
+
+        <!-- Thanh phân loại phụ: Bộ lọc trạng thái hoạt động / tạm dừng -->
+        <div class="table-sub-bar">
+          <div class="status-btn-group">
+            <button
+              type="button"
+              :class="['status-btn', { active: analyticsStatusFilter === 'ALL' }]"
+              @click="analyticsStatusFilter = 'ALL'"
+              title="Xem tất cả chiến dịch"
+            >
+              Tất cả ({{ analyticsData.length }})
+            </button>
+            <button
+              type="button"
+              :class="['status-btn status-btn-active', { active: analyticsStatusFilter === 'ACTIVE' }]"
+              @click="analyticsStatusFilter = 'ACTIVE'"
+              title="Chỉ hiển thị các chiến dịch đang chạy trên Meta"
+            >
+              🟢 Đang chạy ({{ activeAdsCount }})
+            </button>
+            <button
+              type="button"
+              :class="['status-btn status-btn-paused', { active: analyticsStatusFilter === 'PAUSED' }]"
+              @click="analyticsStatusFilter = 'PAUSED'"
+              title="Chỉ hiển thị các chiến dịch đã tắt hoặc tạm dừng"
+            >
+              ⏸️ Đã tạm dừng ({{ pausedAdsCount }})
+            </button>
+          </div>
+          <div class="table-stats-hint">
+            <span>Hiển thị <strong>{{ filteredAnalyticsData.length }}</strong> / {{ analyticsData.length }} chiến dịch</span>
           </div>
         </div>
 
@@ -392,7 +439,9 @@ const adminStore = useAdminStore()
 const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
 const currentTab = ref('CARE')
 const analyticsData = ref([])
-const analyticsPeriod = ref('maximum')
+const analyticsPeriod = ref('today')
+const customFrom = ref('')
+const customTo = ref('')
 const analyticsStatusFilter = ref('ALL') // 'ALL' | 'ACTIVE' | 'PAUSED'
 const activeAdsCount = computed(() => analyticsData.value.filter(a => a.isMetaActive).length)
 const pausedAdsCount = computed(() => analyticsData.value.filter(a => !a.isMetaActive).length)
@@ -535,7 +584,11 @@ async function loadAnalytics(period) {
   analyticsBusy.value = true
   analyticsError.value = ''
   try {
-    const r = await apiRequest(`/admin/facebook-ads/analytics?period=${analyticsPeriod.value}`)
+    let url = `/admin/facebook-ads/analytics?period=${encodeURIComponent(analyticsPeriod.value)}`
+    if (analyticsPeriod.value === 'custom' && customFrom.value && customTo.value) {
+      url += `&from=${encodeURIComponent(customFrom.value)}&to=${encodeURIComponent(customTo.value)}`
+    }
+    const r = await apiRequest(url)
     if (r.success) {
       analyticsData.value = r.data || []
       analyticsSummary.value = r.summary || analyticsSummary.value
@@ -546,7 +599,22 @@ async function loadAnalytics(period) {
     analyticsBusy.value = false
   }
 }
-function changePeriod(p) { loadAnalytics(p) }
+function changePeriod(p) {
+  analyticsPeriod.value = p
+  loadAnalytics(p)
+}
+function applyCustomDateRange() {
+  if (!customFrom.value || !customTo.value) {
+    adminStore.showNotice('Vui lòng chọn cả ngày bắt đầu và ngày kết thúc.', 'warning')
+    return
+  }
+  if (customFrom.value > customTo.value) {
+    adminStore.showNotice('Ngày bắt đầu không được lớn hơn ngày kết thúc.', 'warning')
+    return
+  }
+  analyticsPeriod.value = 'custom'
+  loadAnalytics('custom')
+}
 function switchTab(tab) { currentTab.value = tab; if (tab === 'ANALYTICS') loadAnalytics() }
 function filterByCampaign(adId) { currentTab.value = 'CARE'; adFilter.value = adId }
 function selectNewArrival(customer) { select(customer); newArrivals.value = newArrivals.value.filter(item => item.id !== customer.id) }
@@ -662,11 +730,25 @@ onBeforeUnmount(() => {
 .status-btn.status-btn-active.active{background:#16a34a;color:#fff;box-shadow:0 3px 12px rgba(22,163,74,0.35)}
 .status-btn.status-btn-paused.active{background:#64748b;color:#fff;box-shadow:0 2px 8px rgba(100,116,139,0.3)}
 
-.period-btn{padding:6px 12px;font-size:.74rem;font-weight:750;border:none;border-radius:9px;background:transparent;color:#475569;cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1)}
+.period-btn{padding:6px 12px;font-size:.74rem;font-weight:750;border:none;border-radius:9px;background:transparent;color:#475569;cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1);white-space:nowrap}
 .period-btn:hover{background:#e2e8f0;color:#0f172a}
 .period-btn.active{background:#2563eb;color:#fff;box-shadow:0 3px 10px rgba(37,99,235,0.3)}
 
-.refresh-btn{background:#f8fafc;color:#1e293b;border:1px solid #cbd5e1;border-radius:11px;padding:7px 15px;font-weight:750;font-size:.74rem;cursor:pointer;transition:all .2s ease;display:inline-flex;align-items:center;gap:6px}
+.custom-date-box{display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:3px 8px;transition:all .2s ease}
+.custom-date-box.active{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 2px rgba(37,99,235,0.15)}
+.custom-date-icon{font-size:.85rem}
+.date-picker-input{border:none;background:transparent;font-size:.73rem;font-weight:700;color:#1e293b;padding:4px 2px;outline:none;font-family:inherit}
+.date-arrow{color:#94a3b8;font-size:.72rem;font-weight:700}
+.apply-date-btn{background:#2563eb;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:.73rem;font-weight:800;cursor:pointer;transition:all .15s ease;white-space:nowrap}
+.apply-date-btn:hover:not(:disabled){background:#1d4ed8;box-shadow:0 2px 8px rgba(37,99,235,0.3)}
+.apply-date-btn:disabled{background:#cbd5e1;cursor:not-allowed;opacity:.7}
+
+.table-sub-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 4px 6px;flex-wrap:wrap;gap:10px}
+.table-stats-hint{font-size:.73rem;color:#64748b}
+.table-stats-hint strong{color:#0f172a}
+.period-indicator-text strong{color:#2563eb}
+
+.refresh-btn{background:#f8fafc;color:#1e293b;border:1px solid #cbd5e1;border-radius:11px;padding:7px 15px;font-weight:750;font-size:.74rem;cursor:pointer;transition:all .2s ease;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .refresh-btn:hover{background:#0f172a;color:#fff;border-color:#0f172a;box-shadow:0 3px 10px rgba(15,23,42,0.2)}
 
 /* FUTURISTIC SMART TABLE */

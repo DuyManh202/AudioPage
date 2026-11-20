@@ -2672,19 +2672,51 @@ app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_A
 app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     let ads = []
-    const periodParam = String(req.query.period || 'maximum').toLowerCase()
-    let period = 'maximum'
-    let periodLabel = 'Toàn thời gian (Trọn đời)'
+    const periodParam = String(req.query.period || 'today').toLowerCase()
+    const fromParam = String(req.query.from || '').trim()
+    const toParam = String(req.query.to || '').trim()
 
-    if (periodParam === 'today') {
-      period = 'today'
-      periodLabel = 'Hôm nay'
-    } else if (periodParam === '7d') {
+    let period = 'today'
+    let periodLabel = 'Hôm nay'
+    let insightsField = 'insights.date_preset(today)'
+    let dateSqlFilter = "AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date"
+
+    const isCustomDate = /^\d{4}-\d{2}-\d{2}$/.test(fromParam) && /^\d{4}-\d{2}-\d{2}$/.test(toParam)
+
+    if (periodParam === 'custom' && isCustomDate) {
+      insightsField = `insights.time_range({'since':'${fromParam}','until':'${toParam}'})`
+      periodLabel = `Từ ${fromParam} đến ${toParam}`
+      dateSqlFilter = `AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date >= '${fromParam}' AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date <= '${toParam}'`
+    } else if (periodParam === 'yesterday') {
+      period = 'yesterday'
+      periodLabel = 'Hôm qua'
+      insightsField = 'insights.date_preset(yesterday)'
+      dateSqlFilter = "AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date = ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '1 day')::date"
+    } else if (periodParam === '7d' || periodParam === 'last_7d') {
       period = 'last_7d'
       periodLabel = '7 ngày gần nhất'
-    } else if (periodParam === '30d') {
+      insightsField = 'insights.date_preset(last_7d)'
+      dateSqlFilter = "AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date >= ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '6 day')::date"
+    } else if (periodParam === 'this_month') {
+      period = 'this_month'
+      periodLabel = 'Tháng này'
+      insightsField = 'insights.date_preset(this_month)'
+      dateSqlFilter = "AND (c.created_at AT TIME ZONE 'Asia/Bangkok') >= date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')"
+    } else if (periodParam === '30d' || periodParam === 'last_30d') {
       period = 'last_30d'
       periodLabel = '30 ngày gần nhất'
+      insightsField = 'insights.date_preset(last_30d)'
+      dateSqlFilter = "AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date >= ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '29 day')::date"
+    } else if (periodParam === 'maximum' || periodParam === 'all') {
+      period = 'maximum'
+      periodLabel = 'Toàn thời gian (Trọn đời)'
+      insightsField = 'insights.date_preset(maximum)'
+      dateSqlFilter = "" // Toàn bộ lịch sử
+    } else {
+      period = 'today'
+      periodLabel = 'Hôm nay'
+      insightsField = 'insights.date_preset(today)'
+      dateSqlFilter = "AND (c.created_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date"
     }
 
     // Tự động dọn dẹp các trường hợp bị gán nhầm vào chiến dịch ngày 19/11 nếu khách nhắn trước ngày 19/11
@@ -2704,7 +2736,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         const version = process.env.META_GRAPH_VERSION || 'v19.0'
         const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
         const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
-        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(${period}){impressions,reach,clicks,spend,actions,cost_per_action_type}`)
+        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},${insightsField}{impressions,reach,clicks,spend,actions,cost_per_action_type}`)
         url.searchParams.set('limit', '100')
         const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
         const payload = await response.json().catch(() => ({}))
@@ -2781,6 +2813,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         OR (c.customer_name IS NOT NULL AND LOWER(c.customer_name) = LOWER(o.customer_name))
       ) AND o.status <> 'CANCELLED'
       WHERE c.source_ad_id IS NOT NULL AND c.source_ad_id <> ''
+      ${dateSqlFilter}
       GROUP BY c.source_ad_id, c.source_ad_name, c.source_campaign_id, c.source_campaign_name
     `)
 
@@ -2814,7 +2847,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         ? stat.totalOrderRevenue
         : (stat.closedCustomers * 25000000)
 
-      const effectiveCustomers = stat.totalCustomers > 0 ? stat.totalCustomers : (ad.metaMessages || 0)
+      const effectiveCustomers = Math.max(stat.totalCustomers || 0, ad.metaMessages || 0)
       const cpl = ad.metaCpl > 0 ? ad.metaCpl : (ad.spend > 0 && effectiveCustomers > 0 ? Math.round(ad.spend / effectiveCustomers) : 0)
       const cpa = ad.spend > 0 && stat.closedCustomers > 0 ? Math.round(ad.spend / stat.closedCustomers) : 0
       const conversionRate = effectiveCustomers > 0 ? Number(((stat.closedCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
