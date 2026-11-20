@@ -666,11 +666,9 @@ const handleLogout = async () => {
   background: #f1f5f9;
   color: #0f172a;
   width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
 }
 
-/* Sidebar */
+/* Sidebar (Fixed on Desktop so it never scrolls away or gets cut off) */
 .admin-sidebar {
   width: 264px;
   flex-shrink: 0;
@@ -678,8 +676,10 @@ const handleLogout = async () => {
   border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
   height: 100vh;
   z-index: 90;
 }
@@ -891,8 +891,8 @@ const handleLogout = async () => {
 .admin-main {
   flex: 1;
   min-width: 0;
-  max-width: 100%;
-  overflow-x: hidden;
+  margin-left: 264px;
+  width: calc(100% - 264px);
   display: flex;
   flex-direction: column;
 }
@@ -901,7 +901,8 @@ const handleLogout = async () => {
   height: 64px;
   padding: 0 24px;
   background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
@@ -1353,6 +1354,18 @@ const handleLogout = async () => {
 }
 
 @media (max-width: 960px) {
+  .admin-shell {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  .admin-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden;
+  }
+
   .sidebar-backdrop {
     display: block;
     position: fixed;
