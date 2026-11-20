@@ -2260,7 +2260,7 @@ onBeforeUnmount(() => {
     flex: 1;
     border: 0;
     outline: 0;
-    font-size: 0.85rem;
+    font-size: 16px !important;
     font-family: inherit;
     color: #0f172a;
     background: transparent;
@@ -3731,6 +3731,16 @@ onBeforeUnmount(() => {
     flex: 2;
     height: 44px;
     font-size: 0.85rem;
+  }
+
+  /* Ngăn chặn hoàn toàn iOS Safari tự động zoom màn hình khi bấm nhập chữ */
+  .form-input,
+  .form-textarea,
+  .location-search-input,
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }
 

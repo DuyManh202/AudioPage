@@ -946,10 +946,15 @@
     grid-template-columns: 1fr;
     gap: 10px;
   }
+  input,
+  select,
+  textarea,
   .adm-field input,
   .adm-field select,
-  .adm-field textarea {
-    font-size: 16px !important;
+  .adm-field textarea,
+  .form-input,
+  .form-textarea {
+    font-size: 16px !important; /* Chống auto-zoom hoàn toàn trên iOS Safari */
   }
 
   .adm-modal-backdrop {
