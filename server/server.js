@@ -3093,7 +3093,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
 
 app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const [fbResult, leadResult, ordersResult] = await Promise.all([
+    const [fbResult, leadResult, ordersResult, customPointsResult] = await Promise.all([
       query(`SELECT c.id,c.customer_name,c.facebook_id,c.phone,c.address,c.province,c.location_lat,c.location_lng,c.location_manually_set,c.interest,c.last_message,c.status,c.source_ad_name,c.updated_at,
         visits.visited_at,visits.visited_by,
         COALESCE(product_image.image_url,combo_image.image_url,'') AS interest_image, combo_image.video_url AS interest_video_url
@@ -3111,7 +3111,9 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
         LEFT JOIN LATERAL (SELECT p.image_url,co.video_url FROM combos co JOIN combo_components cc ON cc.combo_id=co.id JOIN products p ON p.id=cc.product_id OR LOWER(cc.item_name) LIKE '%' || LOWER(p.name) || '%' WHERE LOWER(COALESCE(l.interest,'')) LIKE '%' || LOWER(SPLIT_PART(co.name,'—',1)) || '%' ORDER BY cc.sort_order LIMIT 1) combo_image ON TRUE
         ORDER BY l.updated_at DESC`),
       query(`SELECT id,customer_name,customer_phone,shipping_address,status,created_at FROM orders
-        WHERE status IN ('DA_XAC_NHAN','DANG_GIAO') ORDER BY created_at DESC`)
+        WHERE status IN ('DA_XAC_NHAN','DANG_GIAO') ORDER BY created_at DESC`),
+      query(`SELECT id, name, phone, address, province, location_lat, location_lng, point_type, notes, interest, visited_at, visited_by, created_by, created_at, updated_at
+        FROM custom_map_points ORDER BY updated_at DESC`)
     ])
     const byPhone = new Map()
     let unlocatedCount = 0
@@ -3178,11 +3180,189 @@ app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_A
     }
     leadResult.rows.forEach(row => add(row, 'LEAD'))
     fbResult.rows.forEach(row => add(row, 'FACEBOOK'))
+
+    // Điểm tự thêm (Custom points) ĐƯỢC GIỮ HOÀN TOÀN TÁCH BIỆT, không gộp theo phone vào Facebook
+    const customPoints = (customPointsResult?.rows || []).map(row => {
+      const lat = Number(row.location_lat)
+      const lng = Number(row.location_lng)
+      const detected = findProvince(row.address) || findProvince(row.province)
+      return {
+        id: row.id,
+        recordType: 'CUSTOM',
+        customerName: row.name || 'Điểm tự thêm',
+        phone: row.phone || '',
+        address: row.address || '',
+        province: row.province || detected?.displayName || 'Khác',
+        lat,
+        lng,
+        locationPrecision: 'EXACT',
+        pointType: row.point_type || 'CUSTOMER',
+        notes: row.notes || '',
+        interest: row.interest || '',
+        visitedAt: row.visited_at || '',
+        visitedBy: row.visited_by || '',
+        createdBy: row.created_by || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }
+    }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+
     const deliveryOrders = ordersResult.rows.flatMap(row => {
       const province = findProvince(row.shipping_address)
       return province ? [{ id: row.id, customerName: row.customer_name || 'Khách đặt hàng', phone: row.customer_phone || '', address: row.shipping_address || '', status: row.status, lat: province.lat, lng: province.lng, province: province.displayName, locationPrecision: 'PROVINCE' }] : []
     })
-    res.json({ success: true, data: [...byPhone.values()], deliveryOrders, unlocatedCount, origin: { address: '43 Hùng Vương, Phường Vĩnh Yên, Phú Thọ', lat: 21.31, lng: 105.60 } })
+    res.json({ success: true, data: [...byPhone.values(), ...customPoints], deliveryOrders, unlocatedCount, origin: { address: '43 Hùng Vương, Phường Vĩnh Yên, Phú Thọ', lat: 21.31, lng: 105.60 } })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.post('/api/v1/admin/customer-map/custom-points', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { name, phone, address, province, pointType, notes, interest } = req.body || {}
+    let lat = req.body?.lat != null ? Number(req.body.lat) : null
+    let lng = req.body?.lng != null ? Number(req.body.lng) : null
+
+    if (!String(name || '').trim()) {
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập tên điểm hoặc tên khách hàng.' })
+    }
+
+    const detected = findProvince(province || address)
+    if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && detected) {
+      lat = detected.lat
+      lng = detected.lng
+    }
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tọa độ hoặc chọn tỉnh/thành hợp lệ.' })
+    }
+
+    const id = `CMP-${randomUUID()}`
+    const result = await query(
+      `INSERT INTO custom_map_points (id, name, phone, address, province, location_lat, location_lng, point_type, notes, interest, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING *`,
+      [
+        id,
+        String(name).trim(),
+        phone ? String(phone).trim() : null,
+        address ? String(address).trim() : null,
+        province ? String(province).trim() : (detected?.displayName || null),
+        lat,
+        lng,
+        pointType ? String(pointType).trim() : 'CUSTOMER',
+        notes ? String(notes).trim() : null,
+        interest ? String(interest).trim() : null,
+        req.admin.name
+      ]
+    )
+
+    const row = result.rows[0]
+    res.status(201).json({
+      success: true,
+      data: {
+        id: row.id,
+        recordType: 'CUSTOM',
+        customerName: row.name,
+        phone: row.phone || '',
+        address: row.address || '',
+        province: row.province || '',
+        lat: Number(row.location_lat),
+        lng: Number(row.location_lng),
+        locationPrecision: 'EXACT',
+        pointType: row.point_type,
+        notes: row.notes || '',
+        interest: row.interest || '',
+        visitedAt: row.visited_at || '',
+        visitedBy: row.visited_by || '',
+        createdBy: row.created_by || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.patch('/api/v1/admin/customer-map/custom-points/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { name, phone, address, province, pointType, notes, interest } = req.body || {}
+    const exists = await query('SELECT * FROM custom_map_points WHERE id=$1', [id])
+    if (!exists.rows[0]) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy điểm tự thêm.' })
+    }
+
+    let lat = req.body?.lat != null ? Number(req.body.lat) : Number(exists.rows[0].location_lat)
+    let lng = req.body?.lng != null ? Number(req.body.lng) : Number(exists.rows[0].location_lng)
+
+    const detected = findProvince(province || address)
+    if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && detected) {
+      lat = detected.lat
+      lng = detected.lng
+    }
+
+    const updatedName = name !== undefined ? String(name || '').trim() : exists.rows[0].name
+    if (!updatedName) {
+      return res.status(400).json({ success: false, message: 'Tên điểm không được để trống.' })
+    }
+
+    const result = await query(
+      `UPDATE custom_map_points
+       SET name=$1, phone=$2, address=$3, province=$4, location_lat=$5, location_lng=$6, point_type=$7, notes=$8, interest=$9, updated_at=CURRENT_TIMESTAMP
+       WHERE id=$10
+       RETURNING *`,
+      [
+        updatedName,
+        phone !== undefined ? (phone ? String(phone).trim() : null) : exists.rows[0].phone,
+        address !== undefined ? (address ? String(address).trim() : null) : exists.rows[0].address,
+        province !== undefined ? (province ? String(province).trim() : null) : exists.rows[0].province,
+        lat,
+        lng,
+        pointType !== undefined ? String(pointType).trim() : exists.rows[0].point_type,
+        notes !== undefined ? (notes ? String(notes).trim() : null) : exists.rows[0].notes,
+        interest !== undefined ? (interest ? String(interest).trim() : null) : exists.rows[0].interest,
+        id
+      ]
+    )
+
+    const row = result.rows[0]
+    res.json({
+      success: true,
+      data: {
+        id: row.id,
+        recordType: 'CUSTOM',
+        customerName: row.name,
+        phone: row.phone || '',
+        address: row.address || '',
+        province: row.province || '',
+        lat: Number(row.location_lat),
+        lng: Number(row.location_lng),
+        locationPrecision: 'EXACT',
+        pointType: row.point_type,
+        notes: row.notes || '',
+        interest: row.interest || '',
+        visitedAt: row.visited_at || '',
+        visitedBy: row.visited_by || '',
+        createdBy: row.created_by || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.delete('/api/v1/admin/customer-map/custom-points/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const result = await query('DELETE FROM custom_map_points WHERE id=$1 RETURNING id', [id])
+    if (!result.rows[0]) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy điểm để xóa.' })
+    }
+    res.json({ success: true, message: 'Đã xóa điểm thành công.' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -3192,9 +3372,21 @@ app.patch('/api/v1/admin/customer-map/:recordType/:id/visit', authenticateAdmin,
   try {
     const recordType = String(req.params.recordType || '').toUpperCase()
     const { visited } = req.body || {}
-    if (!['FACEBOOK', 'LEAD'].includes(recordType) || typeof visited !== 'boolean') {
+    if (!['FACEBOOK', 'LEAD', 'CUSTOM'].includes(recordType) || typeof visited !== 'boolean') {
       return res.status(400).json({ success: false, message: 'Thông tin đánh dấu lượt ghé thăm không hợp lệ.' })
     }
+
+    if (recordType === 'CUSTOM') {
+      const exists = await query('SELECT id FROM custom_map_points WHERE id=$1', [req.params.id])
+      if (!exists.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy điểm tự thêm.' })
+      if (visited) {
+        await query('UPDATE custom_map_points SET visited_at=CURRENT_TIMESTAMP, visited_by=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [req.admin.name, req.params.id])
+      } else {
+        await query('UPDATE custom_map_points SET visited_at=NULL, visited_by=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [req.params.id])
+      }
+      return res.json({ success: true, visited })
+    }
+
     const linked = Array.isArray(req.body?.linkedRecords) ? req.body.linkedRecords.slice(0, 2) : []
     const records = [...new Map([{ recordType, id: req.params.id }, ...linked]
       .filter(record => ['FACEBOOK', 'LEAD'].includes(String(record?.recordType || '').toUpperCase()) && typeof record?.id === 'string' && record.id.length <= 50)
@@ -3527,6 +3719,24 @@ const ensureDatabaseSchema = async () => {
       visited_by VARCHAR(100) NOT NULL,
       PRIMARY KEY (record_type,record_id)
     )`)
+    await query(`CREATE TABLE IF NOT EXISTS custom_map_points (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(150) NOT NULL,
+      phone VARCHAR(30),
+      address TEXT,
+      province VARCHAR(100),
+      location_lat DOUBLE PRECISION NOT NULL,
+      location_lng DOUBLE PRECISION NOT NULL,
+      point_type VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER',
+      notes TEXT,
+      interest TEXT,
+      visited_at TIMESTAMP NULL,
+      visited_by VARCHAR(100),
+      created_by VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`)
+    await query('CREATE INDEX IF NOT EXISTS idx_custom_map_points_updated ON custom_map_points(updated_at DESC)')
     await query('ALTER TABLE combos ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE')
     // Chuẩn hóa ràng buộc khóa ngoại ON UPDATE CASCADE và cập nhật ID gói dàn cũ sang mã SKU chuẩn
     try {

@@ -9,15 +9,24 @@
           <div class="title-row">
             <h1 class="adm-page-title">Bản đồ khách hàng</h1>
             <div class="map-stats-badges">
-              <span class="stat-pill total"><b>{{ visibleCustomers.length }}</b> khách có vị trí</span>
+              <span class="stat-pill total"><b>{{ visibleCustomers.length }}</b> khách hiển thị</span>
+              <span class="stat-pill custom">📍 <b>{{ customPointsCount }}</b> điểm tự thêm</span>
               <span class="stat-pill unvisited">● <b>{{ unvisitedCount }}</b> chưa đi</span>
               <span class="stat-pill visited">✓ <b>{{ visitedCount }}</b> đã đi</span>
               <span v-if="unlocatedCount > 0" class="stat-pill unlocated">{{ unlocatedCount }} chưa ghim tỉnh</span>
             </div>
           </div>
-          <p class="adm-page-sub">Ghim vị trí theo tỉnh/thành khách hàng từ Fanpage &amp; CRM để tối ưu tuyến đường giao hàng và thử dàn.</p>
+          <p class="adm-page-sub">Ghim vị trí theo tỉnh/thành khách hàng từ Fanpage &amp; CRM, và tự thêm các điểm khảo sát riêng biệt.</p>
         </div>
         <div class="head-actions">
+          <button
+            type="button"
+            class="adm-btn adm-btn-add-point"
+            @click="openAddModal"
+            title="Tự thêm điểm mới độc lập trên bản đồ"
+          >
+            ＋ Thêm Điểm Mới
+          </button>
           <button
             type="button"
             :class="['adm-gps-toggle-btn', { active: trackingLocation }]"
@@ -67,43 +76,81 @@
               <input
                 v-model="keyword"
                 type="search"
-                placeholder="Tìm tên, SĐT, tỉnh/thành, sản phẩm..."
+                placeholder="Tìm tên, SĐT, tỉnh/thành, ghi chú..."
               />
               <button v-if="keyword" type="button" class="clear-btn" @click="keyword = ''">✕</button>
             </div>
+
+            <!-- Tab lọc Nguồn: Tách riêng Điểm tự thêm khỏi Facebook & Lead -->
+            <div class="source-filter-tabs">
+              <button
+                type="button"
+                :class="['source-tab', { active: sourceFilter === 'ALL' }]"
+                @click="sourceFilter = 'ALL'"
+              >
+                Tất cả ({{ customers.length }})
+              </button>
+              <button
+                type="button"
+                :class="['source-tab custom', { active: sourceFilter === 'CUSTOM' }]"
+                @click="sourceFilter = 'CUSTOM'"
+              >
+                📍 Tự thêm ({{ customPointsCount }})
+              </button>
+              <button
+                type="button"
+                :class="['source-tab fb', { active: sourceFilter === 'FACEBOOK' }]"
+                @click="sourceFilter = 'FACEBOOK'"
+              >
+                💬 Facebook ({{ fbPointsCount }})
+              </button>
+              <button
+                type="button"
+                :class="['source-tab lead', { active: sourceFilter === 'LEAD' }]"
+                @click="sourceFilter = 'LEAD'"
+              >
+                📋 CRM Lead ({{ leadPointsCount }})
+              </button>
+            </div>
+
             <div class="filter-chip-tabs">
               <button
                 type="button"
                 :class="['filter-tab', { active: visitFilter === 'ALL' }]"
                 @click="visitFilter = 'ALL'"
               >
-                Tất cả ({{ customers.length }})
+                Tất cả ({{ currentFilteredTotal }})
               </button>
               <button
                 type="button"
                 :class="['filter-tab warn', { active: visitFilter === 'NOT_VISITED' }]"
                 @click="visitFilter = 'NOT_VISITED'"
               >
-                ● Chưa đi ({{ unvisitedCount }})
+                ● Chưa đi ({{ currentFilteredUnvisited }})
               </button>
               <button
                 type="button"
                 :class="['filter-tab done', { active: visitFilter === 'VISITED' }]"
                 @click="visitFilter = 'VISITED'"
               >
-                ✓ Đã đi ({{ visitedCount }})
+                ✓ Đã đi ({{ currentFilteredVisited }})
               </button>
             </div>
           </div>
 
           <!-- Chi tiết hồ sơ khách khi bấm chọn -->
-          <div v-if="selected" class="map-selected-card">
+          <div v-if="selected" class="map-selected-card" :class="{ 'is-custom-point': selected.recordType === 'CUSTOM' }">
             <div class="selected-head">
-              <div class="selected-avatar">
-                {{ selected.customerName?.charAt(0) || 'K' }}
+              <div class="selected-avatar" :class="{ custom: selected.recordType === 'CUSTOM' }">
+                {{ selected.recordType === 'CUSTOM' ? '📍' : (selected.customerName?.charAt(0) || 'K') }}
               </div>
               <div class="selected-info">
-                <strong>{{ selected.customerName }}</strong>
+                <div class="selected-name-row">
+                  <strong>{{ selected.customerName }}</strong>
+                  <span v-if="selected.recordType === 'CUSTOM'" class="badge-source-custom">
+                    📍 Tự thêm · {{ pointTypeLabel(selected.pointType) }}
+                  </span>
+                </div>
                 <span :class="['selected-status', { visited: selected.visitedAt }]">
                   {{ selected.visitedAt ? '✓ Đã hoàn tất ghé' : '● Chưa ghé' }}
                 </span>
@@ -125,9 +172,9 @@
                 <span class="row-lbl">Khoảng cách:</span>
                 <span class="row-km">~{{ distanceFromStore(selected).toLocaleString('vi-VN') }} km</span>
               </div>
-              <div v-if="selected.interest" class="selected-row">
-                <span class="row-lbl">Quan tâm:</span>
-                <span class="row-interest">{{ selected.interest }}</span>
+              <div v-if="selected.interest || selected.notes" class="selected-row">
+                <span class="row-lbl">{{ selected.recordType === 'CUSTOM' ? 'Ghi chú:' : 'Quan tâm:' }}</span>
+                <span class="row-interest">{{ selected.notes || selected.interest }}</span>
               </div>
             </div>
 
@@ -144,7 +191,15 @@
               <a class="adm-btn adm-btn-gmaps" :href="googleMapsUrl(selected)" target="_blank" rel="noopener">
                 🧭 Google Maps
               </a>
-              <button type="button" class="adm-btn adm-btn-gold open-crm" @click="openCrm(selected)">
+              <template v-if="selected.recordType === 'CUSTOM'">
+                <button type="button" class="adm-btn adm-btn-edit-point" @click="openEditModal(selected)">
+                  ✏ Sửa điểm
+                </button>
+                <button type="button" class="adm-btn adm-btn-delete-point" :disabled="modalBusy" @click="deleteCustomPoint(selected)">
+                  🗑 Xóa
+                </button>
+              </template>
+              <button v-else type="button" class="adm-btn adm-btn-gold open-crm" @click="openCrm(selected)">
                 Hồ sơ CRM
               </button>
             </div>
@@ -155,21 +210,22 @@
             <button
               v-for="customer in visibleCustomers"
               :key="`${customer.recordType}:${customer.id}`"
-              :class="['map-customer-item', { active: selected?.id === customer.id && selected?.recordType === customer.recordType }]"
+              :class="['map-customer-item', { active: selected?.id === customer.id && selected?.recordType === customer.recordType, 'is-custom': customer.recordType === 'CUSTOM' }]"
               @click="selectCustomer(customer)"
             >
-              <div :class="['customer-pin-dot', { visited: customer.visitedAt }]"></div>
+              <div :class="['customer-pin-dot', { visited: customer.visitedAt, custom: customer.recordType === 'CUSTOM' }]"></div>
               <div class="customer-item-main">
                 <div class="item-title-row">
                   <span class="item-name">{{ customer.customerName }}</span>
+                  <span v-if="customer.recordType === 'CUSTOM'" class="item-custom-tag">📍 Tự thêm</span>
                   <span v-if="customer.visitedAt" class="item-visited-badge">Đã đi</span>
                 </div>
                 <div class="item-sub-row">
                   <span class="item-province">{{ customer.province }}</span>
                   <span class="item-km">~{{ distanceFromStore(customer).toLocaleString('vi-VN') }} km</span>
                 </div>
-                <span v-if="customer.phone || customer.interest" class="item-detail">
-                  {{ customer.phone ? `📞 ${customer.phone}` : customer.interest }}
+                <span v-if="customer.phone || customer.interest || customer.notes" class="item-detail">
+                  {{ customer.phone ? `📞 ${customer.phone}` : (customer.notes || customer.interest) }}
                 </span>
               </div>
             </button>
@@ -205,6 +261,41 @@
               placeholder="Tìm khách hàng, số điện thoại, khu vực…"
             >
             <button v-if="keyword" type="button" class="search-clear" @click="keyword = ''">✕</button>
+            <button type="button" class="xanhsm-add-point-btn" @click="openAddModal" title="Thêm điểm mới">
+              ＋ Điểm mới
+            </button>
+          </div>
+
+          <!-- Bộ lọc Tab Nguồn (Tất cả, Điểm tự thêm, Facebook, CRM) -->
+          <div class="xanhsm-source-chips">
+            <button
+              type="button"
+              :class="['xanhsm-src-chip', { active: sourceFilter === 'ALL' }]"
+              @click="sourceFilter = 'ALL'"
+            >
+              Tất cả ({{ customers.length }})
+            </button>
+            <button
+              type="button"
+              :class="['xanhsm-src-chip', 'custom', { active: sourceFilter === 'CUSTOM' }]"
+              @click="sourceFilter = 'CUSTOM'"
+            >
+              📍 Tự thêm ({{ customPointsCount }})
+            </button>
+            <button
+              type="button"
+              :class="['xanhsm-src-chip', 'fb', { active: sourceFilter === 'FACEBOOK' }]"
+              @click="sourceFilter = 'FACEBOOK'"
+            >
+              💬 FB ({{ fbPointsCount }})
+            </button>
+            <button
+              type="button"
+              :class="['xanhsm-src-chip', 'lead', { active: sourceFilter === 'LEAD' }]"
+              @click="sourceFilter = 'LEAD'"
+            >
+              📋 CRM ({{ leadPointsCount }})
+            </button>
           </div>
 
           <!-- Bộ lọc chip nổi dạng Xanh SM (Tất cả, Chưa đi, Đã đi) -->
@@ -214,27 +305,35 @@
               :class="['xanhsm-chip', { active: visitFilter === 'ALL' }]"
               @click="visitFilter = 'ALL'"
             >
-              Tất cả ({{ customers.length }})
+              Tất cả ({{ currentFilteredTotal }})
             </button>
             <button
               type="button"
               :class="['xanhsm-chip', 'warn', { active: visitFilter === 'NOT_VISITED' }]"
               @click="visitFilter = 'NOT_VISITED'"
             >
-              ● Chưa đi ({{ unvisitedCount }})
+              ● Chưa đi ({{ currentFilteredUnvisited }})
             </button>
             <button
               type="button"
               :class="['xanhsm-chip', 'done', { active: visitFilter === 'VISITED' }]"
               @click="visitFilter = 'VISITED'"
             >
-              ✓ Đã đi ({{ visitedCount }})
+              ✓ Đã đi ({{ currentFilteredVisited }})
             </button>
           </div>
         </header>
 
         <!-- Các nút tiện ích nổi góc phải phong cách App (Vị trí tôi, Toàn bộ, Danh sách) -->
         <div class="xanhsm-fab-group">
+          <button
+            type="button"
+            class="xanhsm-fab-btn add-custom-fab"
+            title="Thêm điểm mới độc lập"
+            @click="openAddModal"
+          >
+            ＋
+          </button>
           <button
             type="button"
             class="xanhsm-fab-btn"
@@ -316,14 +415,17 @@
               <div
                 v-for="(customer, idx) in visibleCustomers"
                 :key="`${customer.recordType}:${customer.id}`"
-                :class="['xanhsm-customer-card', { active: selected?.id === customer.id }]"
+                :class="['xanhsm-customer-card', { active: selected?.id === customer.id, 'is-custom': customer.recordType === 'CUSTOM' }]"
                 @click="focusAndSelectCustomer(customer)"
               >
                 <div class="card-left">
-                  <span class="card-num">{{ idx + 1 }}</span>
+                  <span class="card-num" :class="{ custom: customer.recordType === 'CUSTOM' }">
+                    {{ customer.recordType === 'CUSTOM' ? '📍' : (idx + 1) }}
+                  </span>
                   <div class="card-info">
                     <div class="card-name-row">
                       <strong>{{ customer.customerName }}</strong>
+                      <span v-if="customer.recordType === 'CUSTOM'" class="mobile-custom-tag">📍 Tự thêm</span>
                       <span :class="['card-status-badge', { visited: customer.visitedAt }]">
                         {{ customer.visitedAt ? '✓ Đã ghé' : '● Chưa đi' }}
                       </span>
@@ -331,7 +433,9 @@
                     <p class="card-address">
                       📍 {{ customerArea(customer) }}
                     </p>
-                    <span v-if="customer.interest" class="card-interest">{{ customer.interest }}</span>
+                    <span v-if="customer.interest || customer.notes" class="card-interest">
+                      {{ customer.notes || customer.interest }}
+                    </span>
                   </div>
                 </div>
                 <div class="card-right">
@@ -348,17 +452,20 @@
                 </div>
               </div>
               <p v-if="!visibleCustomers.length" class="map-empty">
-                Không tìm thấy khách hàng nào theo bộ lọc.
+                Không tìm thấy điểm hoặc khách hàng nào theo bộ lọc.
               </p>
             </div>
           </div>
 
           <!-- TRẠNG THÁI 3: CHI TIẾT KHÁCH HÀNG (CUSTOMER DETAIL CARD - NHƯ NHẬN CUỐC XANH SM) -->
-          <div v-else-if="sheetState === 'detail' && selected" class="xanhsm-detail-content">
+          <div v-else-if="sheetState === 'detail' && selected" class="xanhsm-detail-content" :class="{ 'is-custom': selected.recordType === 'CUSTOM' }">
             <div class="drawer-header detail-header">
               <div class="detail-name-group">
                 <div class="detail-name-row">
                   <h3 class="detail-customer-name">{{ selected.customerName }}</h3>
+                  <span v-if="selected.recordType === 'CUSTOM'" class="mobile-custom-tag">
+                    📍 Tự thêm · {{ pointTypeLabel(selected.pointType) }}
+                  </span>
                   <span :class="['card-status-badge', { visited: selected.visitedAt }]">
                     {{ selected.visitedAt ? '✓ Đã ghé thăm' : '● Chưa đi' }}
                   </span>
@@ -371,8 +478,8 @@
               <button type="button" class="drawer-close-btn" @click="closeDetailSheet">✕</button>
             </div>
 
-            <!-- Nhu cầu & sản phẩm khách quan tâm -->
-            <div v-if="selected.interest || safeImage(selected.interestImage)" class="detail-product-card">
+            <!-- Nhu cầu & sản phẩm khách quan tâm / Ghi chú -->
+            <div v-if="selected.interest || selected.notes || safeImage(selected.interestImage)" class="detail-product-card">
               <img
                 v-if="safeImage(selected.interestImage)"
                 :src="safeImage(selected.interestImage)"
@@ -380,8 +487,8 @@
                 alt=""
               >
               <div class="detail-product-info">
-                <small>Sản phẩm quan tâm:</small>
-                <strong>{{ selected.interest || 'Dàn Karaoke Gia Đình' }}</strong>
+                <small>{{ selected.recordType === 'CUSTOM' ? 'Ghi chú / Nhu cầu:' : 'Sản phẩm quan tâm:' }}</small>
+                <strong>{{ selected.notes || selected.interest || 'Dàn Karaoke Gia Đình' }}</strong>
               </div>
             </div>
 
@@ -394,7 +501,7 @@
               >
                 <span class="action-icon">📞</span>
                 <div class="action-text">
-                  <small>GỌI KHÁCH</small>
+                  <small>GỌI ĐIỆN</small>
                   <strong>{{ selected.phone }}</strong>
                 </div>
               </a>
@@ -412,7 +519,7 @@
               </a>
             </div>
 
-            <!-- Hàng nút phụ: Đánh dấu đã đi & Mở hồ sơ CRM -->
+            <!-- Hàng nút phụ: Đánh dấu đã đi & Mở hồ sơ CRM / Sửa / Xóa -->
             <div class="xanhsm-sub-actions">
               <button
                 type="button"
@@ -422,7 +529,25 @@
               >
                 {{ selected.visitedAt ? '↶ Đánh dấu chưa đi' : '✓ Đã hoàn thành ghé thăm' }}
               </button>
+              <template v-if="selected.recordType === 'CUSTOM'">
+                <button
+                  type="button"
+                  class="xanhsm-sub-btn edit-btn"
+                  @click="openEditModal(selected)"
+                >
+                  ✏ Sửa điểm
+                </button>
+                <button
+                  type="button"
+                  class="xanhsm-sub-btn delete-btn"
+                  :disabled="modalBusy"
+                  @click="deleteCustomPoint(selected)"
+                >
+                  🗑 Xóa
+                </button>
+              </template>
               <button
+                v-else
                 type="button"
                 class="xanhsm-sub-btn crm-btn"
                 @click="openCrm(selected)"
@@ -434,6 +559,146 @@
         </div>
       </div>
     </template>
+
+    <!-- BANNER HƯỚNG DẪN CHỌN TỌA ĐỘ TRỰC TIẾP TRÊN BẢN ĐỒ -->
+    <transition name="slide-down">
+      <div v-if="isPickingLocationOnMap" class="map-pick-banner">
+        <div class="pick-banner-content">
+          <span class="pick-pulse-dot"></span>
+          <span class="pick-text">
+            🎯 <strong>Chế độ chọn tọa độ:</strong> Chạm hoặc nhấp chuột vào bất kỳ vị trí nào trên bản đồ để lấy vị trí cho điểm.
+          </span>
+          <button type="button" class="pick-cancel-btn" @click="cancelPickingLocation">
+            ✕ Hủy chọn
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- MODAL THÊM / CHỈNH SỬA ĐIỂM BẢN ĐỒ (RIÊNG BIỆT) -->
+    <transition name="modal-fade">
+      <div v-if="showCustomModal" class="custom-modal-backdrop" @click.self="closeCustomModal">
+        <div class="custom-modal-card">
+          <div class="modal-card-head">
+            <div class="modal-title-wrap">
+              <span class="modal-pin-icon">📍</span>
+              <div>
+                <h3>{{ modalMode === 'add' ? 'Thêm điểm mới trên bản đồ' : 'Chỉnh sửa điểm bản đồ' }}</h3>
+                <small>Điểm này được lưu độc lập, không gộp vào tin nhắn Facebook hay CRM</small>
+              </div>
+            </div>
+            <button type="button" class="modal-close-btn" @click="closeCustomModal">✕</button>
+          </div>
+
+          <form class="modal-card-body" @submit.prevent="saveCustomPoint">
+            <div class="form-row">
+              <label>Tên điểm / Tên khách hàng <span class="req">*</span></label>
+              <input
+                v-model="formPoint.name"
+                type="text"
+                placeholder="VD: Bác Tuấn - Dàn 29Tr, Kho Loa Lâm Thao, Nhà thử dàn..."
+                required
+                class="form-input"
+              >
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-row">
+                <label>Phân loại điểm</label>
+                <select v-model="formPoint.pointType" class="form-input">
+                  <option value="CUSTOMER">Khách lắp đặt</option>
+                  <option value="TESTING">Điểm thử dàn / Nghe thử</option>
+                  <option value="PARTNER">Đại lý / Showroom đối tác</option>
+                  <option value="DELIVERY">Điểm giao nhận / Bến xe</option>
+                  <option value="OTHER">Khác</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>Số điện thoại (tùy chọn)</label>
+                <input
+                  v-model="formPoint.phone"
+                  type="tel"
+                  placeholder="VD: 0987654321"
+                  class="form-input"
+                >
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-row">
+                <label>Tỉnh / Thành phố <span class="req">*</span></label>
+                <select v-model="formPoint.province" class="form-input" @change="onProvinceChange">
+                  <option v-for="p in VIETNAM_PROVINCES_LIST" :key="p.name" :value="p.displayName">
+                    {{ p.displayName }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>Địa chỉ cụ thể</label>
+                <input
+                  v-model="formPoint.address"
+                  type="text"
+                  placeholder="VD: Số 12 phố X, Phường Tiên Cát"
+                  class="form-input"
+                >
+              </div>
+            </div>
+
+            <div class="form-row coords-group">
+              <div class="coords-head">
+                <label>Tọa độ GPS (Vĩ độ &amp; Kinh độ) <span class="req">*</span></label>
+                <button type="button" class="btn-pick-map" @click="startPickingLocationOnMap">
+                  🎯 Chọn trực tiếp trên bản đồ
+                </button>
+              </div>
+              <div class="form-grid-2">
+                <div class="input-with-label">
+                  <span class="sub-lbl">Lat:</span>
+                  <input
+                    v-model.number="formPoint.lat"
+                    type="number"
+                    step="any"
+                    placeholder="Vĩ độ (VD: 21.32)"
+                    class="form-input"
+                    required
+                  >
+                </div>
+                <div class="input-with-label">
+                  <span class="sub-lbl">Lng:</span>
+                  <input
+                    v-model.number="formPoint.lng"
+                    type="number"
+                    step="any"
+                    placeholder="Kinh độ (VD: 105.40)"
+                    class="form-input"
+                    required
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label>Ghi chú / Nhu cầu dàn / Thiết bị</label>
+              <textarea
+                v-model="formPoint.notes"
+                rows="2"
+                placeholder="Ghi chú cấu hình loa, âm ly, lưu ý khi ghé thăm..."
+                class="form-textarea"
+              ></textarea>
+            </div>
+
+            <div v-if="modalError" class="modal-form-error">{{ modalError }}</div>
+
+            <div class="modal-card-foot">
+              <button type="button" class="btn-modal-cancel" @click="closeCustomModal">Hủy bỏ</button>
+              <button type="submit" class="btn-modal-submit" :disabled="modalBusy">
+                {{ modalBusy ? 'Đang lưu…' : (modalMode === 'add' ? '✓ Thêm điểm mới' : '✓ Lưu cập nhật') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -444,6 +709,42 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiRequest } from '../../utils/api'
 
+const VIETNAM_PROVINCES_LIST = [
+  { name: 'Phu Tho', displayName: 'Phú Thọ', lat: 21.32, lng: 105.40 },
+  { name: 'Ha Noi', displayName: 'Hà Nội', lat: 21.03, lng: 105.85 },
+  { name: 'Vinh Phuc', displayName: 'Vĩnh Phúc', lat: 21.31, lng: 105.60 },
+  { name: 'Bac Ninh', displayName: 'Bắc Ninh', lat: 21.18, lng: 106.07 },
+  { name: 'Hai Phong', displayName: 'Hải Phòng', lat: 20.85, lng: 106.68 },
+  { name: 'Hai Duong', displayName: 'Hải Dương', lat: 20.94, lng: 106.33 },
+  { name: 'Hung Yen', displayName: 'Hưng Yên', lat: 20.65, lng: 106.05 },
+  { name: 'Thai Nguyen', displayName: 'Thái Nguyên', lat: 21.59, lng: 105.85 },
+  { name: 'Tuyen Quang', displayName: 'Tuyên Quang', lat: 21.82, lng: 105.21 },
+  { name: 'Yen Bai', displayName: 'Yên Bái', lat: 21.72, lng: 104.91 },
+  { name: 'Lao Cai', displayName: 'Lào Cai', lat: 22.48, lng: 103.98 },
+  { name: 'Bac Giang', displayName: 'Bắc Giang', lat: 21.27, lng: 106.20 },
+  { name: 'Quang Ninh', displayName: 'Quảng Ninh', lat: 20.96, lng: 107.04 },
+  { name: 'Nam Dinh', displayName: 'Nam Định', lat: 20.43, lng: 106.17 },
+  { name: 'Ninh Binh', displayName: 'Ninh Bình', lat: 20.25, lng: 105.97 },
+  { name: 'Ha Nam', displayName: 'Hà Nam', lat: 20.54, lng: 105.91 },
+  { name: 'Thai Binh', displayName: 'Thái Bình', lat: 20.45, lng: 106.34 },
+  { name: 'Hoa Binh', displayName: 'Hòa Bình', lat: 20.82, lng: 105.34 },
+  { name: 'Son La', displayName: 'Sơn La', lat: 21.33, lng: 103.91 },
+  { name: 'Thanh Hoa', displayName: 'Thanh Hóa', lat: 19.81, lng: 105.78 },
+  { name: 'Nghe An', displayName: 'Nghệ An', lat: 18.67, lng: 105.68 },
+  { name: 'Ha Tinh', displayName: 'Hà Tĩnh', lat: 18.35, lng: 105.90 },
+  { name: 'Da Nang', displayName: 'Đà Nẵng', lat: 16.05, lng: 108.22 },
+  { name: 'Hue', displayName: 'TP. Huế', lat: 16.46, lng: 107.59 },
+  { name: 'Khanh Hoa', displayName: 'Khánh Hòa', lat: 12.24, lng: 109.19 },
+  { name: 'Lam Dong', displayName: 'Lâm Đồng', lat: 11.94, lng: 108.44 },
+  { name: 'Ho Chi Minh City', displayName: 'TP. Hồ Chí Minh', lat: 10.78, lng: 106.70 },
+  { name: 'Binh Duong', displayName: 'Bình Dương', lat: 11.00, lng: 106.65 },
+  { name: 'Dong Nai', displayName: 'Đồng Nai', lat: 10.95, lng: 106.82 },
+  { name: 'Can Tho', displayName: 'Cần Thơ', lat: 10.03, lng: 105.78 },
+  { name: 'An Giang', displayName: 'An Giang', lat: 10.38, lng: 105.44 },
+  { name: 'Dak Lak', displayName: 'Đắk Lắk', lat: 12.67, lng: 108.04 },
+  { name: 'Gia Lai', displayName: 'Gia Lai', lat: 13.98, lng: 108.00 }
+]
+
 const router = useRouter()
 const customers = ref([])
 const deliveryOrders = ref([])
@@ -451,6 +752,7 @@ const deliveryLocation = ref(null)
 const selected = ref(null)
 const keyword = ref('')
 const visitFilter = ref('ALL')
+const sourceFilter = ref('ALL') // 'ALL' | 'CUSTOM' | 'FACEBOOK' | 'LEAD'
 const busy = ref(false)
 const visitBusy = ref(false)
 const locationBusy = ref(false)
@@ -458,6 +760,25 @@ const trackingLocation = ref(false)
 const error = ref('')
 const unlocatedCount = ref(0)
 const isMobile = ref(false)
+
+// Quản lý Modal Thêm / Sửa điểm tự thêm
+const showCustomModal = ref(false)
+const modalMode = ref('add') // 'add' | 'edit'
+const modalBusy = ref(false)
+const modalError = ref('')
+const isPickingLocationOnMap = ref(false)
+const formPoint = ref({
+  id: '',
+  name: '',
+  phone: '',
+  pointType: 'CUSTOMER',
+  address: '',
+  province: 'Phú Thọ',
+  lat: 21.32,
+  lng: 105.40,
+  notes: '',
+  interest: ''
+})
 
 // Trạng thái của Bottom Drawer trên Mobile: 'peek' (thu gọn) | 'expanded' (danh sách) | 'detail' (chi tiết khách)
 const sheetState = ref('peek')
@@ -467,6 +788,7 @@ const mapElementMobile = ref(null)
 
 let map = null
 let markerLayer = null
+let tempPickLayer = null
 let tileLayer = null
 let refreshTimer = null
 let locationWatchId = null
@@ -487,11 +809,26 @@ const checkIsMobile = () => {
   }
 }
 
+// Thống kê phân loại nguồn
+const customPointsCount = computed(() => customers.value.filter(c => c.recordType === 'CUSTOM').length)
+const fbPointsCount = computed(() => customers.value.filter(c => c.recordType === 'FACEBOOK').length)
+const leadPointsCount = computed(() => customers.value.filter(c => c.recordType === 'LEAD').length)
+
+// Danh sách sau khi lọc nguồn
+const sourceFilteredCustomers = computed(() => {
+  if (sourceFilter.value === 'ALL') return customers.value
+  return customers.value.filter(c => c.recordType === sourceFilter.value)
+})
+
+const currentFilteredTotal = computed(() => sourceFilteredCustomers.value.length)
+const currentFilteredVisited = computed(() => sourceFilteredCustomers.value.filter(c => c.visitedAt).length)
+const currentFilteredUnvisited = computed(() => currentFilteredTotal.value - currentFilteredVisited.value)
+
 const visibleCustomers = computed(() => {
   const term = keyword.value.trim().toLocaleLowerCase('vi')
   const reference = deliveryLocation.value || origin
-  return customers.value.filter(c => {
-    const matchesTerm = !term || `${c.customerName} ${c.phone} ${c.address} ${c.province} ${c.interest} ${c.sourceAdName}`.toLocaleLowerCase('vi').includes(term)
+  return sourceFilteredCustomers.value.filter(c => {
+    const matchesTerm = !term || `${c.customerName} ${c.phone} ${c.address} ${c.province} ${c.interest} ${c.notes} ${c.sourceAdName}`.toLocaleLowerCase('vi').includes(term)
     const matchesVisit = visitFilter.value === 'ALL' || (visitFilter.value === 'VISITED' ? Boolean(c.visitedAt) : !c.visitedAt)
     return matchesTerm && matchesVisit
   }).sort((a, b) => distanceBetween(reference, a) - distanceBetween(reference, b))
@@ -504,193 +841,168 @@ const nearestOrders = computed(() => deliveryLocation.value ? deliveryOrders.val
 watch(visibleCustomers, renderMarkers)
 watch([deliveryOrders, deliveryLocation], renderMarkers)
 
-const distanceFromStore = customer => distanceBetween(deliveryLocation.value || origin, customer)
-const normalizePlaceText = value => String(value || '')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-  .toLocaleLowerCase('vi')
-  .replace(/[^a-z0-9]+/g, ' ')
-  .trim()
-const customerArea = customer => {
-  const address = String(customer?.address || '').replace(/^\s*(?:đc|địa\s*chỉ)\s*[:：-]?\s*/i, '').trim().replace(/[,\s]+$/, '')
-  const province = String(customer?.province || '').trim()
-  if (!address) return province
-  if (!province || normalizePlaceText(address).includes(normalizePlaceText(province))) return address
-  return `${address}, ${province}`
-}
-const distanceBetween = (from, to) => {
-  const rad = degree => degree * Math.PI / 180
-  const dLat = rad(to.lat - from.lat), dLng = rad(to.lng - from.lng)
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(from.lat)) * Math.cos(rad(to.lat)) * Math.sin(dLng / 2) ** 2
-  return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
+function pointTypeLabel(type) {
+  switch (type) {
+    case 'CUSTOMER': return 'Khách lắp đặt'
+    case 'TESTING': return 'Điểm thử dàn'
+    case 'PARTNER': return 'Đại lý / Showroom'
+    case 'DELIVERY': return 'Điểm giao nhận'
+    default: return 'Khác'
+  }
 }
 
-const safeImage = value => /^(https?:\/\/|data:image\/)/i.test(String(value || '')) ? value : ''
-const googleMapsUrl = customer => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${customer.lat},${customer.lng}`)}`
-const formatVisitTime = value => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
-const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
-
-const popupContent = customer => {
-  const image = safeImage(customer.interestImage)
-  return `<div class="customer-popup">${image ? `<img src="${escapeHtml(image)}" alt="">` : ''}<strong>${escapeHtml(customer.customerName)}</strong><b>${customer.visitedAt ? `✓ Đã đi${customer.visitedBy ? ` · ${escapeHtml(customer.visitedBy)}` : ''}` : '● Chưa đi'}</b>${customer.interest ? `<span>${escapeHtml(customer.interest)}</span>` : ''}${customer.phone ? `<a href="tel:${escapeHtml(customer.phone)}">📞 ${escapeHtml(customer.phone)}</a>` : ''}<span>${escapeHtml(customerArea(customer))}</span><span>~${distanceFromStore(customer)} km</span><small>Vị trí ước tính theo trung tâm tỉnh/thành</small></div>`
+function onProvinceChange() {
+  const matched = VIETNAM_PROVINCES_LIST.find(p => p.displayName === formPoint.value.province)
+  if (matched && (!formPoint.value.lat || modalMode.value === 'add')) {
+    formPoint.value.lat = matched.lat
+    formPoint.value.lng = matched.lng
+  }
 }
 
-function getActiveMapElement() {
-  return isMobile.value ? mapElementMobile.value : mapElementDesktop.value
+function openAddModal() {
+  modalMode.value = 'add'
+  modalError.value = ''
+  formPoint.value = {
+    id: '',
+    name: '',
+    phone: '',
+    pointType: 'CUSTOMER',
+    address: '',
+    province: 'Phú Thọ',
+    lat: 21.32,
+    lng: 105.40,
+    notes: '',
+    interest: ''
+  }
+  showCustomModal.value = true
 }
 
-function initMap() {
-  const targetEl = getActiveMapElement()
-  if (!targetEl || map) return
-  map = L.map(targetEl, {
-    scrollWheelZoom: true,
-    zoomControl: !isMobile.value // Trên mobile ẩn zoomControl mặc định, dùng cảm ứng 2 ngón tay hoặc nút nổi
-  }).setView([origin.lat, origin.lng], 6)
-
-  const attribution = '&copy; Google Maps'
-  tileLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    attribution,
-    subdomains: ['0', '1', '2', '3']
-  }).addTo(map)
-  tileLayer.on('tileload', () => { tileLoadCount += 1 })
-  tileLayer.on('tileerror', () => {
-    tileErrorCount += 1
-    if (!usingFallbackTiles && tileErrorCount >= 3 && tileLoadCount === 0) {
-      usingFallbackTiles = true
-      tileLayer.remove()
-      tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap',
-        subdomains: 'abc'
-      }).addTo(map)
-    }
-  })
-  markerLayer = L.layerGroup().addTo(map)
+function openEditModal(point) {
+  modalMode.value = 'edit'
+  modalError.value = ''
+  formPoint.value = {
+    id: point.id,
+    name: point.customerName || '',
+    phone: point.phone || '',
+    pointType: point.pointType || 'CUSTOMER',
+    address: point.address || '',
+    province: point.province || 'Phú Thọ',
+    lat: Number(point.lat),
+    lng: Number(point.lng),
+    notes: point.notes || '',
+    interest: point.interest || ''
+  }
+  showCustomModal.value = true
 }
 
-function reInitMap() {
+function closeCustomModal() {
+  showCustomModal.value = false
+  modalError.value = ''
+  if (tempPickLayer) {
+    tempPickLayer.clearLayers()
+  }
+}
+
+function startPickingLocationOnMap() {
+  showCustomModal.value = false
+  isPickingLocationOnMap.value = true
   if (map) {
-    map.remove()
-    map = null
-    markerLayer = null
-    tileLayer = null
+    map.once('click', handleMapClickPickLocation)
   }
-  nextTick(() => {
-    initMap()
-    renderMarkers()
-  })
 }
 
-function renderMarkers() {
-  if (!map || !markerLayer) return
-  markerLayer.clearLayers()
-  L.circleMarker([origin.lat, origin.lng], { radius: 8, color: '#008080', weight: 2, fillColor: '#00b1a9', fillOpacity: 1 })
-    .bindPopup('<strong>Tú Audio</strong><br>Điểm gốc cửa hàng').addTo(markerLayer)
-  const bounds = [[origin.lat, origin.lng]]
-  const byProvince = new Map()
-  for (const customer of visibleCustomers.value) {
-    const key = `${customer.lat.toFixed(3)},${customer.lng.toFixed(3)}`
-    byProvince.set(key, [...(byProvince.get(key) || []), customer])
+function cancelPickingLocation() {
+  isPickingLocationOnMap.value = false
+  if (map) {
+    map.off('click', handleMapClickPickLocation)
   }
-  for (const group of byProvince.values()) {
-    if (group.length > 1) {
-      const allVisited = group.every(customer => customer.visitedAt)
-      const someVisited = group.some(customer => customer.visitedAt)
-      const visitClass = allVisited ? 'visited' : someVisited ? 'mixed' : ''
-      const marker = L.marker([group[0].lat, group[0].lng], {
-        icon: L.divIcon({
-          className: 'customer-cluster-pin',
-          html: `<span class="${visitClass}">${group.length}</span>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
-        })
-      })
-      marker.clusterCustomers = group
-      const rows = group.map((customer, index) =>
-        `<button type="button" class="cluster-btn-row" data-map-customer="${index}">
-          <span class="c-dot ${customer.visitedAt ? 'visited' : ''}"></span>
-          <strong>${escapeHtml(customer.customerName)}</strong>
-          ${customer.phone ? `<small>📞 ${escapeHtml(customer.phone)}</small>` : ''}
-        </button>`
-      ).join('')
-      marker.bindPopup(
-        `<div class="customer-popup cluster-pop">
-          <strong>${escapeHtml(group[0].province)} · cụm ${group.length} khách</strong>
-          <small>${group.every(customer => customer.locationPrecision !== 'EXACT')
-            ? 'Các khách này chỉ có vị trí ước tính theo tỉnh/thành, không phải cùng một địa chỉ nhà.'
-            : 'Có nhiều hồ sơ tại cùng vị trí. Chọn tên để xem riêng một khách.'}</small>
-          <div class="cluster-customer-list">${rows}</div>
-        </div>`,
-        { maxWidth: 300 }
-      )
-      marker.on('popupopen', event => {
-        event.popup.getElement()?.querySelectorAll('[data-map-customer]').forEach(button => {
-          button.addEventListener('click', () => {
-            const chosen = group[Number(button.dataset.mapCustomer)]
-            selectCustomer(chosen)
-          })
-        })
-      })
-      marker.addTo(markerLayer)
-      bounds.push([group[0].lat, group[0].lng])
-      continue
+  showCustomModal.value = true
+}
+
+function handleMapClickPickLocation(e) {
+  if (!e.latlng) return
+  formPoint.value.lat = Number(e.latlng.lat.toFixed(6))
+  formPoint.value.lng = Number(e.latlng.lng.toFixed(6))
+  isPickingLocationOnMap.value = false
+
+  if (tempPickLayer) {
+    tempPickLayer.clearLayers()
+    L.circleMarker([e.latlng.lat, e.latlng.lng], {
+      radius: 10,
+      color: '#5b21b6',
+      fillColor: '#8b5cf6',
+      fillOpacity: 0.9,
+      weight: 3
+    }).addTo(tempPickLayer)
+  }
+
+  showCustomModal.value = true
+}
+
+async function saveCustomPoint() {
+  modalBusy.value = true
+  modalError.value = ''
+  try {
+    const payload = {
+      name: formPoint.value.name,
+      phone: formPoint.value.phone,
+      pointType: formPoint.value.pointType,
+      address: formPoint.value.address,
+      province: formPoint.value.province,
+      lat: formPoint.value.lat,
+      lng: formPoint.value.lng,
+      notes: formPoint.value.notes,
+      interest: formPoint.value.notes
     }
-    const customer = group[0]
-    const marker = L.circleMarker([customer.lat, customer.lng], {
-      radius: 9,
-      color: customer.visitedAt ? '#166534' : '#991b1b',
-      weight: 1.5,
-      fillColor: customer.visitedAt ? '#22c55e' : '#ef4444',
-      fillOpacity: 0.92
-    })
-    marker.customerRecord = customer
-    if (!isMobile.value) {
-      marker.bindPopup(popupContent(customer), { maxWidth: 300 })
+
+    let saved = null
+    if (modalMode.value === 'add') {
+      const res = await apiRequest('/admin/customer-map/custom-points', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      saved = res.data
+    } else {
+      const res = await apiRequest(`/admin/customer-map/custom-points/${encodeURIComponent(formPoint.value.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      })
+      saved = res.data
     }
-    marker.on('click', () => {
-      selectCustomer(customer)
+
+    closeCustomModal()
+    await loadData()
+
+    if (saved) {
+      const target = customers.value.find(c => c.id === saved.id && c.recordType === 'CUSTOM')
+      if (target) {
+        selectCustomer(target)
+      }
+    }
+  } catch (err) {
+    modalError.value = err.message || 'Lỗi lưu thông tin điểm.'
+  } finally {
+    modalBusy.value = false
+  }
+}
+
+async function deleteCustomPoint(point) {
+  if (!confirm(`Bạn có chắc muốn xóa điểm "${point.customerName}" này không? Điểm sẽ bị xóa vĩnh viễn khỏi bản đồ.`)) return
+  modalBusy.value = true
+  try {
+    await apiRequest(`/admin/customer-map/custom-points/${encodeURIComponent(point.id)}`, {
+      method: 'DELETE'
     })
-    marker.addTo(markerLayer)
-    bounds.push([customer.lat, customer.lng])
+    if (selected.value?.id === point.id) {
+      selected.value = null
+      if (isMobile.value) sheetState.value = 'peek'
+    }
+    await loadData()
+  } catch (err) {
+    alert(err.message || 'Lỗi khi xóa điểm.')
+  } finally {
+    modalBusy.value = false
   }
-
-  if (deliveryLocation.value) {
-    const current = deliveryLocation.value
-    L.circleMarker([current.lat, current.lng], {
-      radius: 11,
-      color: '#008080',
-      weight: 3,
-      fillColor: '#00b1a9',
-      fillOpacity: 1
-    }).bindPopup('<strong>Vị trí của bạn (Xanh SM Mode)</strong>').addTo(markerLayer)
-    bounds.push([current.lat, current.lng])
-  }
-
-  for (const order of deliveryOrders.value) {
-    const marker = L.circleMarker([order.lat, order.lng], {
-      radius: 9,
-      color: '#7c2d12',
-      weight: 2,
-      fillColor: '#f97316',
-      fillOpacity: 0.95
-    })
-    marker.orderRecord = order
-    marker.bindPopup(
-      `<div class="customer-popup">
-        <strong>Đơn ${escapeHtml(String(order.id).slice(0, 8))} · ${escapeHtml(order.customerName)}</strong>
-        <span>${escapeHtml(order.address)}</span>
-        <b>~${distanceBetween(deliveryLocation.value || origin, order)} km</b>
-      </div>`
-    )
-    marker.addTo(markerLayer)
-    bounds.push([order.lat, order.lng])
-  }
-
-  if (deliveryLocation.value) map.setView([deliveryLocation.value.lat, deliveryLocation.value.lng], 8)
-  else if (bounds.length > 1) map.fitBounds(bounds, { padding: [32, 32], maxZoom: 7 })
-  else map.setView([origin.lat, origin.lng], 8)
 }
 
 function selectCustomer(customer) {
@@ -960,6 +1272,11 @@ onBeforeUnmount(() => {
   color: #15803d;
   border-color: #bbf7d0;
 }
+.stat-pill.custom {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
 .stat-pill.unlocated {
   background: #fffbeb;
   color: #b45309;
@@ -974,6 +1291,26 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.adm-btn-add-point {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid #7c3aed;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+  transition: all 0.2s ease;
+}
+.adm-btn-add-point:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35);
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
 }
 .adm-gps-toggle-btn {
   display: inline-flex;
@@ -2088,5 +2425,515 @@ onBeforeUnmount(() => {
 :global(.customer-cluster-pin span.mixed) {
   background: #f59e0b;
   border-color: #b45309;
+}
+
+/* ========================================================
+   CSS NGUỒN ĐIỂM (SOURCE FILTER & CUSTOM POINTS)
+   ======================================================== */
+.source-filter-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.source-tab {
+  flex: 1;
+  min-width: max-content;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.source-tab:hover {
+  color: #0f172a;
+}
+.source-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.source-tab.custom.active {
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-weight: 700;
+}
+.source-tab.fb.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.source-tab.lead.active {
+  background: #fffbeb;
+  color: #b45309;
+  font-weight: 700;
+}
+
+/* Card chi tiết & Avatar Custom */
+.selected-avatar.custom {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #ffffff;
+  font-size: 1.1rem;
+}
+.selected-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.badge-source-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #7c3aed;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.adm-btn-edit-point {
+  background: #f5f3ff;
+  border: 1px solid #c4b5fd;
+  color: #6d28d9;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.adm-btn-edit-point:hover {
+  background: #ede9fe;
+}
+.adm-btn-delete-point {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.adm-btn-delete-point:hover {
+  background: #fee2e2;
+}
+
+/* Danh sách cuộn Desktop */
+.customer-pin-dot.custom {
+  background: #8b5cf6;
+  border-color: #6d28d9;
+}
+.item-custom-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+/* CSS Mobile App Xanh SM */
+.xanhsm-add-point-btn {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+.xanhsm-source-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: none;
+}
+.xanhsm-source-chips::-webkit-scrollbar {
+  display: none;
+}
+.xanhsm-src-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.xanhsm-src-chip.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+.xanhsm-src-chip.custom.active {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: #ffffff;
+}
+.xanhsm-src-chip.fb.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+.xanhsm-src-chip.lead.active {
+  background: #d97706;
+  border-color: #d97706;
+  color: #ffffff;
+}
+
+.add-custom-fab {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #ffffff !important;
+  font-size: 18px !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4) !important;
+}
+
+.card-num.custom {
+  background: #f5f3ff !important;
+  color: #7c3aed !important;
+  border: 1px solid #ddd6fe !important;
+  font-size: 13px !important;
+}
+.mobile-custom-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.xanhsm-sub-btn.edit-btn {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  color: #6d28d9;
+}
+.xanhsm-sub-btn.delete-btn {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* ========================================================
+   MAP PICK BANNER (CHẾ ĐỘ CHỌN TỌA ĐỘ TRÊN BẢN ĐỒ)
+   ======================================================== */
+.map-pick-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 90%;
+  max-width: 600px;
+}
+.pick-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e1b4b;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  border: 1px solid #4338ca;
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+.pick-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4);
+  flex: none;
+}
+.pick-text {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  flex: 1;
+}
+.pick-cancel-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pick-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(67, 56, 202, 0.35); }
+  50% { box-shadow: 0 8px 28px rgba(168, 85, 247, 0.55); }
+}
+
+/* ========================================================
+   MODAL THÊM / CHỈNH SỬA ĐIỂM
+   ======================================================== */
+.custom-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.custom-modal-card {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+.modal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #faf5ff;
+  border-bottom: 1px solid #f3e8ff;
+}
+.modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.modal-pin-icon {
+  font-size: 1.5rem;
+  background: #ffffff;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.15);
+  border: 1px solid #e9d5ff;
+}
+.modal-title-wrap h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #4c1d95;
+}
+.modal-title-wrap small {
+  display: block;
+  font-size: 0.72rem;
+  color: #7c3aed;
+  margin-top: 2px;
+}
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+.modal-close-btn:hover {
+  color: #0f172a;
+}
+.modal-card-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-row label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+}
+.form-row label .req {
+  color: #ef4444;
+}
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+.form-input:focus,
+.form-textarea:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+.coords-group {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+.coords-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.btn-pick-map {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #c4b5fd;
+  background: #ffffff;
+  color: #6d28d9;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-pick-map:hover {
+  background: #f5f3ff;
+  border-color: #8b5cf6;
+}
+.input-with-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.input-with-label .sub-lbl {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  width: 28px;
+}
+.modal-form-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.76rem;
+}
+.modal-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+}
+.btn-modal-cancel {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-modal-submit {
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+  transition: all 0.2s ease;
+}
+.btn-modal-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+}
+.btn-modal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ========================================================
+   LEAFLET CUSTOM PIN GLOBAL
+   ======================================================== */
+:global(.customer-custom-pin-wrap) {
+  display: grid;
+  place-items: center;
+  border: none !important;
+  background: transparent !important;
+}
+:global(.custom-pin-inner) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(109, 40, 217, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+:global(.custom-pin-inner:hover) {
+  transform: rotate(-45deg) scale(1.15);
+}
+:global(.custom-pin-inner.visited) {
+  background: linear-gradient(135deg, #10b981, #047857);
+  box-shadow: 0 4px 10px rgba(4, 120, 87, 0.45);
+}
+:global(.custom-pin-icon) {
+  transform: rotate(45deg);
+  font-size: 14px;
+}
+:global(.customer-popup.custom-pop) {
+  border-left: 3px solid #7c3aed;
+  padding-left: 6px;
+}
+:global(.custom-badge-pop) {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
 }
 </style>
