@@ -2856,6 +2856,21 @@ onBeforeUnmount(() => {
 }
 
 @media(max-width: 520px) {
+  .detail-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .detail-quick-actions {
+    width: 100%;
+  }
+  .detail-quick-actions .quick-call-pill,
+  .detail-quick-actions .quick-fb-pill {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
   .cockpit-hero-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
