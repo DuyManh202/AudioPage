@@ -421,11 +421,17 @@ const fetchMetaAdDetails = async (adId) => {
   }
 }
 
-const sendFacebookText = async (psid, text) => {
+const sendFacebookText = async (psid, text, tag = null) => {
   const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  const body = {
+    recipient: { id: psid },
+    messaging_type: tag ? 'MESSAGE_TAG' : 'RESPONSE',
+    message: { text }
+  }
+  if (tag) body.tag = tag
   const response = await fetch(`https://graph.facebook.com/${graphVersion}/${pageId}/messages`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pageToken}` },
-    body: JSON.stringify({ recipient: { id: psid }, messaging_type: 'RESPONSE', message: { text } }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(20000)
   })
   const payload = await response.json().catch(() => ({}))
@@ -3076,7 +3082,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
         new Promise(resolve => setTimeout(resolve, 10000))
       ])
     }
-    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
+    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
       FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
       GROUP BY c.id ORDER BY c.updated_at DESC`)
     const connected = isFacebookMessengerConfigured()
@@ -3762,15 +3768,59 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
     if (!text || text.length > 2000) return res.status(400).json({ success: false, message: 'Tin nhắn phải có nội dung và không quá 2.000 ký tự.' })
     const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
     if (!pageId || !pageToken || !/^v\d+\.\d+$/.test(graphVersion || '')) return res.status(503).json({ success: false, message: 'Chưa cấu hình đầy đủ Meta Page ID, Page Access Token và Graph API version trên backend.' })
-    const customerResult = await query('SELECT id, facebook_id FROM facebook_care_customers WHERE id=$1', [req.params.id])
+    const customerResult = await query('SELECT id, customer_name, facebook_id, phone FROM facebook_care_customers WHERE id=$1', [req.params.id])
     const customer = customerResult.rows[0]
     if (!customer?.facebook_id) return res.status(400).json({ success: false, message: 'Hồ sơ này chưa có Facebook PSID nên chưa thể gửi Messenger.' })
-    const lastInbound = await query("SELECT created_at FROM facebook_care_messages WHERE customer_id=$1 AND direction='IN' ORDER BY created_at DESC LIMIT 1", [customer.id])
-    if (!lastInbound.rows[0] || Date.now() - new Date(lastInbound.rows[0].created_at).getTime() > 24 * 60 * 60 * 1000) {
-      return res.status(409).json({ success: false, message: 'Đã quá 24 giờ kể từ tin nhắn gần nhất của khách. Messenger không cho gửi tin nhắn tự do trong trường hợp này.' })
-    }
+    
+    // Tìm tin nhắn gần nhất thực sự do khách gửi từ Facebook (ưu tiên có platform_message_id)
+    const lastInboundResult = await query(`
+      SELECT created_at FROM facebook_care_messages 
+      WHERE customer_id=$1 AND direction='IN' AND platform_message_id IS NOT NULL 
+      ORDER BY created_at DESC LIMIT 1
+    `, [customer.id])
+    const fallbackInbound = !lastInboundResult.rows[0] 
+      ? await query("SELECT created_at FROM facebook_care_messages WHERE customer_id=$1 AND direction='IN' ORDER BY created_at DESC LIMIT 1", [customer.id])
+      : null
+    const lastInboundRow = lastInboundResult.rows[0] || fallbackInbound?.rows[0]
+    const diffHours = lastInboundRow ? (Date.now() - new Date(lastInboundRow.created_at).getTime()) / (1000 * 60 * 60) : 9999
+
     let sentPayload
-    try { sentPayload = await sendFacebookText(customer.facebook_id, text) } catch (err) { return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' }) }
+    let usedTag = null
+    try {
+      if (diffHours <= 24) {
+        // Trong 24h: Gửi Standard Response bình thường
+        sentPayload = await sendFacebookText(customer.facebook_id, text)
+      } else if (diffHours <= 7 * 24) {
+        // Từ 24h - 7 ngày: Thử gửi với tag HUMAN_AGENT hỗ trợ tư vấn trực tiếp
+        usedTag = 'HUMAN_AGENT'
+        sentPayload = await sendFacebookText(customer.facebook_id, text, 'HUMAN_AGENT')
+      } else {
+        return res.status(409).json({ 
+          success: false, 
+          message: `Đã quá 24 giờ kể từ tin nhắn Messenger gần nhất của khách. Meta Facebook chặn gửi tin nhắn tự do để chống spam. Vui lòng gọi điện hoặc nhắn Zalo qua SĐT ${customer.phone || 'của khách'}.` 
+        })
+      }
+    } catch (err) {
+      // Nếu gửi standard thất bại do vượt khung 24h, thử cứu bằng HUMAN_AGENT (trong 7 ngày)
+      const isWindowError = err.message && (err.message.includes('outside of allowed window') || err.message.includes('2018278'))
+      if (!usedTag && isWindowError && diffHours <= 7 * 24) {
+        try {
+          sentPayload = await sendFacebookText(customer.facebook_id, text, 'HUMAN_AGENT')
+        } catch (tagErr) {
+          return res.status(409).json({ 
+            success: false, 
+            message: `Đã quá 24 giờ kể từ tin nhắn gần nhất của khách trên Messenger. Meta yêu cầu khách phải nhắn trước hoặc liên hệ qua SĐT/Zalo ${customer.phone ? `(${customer.phone})` : ''}.` 
+          })
+        }
+      } else if (isWindowError) {
+        return res.status(409).json({ 
+          success: false, 
+          message: `Đã quá 24 giờ kể từ tin nhắn Messenger gần nhất của khách. Meta Facebook chặn gửi tự do. Vui lòng liên hệ qua SĐT/Zalo ${customer.phone ? `(${customer.phone})` : ''}.` 
+        })
+      } else {
+        return res.status(502).json({ success: false, message: err.message || 'Meta chưa nhận tin nhắn. Hãy kiểm tra quyền Page và token.' })
+      }
+    }
     const saved = await query("INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id) VALUES ($1,$2,$3,'OUT',$4,$5) ON CONFLICT (platform_message_id) DO UPDATE SET created_by=EXCLUDED.created_by RETURNING id, body, direction, created_at", [randomUUID(), customer.id, text, req.admin.name, sentPayload?.message_id || null])
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [text, customer.id])
     res.status(201).json({ success: true, data: { id: saved.rows[0].id, body: text, direction: 'OUT', createdAt: saved.rows[0].created_at } })

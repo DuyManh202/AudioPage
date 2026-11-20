@@ -279,18 +279,35 @@
           </div>
           <div class="history">
             <div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in']">
-              <small>{{ m.direction === 'OUT' ? 'Đã tư vấn' : 'Khách nhắn' }} · {{ displayDate(m.createdAt) }}</small>
+              <small>
+                <template v-if="m.direction === 'OUT'">
+                  Đã tư vấn <span v-if="m.createdBy">({{ m.createdBy }})</span>
+                </template>
+                <template v-else>
+                  {{ m.platformMessageId ? 'Khách nhắn (Messenger)' : 'Khách nhắn (Ghi chú)' }}
+                  <span v-if="m.createdBy && m.createdBy !== 'Facebook Page'">({{ m.createdBy }})</span>
+                </template>
+                · {{ displayDate(m.createdAt) }}
+              </small>
               <p>{{ m.body }}</p>
             </div>
             <p v-if="!selected.messages?.length" class="empty">Chưa có ghi nhận hội thoại.</p>
           </div>
 
+          <div v-if="selected" class="messenger-policy-banner" :class="{ 'window-open': messengerPolicyInfo.canSend, 'window-expired': !messengerPolicyInfo.canSend }">
+            <span class="policy-text">{{ messengerPolicyInfo.label }}</span>
+            <div v-if="!messengerPolicyInfo.within24h && selected.phone" class="quick-contact-actions">
+              <a :href="'tel:' + selected.phone" class="quick-contact-btn phone" title="Gọi điện cho khách">📞 Gọi {{ selected.phone }}</a>
+              <a :href="'https://zalo.me/' + selected.phone.replace(/\D/g, '')" target="_blank" rel="noopener" class="quick-contact-btn zalo" title="Nhắn Zalo">💬 Mở Zalo</a>
+            </div>
+          </div>
+
           <form class="message-form" @submit.prevent="addMessage">
             <select v-model="messageDirection">
-              <option value="IN">Khách nhắn</option>
-              <option value="OUT">{{ messengerConnected ? 'Trả lời khách' : 'Đã tư vấn' }}</option>
+              <option value="OUT">{{ messengerConnected ? '🚀 Trả lời khách (Messenger)' : 'Đã tư vấn' }}</option>
+              <option value="IN">📝 Ghi chú nội bộ (Gọi/Zalo)</option>
             </select>
-            <input v-model="messageBody" :placeholder="messageDirection === 'OUT' && messengerConnected ? 'Soạn tin nhắn gửi khách…' : 'Ghi nội dung trao đổi…'" required>
+            <input v-model="messageBody" :placeholder="messageDirection === 'OUT' && messengerConnected ? 'Soạn tin nhắn gửi Messenger trực tiếp…' : 'Ghi chép nội dung khách trao đổi…'" required>
             <button class="ios-action-pill" :disabled="busy">{{ busy ? 'Đang gửi…' : messageDirection === 'OUT' && messengerConnected ? 'Gửi Messenger' : 'Ghi lại' }}</button>
           </form>
         </section>
@@ -303,7 +320,10 @@
       </div>
       <p v-if="orderSyncNotice" class="order-sync-notice">{{ orderSyncNotice }}</p>
       <p v-if="autoMatchNotice" class="auto-match-notice">⚡ {{ autoMatchNotice }}</p>
-      <p v-if="error" class="error">{{ error }}</p>
+      <div v-if="error" class="error-dismissible-banner">
+        <span>⚠️ {{ error }}</span>
+        <button type="button" class="error-dismiss-btn" @click="error = ''">✕ Đóng</button>
+      </div>
     </div>
 
     <!-- TAB 2: BÁO CÁO PHÂN TÍCH HIỆU QUẢ QUẢNG CÁO & ROI -->
@@ -758,7 +778,61 @@ async function load({ silent = false, force = false } = {}) {
 }
 async function forceSync() { syncBusy.value = true; error.value = ''; try { await load({ force: true }) } finally { syncBusy.value = false } }
 async function loadAds() { adsBusy.value = true; adsError.value = ''; try { const r = await apiRequest('/admin/facebook-ads'); ads.value = r.data || []; adsConfigured.value = Boolean(r.configured) } catch (e) { adsError.value = e.message; adsConfigured.value = e.status !== 503 } finally { adsBusy.value = false } }
-function select(c) { selected.value = c; if (c) Object.assign(edit, { status: c.status, interest: c.interest, phone: c.phone, address: c.address || '', province: c.province || '', notes: c.notes, followUpAt: c.followUpAt, assignedTo: c.assignedTo, sourceAdId: c.sourceAdId || '' }) }
+const messengerPolicyInfo = computed(() => {
+  if (!selected.value) return { canSend: false, within24h: false, label: '' }
+  if (!messengerConnected.value) return { canSend: false, within24h: false, label: 'Chưa cấu hình Meta Page Messenger' }
+  const msgs = selected.value.messages || []
+  const realInbounds = msgs.filter(m => m.direction === 'IN' && m.platformMessageId)
+  const fallbackInbounds = msgs.filter(m => m.direction === 'IN')
+  const lastIn = realInbounds.slice(-1)[0] || fallbackInbounds.slice(-1)[0]
+  if (!lastIn) {
+    return { canSend: false, within24h: false, label: 'Chưa có tin nhắn Messenger từ khách gửi tới Page' }
+  }
+  const diffMs = Date.now() - new Date(lastIn.createdAt).getTime()
+  const diffHours = diffMs / (1000 * 60 * 60)
+  if (diffHours <= 24) {
+    const leftHours = Math.max(0, 24 - diffHours)
+    const h = Math.floor(leftHours)
+    const m = Math.round((leftHours - h) * 60)
+    return {
+      canSend: true,
+      within24h: true,
+      label: `🟢 Cửa sổ 24h đang mở: Còn ${h} giờ ${m} phút để nhắn tin trực tiếp qua Messenger`
+    }
+  } else if (diffHours <= 7 * 24) {
+    const days = Math.floor(diffHours / 24)
+    return {
+      canSend: true,
+      within24h: false,
+      label: `🟡 Đã quá 24h (${days} ngày trước): Thử gửi qua CSKH Human Agent hoặc gọi điện/Zalo`
+    }
+  } else {
+    return {
+      canSend: false,
+      within24h: false,
+      label: '⚠️ Đã quá thời hạn Facebook Messenger: Meta khóa gửi tự do để chống spam'
+    }
+  }
+})
+
+function select(c) {
+  error.value = ''
+  selected.value = c
+  if (c) {
+    Object.assign(edit, {
+      status: c.status,
+      interest: c.interest,
+      phone: c.phone,
+      address: c.address || '',
+      province: c.province || '',
+      notes: c.notes,
+      followUpAt: c.followUpAt,
+      assignedTo: c.assignedTo,
+      sourceAdId: c.sourceAdId || ''
+    })
+    messageDirection.value = messengerConnected.value ? 'OUT' : 'IN'
+  }
+}
 function onSourceAdChange() { const chosen = ads.value.find(a => a.id === edit.sourceAdId); if (chosen) { Object.assign(edit, { sourceAdName: chosen.name, sourceCampaignId: chosen.campaignId || '', sourceCampaignName: chosen.campaignName || '', sourceType: 'AD' }) } else { Object.assign(edit, { sourceAdName: '', sourceCampaignId: '', sourceCampaignName: '', sourceType: '' }) }; save() }
 async function autoMatchAds() {
   if (!ads.value.length) await loadAds()
@@ -873,7 +947,28 @@ const onScroll = () => {
 const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
-async function addMessage() { if (!messageBody.value.trim()) return; busy.value = true; try { const customerId = selected.value.id; const endpoint = messageDirection.value === 'OUT' && messengerConnected.value ? `/admin/facebook-care/${customerId}/send` : `/admin/facebook-care/${customerId}/messages`; await apiRequest(endpoint, { method: 'POST', body: JSON.stringify({ body: messageBody.value, direction: messageDirection.value }) }); messageBody.value = ''; await load({ silent: true }); select(customers.value.find(c => c.id === customerId) || selected.value) } catch (e) { error.value = e.message } finally { busy.value = false } }
+async function addMessage() {
+  if (!messageBody.value.trim()) return
+  error.value = ''
+  busy.value = true
+  try {
+    const customerId = selected.value.id
+    const endpoint = messageDirection.value === 'OUT' && messengerConnected.value
+      ? `/admin/facebook-care/${customerId}/send`
+      : `/admin/facebook-care/${customerId}/messages`
+    await apiRequest(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ body: messageBody.value, direction: messageDirection.value })
+    })
+    messageBody.value = ''
+    await load({ silent: true })
+    select(customers.value.find(c => c.id === customerId) || selected.value)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
 const onVisible = () => { if (document.visibilityState === 'visible' && !busy.value && !syncBusy.value) load({ silent: true }) }
 onMounted(() => {
   load(); loadAds()
@@ -1847,17 +1942,79 @@ onBeforeUnmount(() => {
   margin: 3px 0 0;
   white-space: pre-wrap;
 }
+.messenger-policy-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.76rem;
+  margin-top: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.messenger-policy-banner.window-open {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+.messenger-policy-banner.window-expired {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.messenger-policy-banner .policy-text {
+  font-weight: 600;
+  line-height: 1.4;
+}
+.quick-contact-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.quick-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.quick-contact-btn.phone {
+  background: #22c55e;
+  color: #ffffff;
+}
+.quick-contact-btn.phone:hover {
+  background: #16a34a;
+}
+.quick-contact-btn.zalo {
+  background: #0068ff;
+  color: #ffffff;
+}
+.quick-contact-btn.zalo:hover {
+  background: #0052cc;
+}
+
 .message-form {
   display: flex;
   gap: 8px;
   margin-top: 10px;
 }
 .message-form select {
-  width: 120px;
+  min-width: 170px;
+  max-width: 220px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
-  padding: 8px;
-  font-size: 0.76rem;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #ffffff;
 }
 .message-form input {
   flex: 1;
@@ -1865,6 +2022,34 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 0.8rem;
+}
+
+.error-dismissible-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.error-dismiss-btn {
+  background: transparent;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+.error-dismiss-btn:hover {
+  background: #fee2e2;
 }
 
 .placeholder {
