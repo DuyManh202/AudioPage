@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useAuthStore } from '../stores/authStore'
 import { adminHomeForRole, canAccessMenu } from '../utils/permissions'
+import { startSystemLoading, finishSystemLoading } from '../utils/loading'
 
 const routes = [
   // Khách hàng / Public Website
@@ -126,8 +127,9 @@ const router = createRouter({
   }
 })
 
-// Navigation Guard bảo vệ các trang quản trị
+// Navigation Guard bảo vệ các trang quản trị và kích hoạt tiến trình tải
 router.beforeEach((to, from, next) => {
+  startSystemLoading()
   const authStore = useAuthStore()
 
   // Kiểm tra nếu route yêu cầu đăng nhập
@@ -153,6 +155,14 @@ router.beforeEach((to, from, next) => {
     }
     next()
   }
+})
+
+router.afterEach(() => {
+  finishSystemLoading()
+})
+
+router.onError(() => {
+  finishSystemLoading()
 })
 
 export default router

@@ -1,5 +1,8 @@
 ﻿<template>
   <div class="audio-shop-app">
+    <!-- Thanh tải & trạng thái hệ thống toàn diện -->
+    <SystemProgressBar />
+
     <AppHeader v-if="!isAdminRoute" />
     <main :class="['main-content', { 'admin-mode': isAdminRoute }]">
       <router-view v-slot="{ Component }">
@@ -28,6 +31,7 @@ import FloatingContact from './components/common/FloatingContact.vue'
 import AiChatWidget from './components/common/AiChatWidget.vue'
 import QuickOrderModal from './components/cart/QuickOrderModal.vue'
 import CartDrawer from './components/cart/CartDrawer.vue'
+import SystemProgressBar from './components/common/SystemProgressBar.vue'
 
 const route = useRoute()
 const productStore = useProductStore()

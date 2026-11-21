@@ -1,12 +1,23 @@
 /**
  * Tiện ích gọi RESTful API Backend của AudioShop (Aiven PostgreSQL)
  */
+import { startSystemLoading, finishSystemLoading } from './loading'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api/v1' : '')).replace(/\/+$/, '')
+
+let activeApiCount = 0
 
 export async function apiRequest(endpoint, options = {}) {
   if (!API_BASE_URL) {
     throw new Error('Chưa cấu hình máy chủ API. Hãy đặt VITE_API_URL trỏ đến backend Render rồi build lại frontend.')
+  }
+
+  const isSilent = options.silent === true
+  if (!isSilent) {
+    activeApiCount++
+    if (activeApiCount === 1) {
+      startSystemLoading()
+    }
   }
 
   const token = localStorage.getItem('audioshop_token') || sessionStorage.getItem('audioshop_token')
@@ -30,6 +41,13 @@ export async function apiRequest(endpoint, options = {}) {
     const netError = new Error('Không kết nối được máy chủ API. Hãy kiểm tra kết nối mạng hoặc thử lại sau giây lát.')
     netError.isNetworkError = true
     throw netError
+  } finally {
+    if (!isSilent) {
+      activeApiCount = Math.max(0, activeApiCount - 1)
+      if (activeApiCount === 0) {
+        finishSystemLoading()
+      }
+    }
   }
 
   const responseText = await response.text()

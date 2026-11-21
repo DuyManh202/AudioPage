@@ -279,7 +279,107 @@
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Màn hình nạp ban đầu cho hệ thống Tú Audio (Initial Splash Loader) -->
+      <style>
+        #app-initial-loader {
+          position: fixed;
+          inset: 0;
+          background: #090d16;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          z-index: 9999999;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        .splash-logo-box {
+          position: relative;
+          width: 72px;
+          height: 72px;
+          margin-bottom: 20px;
+          animation: splashPulse 2s ease-in-out infinite;
+        }
+        .splash-glow-ring {
+          position: absolute;
+          inset: -6px;
+          border-radius: 20px;
+          background: radial-gradient(circle, rgba(252, 183, 40, 0.35) 0%, transparent 70%);
+          animation: ringPulse 2s ease-in-out infinite alternate;
+        }
+        .splash-brand-title {
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          background: linear-gradient(135deg, #fef08a 0%, #fcb728 50%, #d97706 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+        }
+        .splash-brand-subtitle {
+          font-size: 13px;
+          color: #94a3b8;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          margin-bottom: 28px;
+        }
+        .splash-progress-track {
+          width: 180px;
+          height: 4px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 999px;
+          overflow: hidden;
+          position: relative;
+        }
+        .splash-progress-bar {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          width: 40%;
+          background: linear-gradient(90deg, #60a5fa 0%, #fcb728 50%, #fde047 100%);
+          border-radius: 999px;
+          animation: splashProgressIndeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          box-shadow: 0 0 10px rgba(252, 183, 40, 0.8);
+        }
+        @keyframes splashPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.04); }
+        }
+        @keyframes ringPulse {
+          0% { opacity: 0.4; transform: scale(0.95); }
+          100% { opacity: 0.9; transform: scale(1.1); }
+        }
+        @keyframes splashProgressIndeterminate {
+          0% { left: -45%; width: 40%; }
+          50% { left: 30%; width: 60%; }
+          100% { left: 105%; width: 35%; }
+        }
+      </style>
+      <div id="app-initial-loader">
+        <div class="splash-logo-box">
+          <div class="splash-glow-ring"></div>
+          <svg viewBox="0 0 48 48" width="72" height="72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="44" height="44" rx="12" fill="#1e293b" stroke="#fcb728" stroke-width="1.8"/>
+            <path d="M 6 24 A 18 18 0 0 1 10 13" fill="none" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+            <path d="M 42 24 A 18 18 0 0 1 38 13" fill="none" stroke="#fcb728" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+            <path d="M 9 24 A 14 14 0 0 0 12 32" fill="none" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round" opacity="0.45"/>
+            <path d="M 39 24 A 14 14 0 0 0 36 32" fill="none" stroke="#fcb728" stroke-width="1.6" stroke-linecap="round" opacity="0.45"/>
+            <path d="M 12 15 L 24 15 C 24.8 15 24.8 16.5 24 18 L 20 18 L 20 32 C 20 33 18.5 33 18.5 32 L 18.5 18 L 12 18 C 11.2 18 11.2 15 12 15 Z" fill="#3b82f6"/>
+            <path d="M 28 14 L 35.5 32 C 35.9 32.8 34.3 33.4 33.7 32.3 L 31.5 27 L 24.5 27 L 22.3 32.3 C 21.7 33.4 20.1 32.8 20.5 32 L 28 14 Z M 28 18.5 L 25.7 24.5 L 30.3 24.5 Z" fill="#fcb728"/>
+            <circle cx="28" cy="22.5" r="1.4" fill="#ffffff"/>
+          </svg>
+        </div>
+        <div class="splash-brand-title">Tú Audio</div>
+        <div class="splash-brand-subtitle">Chuyên Gia Âm Thanh Karaoke Gia Đình</div>
+        <div class="splash-progress-track">
+          <div class="splash-progress-bar"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
