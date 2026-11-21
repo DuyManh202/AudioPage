@@ -19,18 +19,29 @@ const readArray = (key, fallback = []) => {
 const loadProducts = () => {
   try {
     const local = JSON.parse(localStorage.getItem('audioshop_products'))
-    if (!local || !Array.isArray(local)) return initialProducts
+    if (!local || !Array.isArray(local) || local.length === 0) return initialProducts
+    const localById = new Map(local.map(p => [p.id, p]))
     const defaultsById = new Map(initialProducts.map(p => [p.id, p]))
-    return local.map(item => {
+    const result = local.map(item => {
       const def = defaultsById.get(item.id)
       if (!def) return item
       const isLegacy = LEGACY_VIDEO_RE.test(item.videoUrl || '')
       return {
+        ...def,
         ...item,
         videoUrl: isLegacy ? def.videoUrl : item.videoUrl,
         videoTitle: isLegacy ? def.videoTitle : item.videoTitle
       }
     })
+
+    // Tự động bổ sung các sản phẩm mới nếu chưa có trong bộ nhớ cục bộ
+    for (const def of initialProducts) {
+      if (!localById.has(def.id)) {
+        result.push(def)
+      }
+    }
+
+    return result
   } catch {
     return initialProducts
   }
@@ -209,15 +220,23 @@ export const useAdminStore = defineStore('admin', {
           this.leads = leadsRes.data
           this._persistLeads()
         }
-        if (prodRes?.success && Array.isArray(prodRes.data)) {
+        if (prodRes?.success && Array.isArray(prodRes.data) && prodRes.data.length > 0) {
           this.products = prodRes.data
           this._persistProducts()
           useProductStore().products = prodRes.data
+        } else if (!this.products || this.products.length === 0) {
+          this.products = loadProducts()
+          this._persistProducts()
+          useProductStore().products = this.products
         }
-        if (comboRes?.success && Array.isArray(comboRes.data)) {
+        if (comboRes?.success && Array.isArray(comboRes.data) && comboRes.data.length > 0) {
           this.combos = comboRes.data
           this._persistCombos()
           useProductStore().combos = comboRes.data
+        } else if (!this.combos || this.combos.length === 0) {
+          this.combos = loadCombos()
+          this._persistCombos()
+          useProductStore().combos = this.combos
         }
         if (tradeRes?.success && Array.isArray(tradeRes.data)) {
           this.tradeIns = tradeRes.data
