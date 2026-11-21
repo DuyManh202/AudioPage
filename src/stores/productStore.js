@@ -121,13 +121,17 @@ export const useProductStore = defineStore('product', {
       this.isLoading = true
       try {
         const res = await apiRequest('/products')
-        if (res.success && Array.isArray(res.data)) {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
           this.products = res.data
           localStorage.setItem('audioshop_products', JSON.stringify(res.data))
           this.isLiveConnected = true
+        } else {
+          // Backend chưa có sản phẩm hoặc trả mảng rỗng -> Dùng ngay dữ liệu sản phẩm đầy đủ chuẩn
+          this.products = getStoredProducts()
         }
       } catch (err) {
         // Giữ dữ liệu cache/local nếu backend chưa bật
+        this.products = getStoredProducts()
         console.warn('[API Fallback]: Đang dùng dữ liệu local cho products')
       } finally {
         this.isLoading = false
@@ -137,12 +141,15 @@ export const useProductStore = defineStore('product', {
     async fetchCombos() {
       try {
         const res = await apiRequest('/combos')
-        if (res.success && Array.isArray(res.data)) {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
           this.combos = res.data
           localStorage.setItem('audioshop_combos', JSON.stringify(res.data))
           this.isLiveConnected = true
+        } else {
+          this.combos = getStoredCombos()
         }
       } catch (err) {
+        this.combos = getStoredCombos()
         console.warn('[API Fallback]: Đang dùng dữ liệu local cho combos')
       }
     },

@@ -774,10 +774,20 @@ app.get('/api/v1/products', async (req, res) => {
 
     sql += ' ORDER BY created_at DESC'
     const result = await query(sql, params)
+    let data = result.rows.map(mapProductRow)
+
+    if (data.length === 0 && (!category || category === 'all') && !search) {
+      try {
+        const fallbackPath = path.join(__dirname, '../src/data/products.json')
+        if (fs.existsSync(fallbackPath)) {
+          data = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'))
+        }
+      } catch (e) {}
+    }
 
     res.json({
       success: true,
-      data: result.rows.map(mapProductRow)
+      data
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -834,6 +844,15 @@ app.get('/api/v1/combos', async (req, res) => {
         components: compResult.rows,
         gifts: giftResult.rows.map(g => g.gift)
       })
+    }
+
+    if (combos.length === 0) {
+      try {
+        const fallbackPath = path.join(__dirname, '../src/data/combos.json')
+        if (fs.existsSync(fallbackPath)) {
+          combos.push(...JSON.parse(fs.readFileSync(fallbackPath, 'utf8')))
+        }
+      } catch (e) {}
     }
 
     res.json({ success: true, data: combos })
