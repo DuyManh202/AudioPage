@@ -4048,7 +4048,7 @@ app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_A
 })
 
 // ==========================================
-// CẤU HÌNH DỊP LỄ HỘI & HIỆU ỨNG (THẾ GIỚI DI ĐỘNG STYLE)
+// CẤU HÌNH DỊP LỄ HỘI & HIỆU ỨNG SỰ KIỆN
 // ==========================================
 const DEFAULT_FESTIVE_SETTINGS = {
   theme: 'noel', // 'noel' | 'tet' | 'sale' | 'none' | 'auto' - Mặc định Giáng Sinh / Noel sắp tới
@@ -4097,7 +4097,7 @@ app.post('/api/v1/admin/festive-settings', authenticateAdmin, authorizeRoles('SU
     const { theme, fallingEnabled, decorEnabled, customTicker } = req.body
 
     const allowedThemes = ['tet', 'noel', 'sale', 'none', 'auto']
-    const nextTheme = allowedThemes.includes(theme) ? theme : (current.theme || 'tet')
+    const nextTheme = allowedThemes.includes(theme) ? theme : (current.theme || 'noel')
     const nextFalling = typeof fallingEnabled === 'boolean' ? fallingEnabled : (current.fallingEnabled ?? true)
     const nextDecor = typeof decorEnabled === 'boolean' ? decorEnabled : (current.decorEnabled ?? true)
     const nextTicker = typeof customTicker === 'string' ? customTicker.trim() : (current.customTicker || '')
@@ -4108,11 +4108,18 @@ app.post('/api/v1/admin/festive-settings', authenticateAdmin, authorizeRoles('SU
       decorEnabled: nextDecor,
       customTicker: nextTicker,
       updatedAt: new Date().toISOString(),
-      updatedBy: req.user?.username || 'admin'
+      updatedBy: req.admin?.username || 'admin'
     }
 
     await setSystemSetting('festive_settings', updated)
-    await recordAuditLog(req.user?.id, 'UPDATE_FESTIVE_SETTINGS', 'Cấu hình sự kiện dịp lễ hội kiểu Thế Giới Di Động', updated)
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'Cập nhật cấu hình sự kiện & hiệu ứng lễ hội',
+      actionType: 'UPDATE_FESTIVE_SETTINGS',
+      summary: `Đã đổi chủ đề lễ hội thành: ${nextTheme}`,
+      details: updated,
+      req
+    })
 
     res.json({
       success: true,

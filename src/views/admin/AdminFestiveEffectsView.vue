@@ -9,7 +9,7 @@
             {{ currentStatusLabel }}
           </span>
         </div>
-        <h1 class="view-title">Quản Lý Hiệu Ứng Lễ Hội (Phong Cách Thế Giới Di Động)</h1>
+        <h1 class="view-title">Quản Lý Hiệu Ứng Lễ Hội &amp; Sự Kiện</h1>
         <p class="view-subtitle">
           Chủ động điều phối giao diện theo mùa: Giáng Sinh Noel, Tết Nguyên Đán, Siêu Sale hoặc Tự động theo lịch năm.
         </p>
@@ -318,6 +318,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useFestiveStore } from '../../stores/festiveStore'
+import { showSuccess, showError } from '../../utils/toast'
 
 const festiveStore = useFestiveStore()
 const isSaving = ref(false)
@@ -503,9 +504,9 @@ async function saveChanges() {
 
   isSaving.value = false
   if (res.success) {
-    alert('Đã lưu cấu hình dịp lễ hội thành công! Giao diện trang chủ và toàn hệ thống đã cập nhật tức thì.')
+    showSuccess('Đã lưu cấu hình dịp lễ hội thành công! Giao diện trang chủ và toàn hệ thống đã cập nhật tức thì.', 'Lưu Thành Công')
   } else {
-    alert(res.message || 'Lỗi khi lưu cấu hình!')
+    showError(res.message || 'Lỗi khi lưu cấu hình!', 'Lưu Cấu Hình Thất Bại')
   }
 }
 

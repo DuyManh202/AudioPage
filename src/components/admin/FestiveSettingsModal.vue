@@ -7,7 +7,7 @@
           <div class="header-title-box">
             <span class="header-icon">🎉</span>
             <div>
-              <h3 class="header-title">Cấu Hình Dịp Lễ Hội (Phong Cách Thế Giới Di Động)</h3>
+              <h3 class="header-title">Cấu Hình Hiệu Ứng Lễ Hội &amp; Sự Kiện</h3>
               <p class="header-sub">Tự động trang trí hoa mai/đào rơi, tuyết giáng sinh, cành đào, mũ noel trên logo</p>
             </div>
           </div>
@@ -143,6 +143,7 @@
 <script setup>
 import { reactive, watch } from 'vue'
 import { useFestiveStore } from '../../stores/festiveStore'
+import { showSuccess, showError } from '../../utils/toast'
 
 const festiveStore = useFestiveStore()
 
@@ -178,10 +179,10 @@ async function handleSave() {
   })
 
   if (res.success) {
-    alert('Đã cập nhật cấu hình hiệu ứng dịp lễ hội thành công! Trang web đã hiển thị ngay lập tức.')
+    showSuccess('Đã cập nhật cấu hình hiệu ứng dịp lễ hội thành công! Trang web đã hiển thị ngay lập tức.', 'Cập Nhật Thành Công')
     closeModal()
   } else {
-    alert(res.message || 'Lỗi khi lưu cấu hình!')
+    showError(res.message || 'Lỗi khi lưu cấu hình!', 'Lưu Cấu Hình Thất Bại')
   }
 }
 </script>

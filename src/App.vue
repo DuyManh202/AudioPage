@@ -3,7 +3,10 @@
     <!-- Thanh tải & trạng thái hệ thống toàn diện -->
     <SystemProgressBar />
 
-    <!-- Hiệu ứng sự kiện theo mùa / dịp lễ hội kiểu Thế Giới Di Động -->
+    <!-- Thông báo hệ thống có CSS đẹp mắt (System Toast) -->
+    <SystemToast />
+
+    <!-- Hiệu ứng sự kiện theo mùa / dịp lễ hội -->
     <FestiveEffects v-if="!isAdminRoute" />
 
     <AppHeader v-if="!isAdminRoute" />
@@ -37,6 +40,7 @@ import QuickOrderModal from './components/cart/QuickOrderModal.vue'
 import CartDrawer from './components/cart/CartDrawer.vue'
 import SystemProgressBar from './components/common/SystemProgressBar.vue'
 import FestiveEffects from './components/common/FestiveEffects.vue'
+import SystemToast from './components/common/SystemToast.vue'
 
 const route = useRoute()
 const productStore = useProductStore()

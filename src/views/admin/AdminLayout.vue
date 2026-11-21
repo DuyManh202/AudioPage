@@ -166,7 +166,7 @@
           @click="mobileNavOpen = false"
         >
           <span class="festive-sidebar-icon">{{ festiveIcon }}</span>
-          <span class="nav-text">Hiệu Ứng Lễ Hội (TGDD)</span>
+          <span class="nav-text">Hiệu Ứng Lễ Hội</span>
           <span class="nav-pill festive-pill">{{ festiveShortLabel }}</span>
         </router-link>
 
