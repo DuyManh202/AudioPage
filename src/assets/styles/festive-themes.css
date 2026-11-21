@@ -1,41 +1,27 @@
 /**
- * HỆ THỐNG MÀU SẮC GIAO DIỆN THEO MÙA & DỊP LỄ HỘI TÚ AUDIO
- * Tự động chuyển đổi màu sắc toàn bộ website theo dịp:
- * 1. Mùa Giáng Sinh & Năm Mới (Noel Theme)
- * 2. Mùa Tết Nguyên Đán (Tet Theme)
- * 3. Đại Tiệc Siêu Sale (Super Sale Theme)
+ * HỆ THỐNG MÀU SẮC LỄ HỘI TINH TẾ & ĐỒNG BỘ — TÚ AUDIO
+ * Giữ vững nhận diện thương hiệu sang trọng (Navy & Gold & Dark Slate).
+ * Chỉ điểm xuyết màu nhấn theo dịp (Noel / Tết / Siêu Sale) trang nhã,
+ * tuyệt đối không làm rối mắt hay đổi màu linh tinh.
  */
 
 /* =========================================================
    1. MÙA GIÁNG SINH & NĂM MỚI (NOEL THEME)
    ========================================================= */
-.festive-theme-noel {
-  /* Biến màu thương hiệu theo mùa Giáng Sinh */
-  --color-secondary: #dc2626;
-  --color-secondary-hover: #b91c1c;
-  --color-secondary-soft: rgba(220, 38, 38, 0.12);
-  --border-blue: rgba(220, 38, 38, 0.35);
-  --shadow-blue-glow: 0 8px 24px rgba(220, 38, 38, 0.35);
-
-  --gradient-blue: linear-gradient(135deg, #ef4444 0%, #dc2626 55%, #991b1b 100%);
-  --gradient-gold: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
-  --color-primary: #dc2626;
-  --color-primary-bright: #ef4444;
-  --color-primary-hover: #b91c1c;
-  --color-primary-soft: rgba(220, 38, 38, 0.12);
-  --shadow-glow: 0 8px 24px rgba(220, 38, 38, 0.32);
+/* Nút Tư Vấn điểm xuyết đỏ ruby sang trọng */
+.festive-theme-noel .consult-btn {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  border-color: rgba(254, 202, 202, 0.35) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Header & Menu Điều Hướng Dịp Noel */
-.festive-theme-noel .app-header {
-  border-bottom: 2px solid rgba(220, 38, 38, 0.22);
+.festive-theme-noel .consult-btn:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.5) !important;
 }
 
-.festive-theme-noel .sub-nav {
-  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
-  border-bottom: 1px solid rgba(220, 38, 38, 0.15);
-}
-
+/* Menu active điểm viền đỏ nhẹ nhàng */
 .festive-theme-noel .nav-links a:hover,
 .festive-theme-noel .nav-links a.router-link-active {
   color: #dc2626 !important;
@@ -45,183 +31,20 @@
   background: linear-gradient(90deg, #ef4444, #dc2626) !important;
 }
 
-.festive-theme-noel .consult-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 55%, #991b1b 100%) !important;
-  border-color: rgba(254, 202, 202, 0.45) !important;
-  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-noel .consult-btn:hover {
-  box-shadow: 0 12px 28px rgba(220, 38, 38, 0.6) !important;
-}
-
-.festive-theme-noel .search-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-  border-color: rgba(254, 202, 202, 0.5) !important;
-  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35) !important;
-}
-
-.festive-theme-noel .combo-link {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
-  border-color: #f87171 !important;
-  color: #991b1b !important;
-}
-
-.festive-theme-noel .search-box:focus-within {
-  border-color: #dc2626 !important;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16) !important;
-}
-
-/* Nút CTA chính toàn trang dịp Noel */
-.festive-theme-noel .btn-primary {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 55%, #b91c1c 100%) !important;
-  color: #ffffff !important;
-  border-color: rgba(254, 202, 202, 0.45) !important;
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.38) !important;
-}
-
-.festive-theme-noel .btn-primary:hover {
-  box-shadow: 0 10px 26px rgba(220, 38, 38, 0.5) !important;
-}
-
-/* Hero Section Dịp Noel (Khung banner chính trang chủ) */
-.festive-theme-noel .hero-section {
-  background: linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 38%, #fef2f2 78%, #f8fafc 100%) !important;
-  border-bottom: 1px solid rgba(220, 38, 38, 0.18) !important;
-}
-
-.festive-theme-noel .hero-orb-blue {
-  background: radial-gradient(circle, rgba(22, 163, 74, 0.22), transparent 70%) !important;
-}
-
-.festive-theme-noel .hero-orb-gold {
-  background: radial-gradient(circle, rgba(220, 38, 38, 0.2), transparent 70%) !important;
-}
-
-.festive-theme-noel .hero-badge {
-  background: #fef2f2 !important;
-  border-color: rgba(220, 38, 38, 0.35) !important;
-  color: #991b1b !important;
-  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.16) !important;
-}
-
-.festive-theme-noel .highlight {
-  background: linear-gradient(135deg, #dc2626 0%, #ea580c 45%, #d97706 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-}
-
-.festive-theme-noel .hero-cta-main {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%) !important;
-  border-color: rgba(254, 202, 202, 0.45) !important;
-  box-shadow: 0 10px 26px rgba(220, 38, 38, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-noel .hero-stats .stat-num {
-  color: #dc2626 !important;
-}
-
-/* Thẻ Dàn Karaoke Khuyến Nghị Dịp Noel */
-.festive-theme-noel .featured-offer-box {
-  border-color: #dc2626 !important;
-  box-shadow: 0 22px 50px -12px rgba(220, 38, 38, 0.2), 0 0 0 4px rgba(220, 38, 38, 0.15) !important;
-}
-
-.festive-theme-noel .featured-offer-box:hover {
-  box-shadow: 0 28px 60px -12px rgba(220, 38, 38, 0.25), 0 0 0 6px rgba(220, 38, 38, 0.22) !important;
-}
-
-.festive-theme-noel .box-badge {
-  background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
-  border: 1px solid rgba(254, 240, 138, 0.6) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-noel .featured-offer-box .btn-primary {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 60%, #b91c1c 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.45) !important;
-}
-
-/* Phân Khu 5 Gói Dàn Át Chủ Bài Dịp Noel */
-.festive-theme-noel .badge-gold {
-  background: #fef2f2 !important;
-  border-color: #fca5a5 !important;
-  color: #991b1b !important;
-}
-
-.festive-theme-noel .tgdd-tab-btn.active {
-  background: #dc2626 !important;
-  border-color: #b91c1c !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35) !important;
-}
-
-.festive-theme-noel .tgdd-card.is-featured-border {
-  border-color: #dc2626 !important;
-  box-shadow: 0 16px 40px rgba(220, 38, 38, 0.16) !important;
-}
-
-.festive-theme-noel .btn-tgdd-order {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-noel .hot-kicker {
-  color: #dc2626 !important;
-}
-
-.festive-theme-noel .view-all-link {
-  color: #dc2626 !important;
-}
-
-/* Thanh điều hướng Mobile dịp Noel */
-.festive-theme-noel .mobile-consult-link {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-}
-
+/* Nút đặt nhanh trên thanh điều hướng mobile */
 .festive-theme-noel .mobile-action-bar .mobile-action-btn.active {
   color: #dc2626 !important;
-}
-
-.festive-theme-noel .mobile-action-bar .btn-order-primary {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
 }
 
 
 /* =========================================================
    2. MÙA TẾT NGUYÊN ĐÁN (TET THEME)
    ========================================================= */
-.festive-theme-tet {
-  --color-secondary: #dc2626;
-  --color-secondary-hover: #b91c1c;
-  --color-secondary-soft: rgba(220, 38, 38, 0.12);
-  --border-blue: rgba(220, 38, 38, 0.3);
-  --shadow-blue-glow: 0 8px 24px rgba(220, 38, 38, 0.35);
-
-  --gradient-blue: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  --gradient-gold: linear-gradient(135deg, #dc2626 0%, #ea580c 50%, #d97706 100%);
-  --color-primary: #dc2626;
-  --color-primary-bright: #ef4444;
-  --color-primary-hover: #b91c1c;
-  --color-primary-soft: rgba(220, 38, 38, 0.12);
-  --shadow-glow: 0 8px 24px rgba(220, 38, 38, 0.3);
-}
-
-.festive-theme-tet .app-header {
-  border-bottom: 2px solid rgba(250, 204, 21, 0.4);
-}
-
-.festive-theme-tet .sub-nav {
-  background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+.festive-theme-tet .consult-btn {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  border-color: rgba(254, 240, 138, 0.4) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35) !important;
 }
 
 .festive-theme-tet .nav-links a:hover,
@@ -233,156 +56,22 @@
   background: linear-gradient(90deg, #f59e0b, #dc2626) !important;
 }
 
-.festive-theme-tet .consult-btn {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 55%, #7f1d1d 100%) !important;
-  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.5) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-tet .search-btn {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-tet .btn-primary {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.38) !important;
-}
-
-.festive-theme-tet .hero-section {
-  background: linear-gradient(180deg, #fef2f2 0%, #fffbeb 45%, #fff7ed 78%, #f8fafc 100%) !important;
-  border-bottom: 1px solid rgba(245, 158, 11, 0.25) !important;
-}
-
-.festive-theme-tet .hero-orb-blue {
-  background: radial-gradient(circle, rgba(220, 38, 38, 0.2), transparent 70%) !important;
-}
-
-.festive-theme-tet .hero-orb-gold {
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.25), transparent 70%) !important;
-}
-
-.festive-theme-tet .hero-badge {
-  background: #fef2f2 !important;
-  border-color: rgba(220, 38, 38, 0.35) !important;
-  color: #991b1b !important;
-}
-
-.festive-theme-tet .highlight {
-  background: linear-gradient(135deg, #dc2626 0%, #ea580c 45%, #f59e0b 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-}
-
-.festive-theme-tet .hero-cta-main {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-  box-shadow: 0 10px 26px rgba(220, 38, 38, 0.4) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-tet .hero-stats .stat-num {
-  color: #dc2626 !important;
-}
-
-.festive-theme-tet .featured-offer-box {
-  border-color: #f59e0b !important;
-  box-shadow: 0 22px 50px -12px rgba(245, 158, 11, 0.2), 0 0 0 4px rgba(245, 158, 11, 0.15) !important;
-}
-
-.festive-theme-tet .box-badge {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-tet .tgdd-tab-btn.active {
-  background: #dc2626 !important;
-  border-color: #f59e0b !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-tet .tgdd-card.is-featured-border {
-  border-color: #dc2626 !important;
-}
-
-.festive-theme-tet .btn-tgdd-order {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-  color: #ffffff !important;
-}
-
 
 /* =========================================================
    3. ĐẠI TIỆC SIÊU SALE (SALE THEME)
    ========================================================= */
-.festive-theme-sale {
-  --color-secondary: #ea580c;
-  --color-secondary-hover: #c2410c;
-  --color-secondary-soft: rgba(234, 88, 12, 0.12);
-  --border-blue: rgba(234, 88, 12, 0.35);
-  --shadow-blue-glow: 0 8px 24px rgba(234, 88, 12, 0.35);
-
-  --gradient-blue: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
-  --gradient-gold: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-  --color-primary: #ea580c;
-  --color-primary-bright: #f97316;
-  --color-primary-hover: #c2410c;
-  --color-primary-soft: rgba(234, 88, 12, 0.12);
-  --shadow-glow: 0 8px 24px rgba(234, 88, 12, 0.35);
-}
-
 .festive-theme-sale .consult-btn {
   background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
-  box-shadow: 0 8px 22px rgba(234, 88, 12, 0.5) !important;
+  border-color: rgba(254, 215, 170, 0.4) !important;
   color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.35) !important;
 }
 
-.festive-theme-sale .search-btn {
-  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
-  color: #ffffff !important;
+.festive-theme-sale .nav-links a:hover,
+.festive-theme-sale .nav-links a.router-link-active {
+  color: #ea580c !important;
 }
 
-.festive-theme-sale .btn-primary {
-  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(234, 88, 12, 0.4) !important;
-}
-
-.festive-theme-sale .hero-section {
-  background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 45%, #fef2f2 80%, #f8fafc 100%) !important;
-}
-
-.festive-theme-sale .highlight {
-  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-}
-
-.festive-theme-sale .hero-cta-main {
-  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%) !important;
-  box-shadow: 0 10px 26px rgba(234, 88, 12, 0.45) !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-sale .featured-offer-box {
-  border-color: #ea580c !important;
-  box-shadow: 0 22px 50px -12px rgba(234, 88, 12, 0.2), 0 0 0 4px rgba(234, 88, 12, 0.15) !important;
-}
-
-.festive-theme-sale .tgdd-tab-btn.active {
-  background: #ea580c !important;
-  border-color: #c2410c !important;
-  color: #ffffff !important;
-}
-
-.festive-theme-sale .tgdd-card.is-featured-border {
-  border-color: #ea580c !important;
-}
-
-.festive-theme-sale .btn-tgdd-order {
-  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
-  color: #ffffff !important;
+.festive-theme-sale .nav-links a::after {
+  background: linear-gradient(90deg, #f97316, #ea580c) !important;
 }

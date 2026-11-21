@@ -110,42 +110,15 @@ const productStore = useProductStore()
 const festiveStore = useFestiveStore()
 
 const heroBadgeText = computed(() => {
-  switch (festiveStore.effectiveTheme) {
-    case 'noel':
-      return '🎄 Mừng Giáng Sinh — Dàn Karaoke Chuẩn Phòng Hát'
-    case 'tet':
-      return '🌸 Đón Tết Sum Vầy — Dàn Karaoke Chuẩn Phòng Hát'
-    case 'sale':
-      return '⚡ Đại Tiệc Giảm Giá — Dàn Karaoke Chuẩn Phòng Hát'
-    default:
-      return '🏆 Chuyên Gia Dàn Karaoke Chuẩn Phòng Hát'
-  }
+  return '🏆 Chuyên Gia Dàn Karaoke Chuẩn Phòng Hát'
 })
 
 const featuredBoxBadgeText = computed(() => {
-  switch (festiveStore.effectiveTheme) {
-    case 'noel':
-      return '🎄 ƯU ĐÃI GIÁNG SINH SỐ 1'
-    case 'tet':
-      return '🌸 GÓI DÀN TẾT KHUYẾN NGHỊ'
-    case 'sale':
-      return '⚡ SIÊU SALE SỐC SỐ 1'
-    default:
-      return '🔥 KHUYẾN NGHỊ SỐ 1'
-  }
+  return '🔥 KHUYẾN NGHỊ SỐ 1'
 })
 
 const featuredBoxBtnText = computed(() => {
-  switch (festiveStore.effectiveTheme) {
-    case 'noel':
-      return '🎁 Đăng Ký Thử Dàn Giáng Sinh Tại Nhà'
-    case 'tet':
-      return '🧧 Đăng Ký Thử Dàn Đón Tết Tại Nhà'
-    case 'sale':
-      return '⚡ Nhận Ưu Đãi & Thử Dàn Tại Nhà'
-    default:
-      return 'Đăng Ký Thử Dàn Tại Nhà'
-  }
+  return 'Đăng Ký Thử Dàn Tại Nhà'
 })
 
 const featuredCombo = computed(() => {

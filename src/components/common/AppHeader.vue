@@ -238,6 +238,7 @@ const scrollToEbook = () => {
   align-items: center;
   gap: 14px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .top-contact strong {
@@ -252,6 +253,8 @@ const scrollToEbook = () => {
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 0.72rem;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
