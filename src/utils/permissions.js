@@ -176,7 +176,8 @@ export const canAccessMenu = (userOrRole, menuKey) => {
     'combos': ['combos.view'],
     'users': ['users.view', 'users.permissions', 'users.approve'],
     'audit-logs': ['logs.view'],
-    'ai-chat': ['aichat.view']
+    'ai-chat': ['aichat.view'],
+    'festive-effects': ['dashboard.view']
   }
 
   const requiredPerms = menuToPermMap[menuKey] || []

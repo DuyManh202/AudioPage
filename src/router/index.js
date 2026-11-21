@@ -114,6 +114,12 @@ const routes = [
         name: 'AdminAuditLogs',
         component: () => import('../views/admin/AdminAuditLogsView.vue'),
         meta: { requiresAuth: true, menuKey: 'audit-logs' }
+      },
+      {
+        path: 'festive-effects',
+        name: 'AdminFestiveEffects',
+        component: () => import('../views/admin/AdminFestiveEffectsView.vue'),
+        meta: { requiresAuth: true, menuKey: 'festive-effects' }
       }
     ]
   }

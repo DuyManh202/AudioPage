@@ -159,15 +159,16 @@
           <span class="nav-text">Lịch Sử Thao Tác</span>
         </router-link>
 
-        <button
-          type="button"
+        <router-link
+          v-if="can('festive-effects')"
+          to="/admin/festive-effects"
           class="nav-item festive-nav-item"
-          @click="festiveStore.isAdminModalOpen = true; mobileNavOpen = false"
+          @click="mobileNavOpen = false"
         >
           <span class="festive-sidebar-icon">{{ festiveIcon }}</span>
-          <span class="nav-text">Dịp Lễ Hội (TGDD)</span>
+          <span class="nav-text">Hiệu Ứng Lễ Hội (TGDD)</span>
           <span class="nav-pill festive-pill">{{ festiveShortLabel }}</span>
-        </button>
+        </router-link>
 
         <router-link to="/" target="_blank" class="nav-item storefront-link">
           <AdminIcon name="globe" :size="18" />
@@ -265,15 +266,14 @@
           </button>
 
           <!-- Nút Cấu hình Dịp Lễ Hội (TGDD Style) -->
-          <button
-            type="button"
+          <router-link
+            to="/admin/festive-effects"
             class="topbar-festive-btn"
-            @click="festiveStore.isAdminModalOpen = true"
-            :title="`Cấu hình hiệu ứng dịp lễ hội: ${festiveStore.themeLabel}`"
+            :title="`Quản lý hiệu ứng dịp lễ hội: ${festiveStore.themeLabel}`"
           >
             <span class="festive-btn-icon">{{ festiveIcon }}</span>
             <span class="hide-sm">{{ festiveShortLabel }}</span>
-          </button>
+          </router-link>
 
           <router-link to="/" class="topbar-store-btn" title="Xem giao diện khách hàng">
             <AdminIcon name="globe" :size="15" />
