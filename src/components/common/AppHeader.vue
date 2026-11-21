@@ -24,15 +24,131 @@
           <BrandLogo theme="light" :height="42" />
         </router-link>
 
-        <div class="search-box">
-          <span class="search-icon" aria-hidden="true">🔍</span>
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="Tìm loa full 30, sub 40, vang số K9, dàn 29 triệu..."
-            @input="handleSearch"
-          />
-          <button class="search-btn" type="button" @click="handleSearch">Tìm Kiếm</button>
+        <div class="search-wrapper">
+          <!-- Backdrop đóng dropdown khi nhấn ra ngoài -->
+          <div v-if="isSearchOpen" class="search-backdrop" @click="closeSearchDropdown"></div>
+
+          <div class="search-box" :class="{ 'is-active': isSearchOpen }">
+            <span class="search-icon" aria-hidden="true">
+              <svg class="search-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" />
+              </svg>
+            </span>
+            <input
+              ref="searchInputRef"
+              type="text"
+              v-model="searchQuery"
+              placeholder="Bạn cần tìm loa full, sub 40, vang số, đẩy công suất..."
+              @focus="openSearchDropdown"
+              @keydown.enter="executeSearch"
+              @keydown.esc="closeSearchDropdown"
+            />
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="search-clear-btn"
+              @click="clearSearch"
+              title="Xóa tìm kiếm"
+              aria-label="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+            <button class="search-btn" type="button" @click="executeSearch" aria-label="Tìm kiếm">
+              <svg class="search-btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" />
+              </svg>
+              <span class="search-btn-text">Tìm Kiếm</span>
+            </button>
+          </div>
+
+          <!-- Dropdown Gợi Ý Tìm Kiếm Thông Minh (Smart Search Autocomplete) -->
+          <div v-if="isSearchOpen" class="search-dropdown-menu">
+            <!-- 1. Trạng thái mặc định: Chưa nhập -> Hiện lịch sử & xu hướng -->
+            <div v-if="!searchQuery.trim()" class="dropdown-pane">
+              <!-- Lịch sử tìm kiếm -->
+              <div v-if="searchHistory.length > 0" class="dropdown-group">
+                <div class="group-header">
+                  <span class="group-title">🕒 Lịch sử tìm kiếm</span>
+                  <button type="button" class="btn-clear-all" @click="clearHistory">Xóa tất cả</button>
+                </div>
+                <div class="history-chips">
+                  <span
+                    v-for="kw in searchHistory"
+                    :key="kw"
+                    class="chip-history"
+                    @mousedown.prevent="applyKeyword(kw)"
+                  >
+                    <span>{{ kw }}</span>
+                    <button type="button" class="btn-del-chip" @click.stop="removeHistoryItem(kw)">✕</button>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Gợi ý xu hướng tìm kiếm -->
+              <div class="dropdown-group">
+                <div class="group-header">
+                  <span class="group-title">🔥 Xu hướng tìm kiếm hàng đầu</span>
+                </div>
+                <div class="trending-grid">
+                  <button
+                    v-for="item in trendingKeywords"
+                    :key="item.text"
+                    type="button"
+                    class="trending-item"
+                    @mousedown.prevent="applyKeyword(item.text)"
+                  >
+                    <span class="trend-badge">{{ item.badge }}</span>
+                    <span class="trend-text">{{ item.text }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Trạng thái đang gõ từ khóa: Hiện kết quả sản phẩm trực tiếp -->
+            <div v-else class="dropdown-pane">
+              <div v-if="matchingProducts.length > 0" class="results-group">
+                <div class="group-header">
+                  <span class="group-title">📦 Sản phẩm gợi ý ({{ matchingProducts.length }})</span>
+                </div>
+
+                <div class="results-list">
+                  <div
+                    v-for="p in matchingProducts"
+                    :key="p.id"
+                    class="result-item"
+                    @mousedown.prevent="selectProduct(p)"
+                  >
+                    <img :src="p.image" :alt="p.name" class="result-thumb" loading="lazy" />
+                    <div class="result-details">
+                      <div class="result-name">{{ p.name }}</div>
+                      <div class="result-pricing">
+                        <span class="result-price">{{ formatCurrency(p.price) }}</span>
+                        <span v-if="p.originalPrice > p.price" class="result-old-price">
+                          {{ formatCurrency(p.originalPrice) }}
+                        </span>
+                        <span v-if="p.badge" class="result-badge">{{ p.badge }}</span>
+                      </div>
+                    </div>
+                    <span class="result-arrow" aria-hidden="true">→</span>
+                  </div>
+                </div>
+
+                <button type="button" class="btn-view-all" @mousedown.prevent="executeSearch">
+                  Xem tất cả kết quả cho "<strong>{{ searchQuery }}</strong>" →
+                </button>
+              </div>
+
+              <div v-else class="empty-results">
+                <span class="empty-icon" aria-hidden="true">🔍</span>
+                <p>Không tìm thấy thiết bị nào khớp với "<strong>{{ searchQuery }}</strong>"</p>
+                <button type="button" class="btn-browse-all" @mousedown.prevent="viewAllProducts">
+                  Xem toàn bộ kho sản phẩm
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="header-actions">
@@ -97,12 +213,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import { useCartStore } from '../../stores/cartStore'
 import { useFestiveStore } from '../../stores/festiveStore'
 import { CONTACT_INFO } from '../../config/contact'
+import { formatCurrency } from '../../utils/formatters'
 import BrandLogo from './BrandLogo.vue'
 
 const router = useRouter()
@@ -110,19 +227,124 @@ const productStore = useProductStore()
 const cartStore = useCartStore()
 const festiveStore = useFestiveStore()
 const searchQuery = ref('')
+const searchInputRef = ref(null)
+const isSearchOpen = ref(false)
 const mobileMenuOpen = ref(false)
 
 const closeMobileMenu = () => {
   mobileMenuOpen.value = false
 }
 
-watch(() => router.currentRoute.value.fullPath, closeMobileMenu)
+watch(() => router.currentRoute.value.fullPath, () => {
+  closeMobileMenu()
+  closeSearchDropdown()
+})
 
-const handleSearch = () => {
-  productStore.setSearchQuery(searchQuery.value)
+const SEARCH_HISTORY_KEY = 'audioshop_search_history'
+
+const loadSearchHistory = () => {
+  try {
+    const raw = localStorage.getItem(SEARCH_HISTORY_KEY)
+    return raw ? JSON.parse(raw) : ['Dàn 29 triệu', 'Loa full 30', 'Vang số chống hú']
+  } catch {
+    return ['Dàn 29 triệu', 'Loa full 30', 'Vang số chống hú']
+  }
+}
+
+const searchHistory = ref(loadSearchHistory())
+
+const saveSearchHistory = (keyword) => {
+  const clean = keyword.trim()
+  if (!clean) return
+  const filtered = searchHistory.value.filter(k => k.toLowerCase() !== clean.toLowerCase())
+  filtered.unshift(clean)
+  const sliced = filtered.slice(0, 8)
+  searchHistory.value = sliced
+  try {
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(sliced))
+  } catch {}
+}
+
+const removeHistoryItem = (kw) => {
+  searchHistory.value = searchHistory.value.filter(k => k !== kw)
+  try {
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory.value))
+  } catch {}
+}
+
+const clearHistory = () => {
+  searchHistory.value = []
+  try {
+    localStorage.removeItem(SEARCH_HISTORY_KEY)
+  } catch {}
+}
+
+const trendingKeywords = [
+  { text: 'Loa Full 30 AMEK FB-12', badge: 'Át chủ bài' },
+  { text: 'Dàn karaoke 29 triệu', badge: 'Bán chạy' },
+  { text: 'Vang số AMEK UK-3000', badge: 'Chống hú 4 cấp' },
+  { text: 'Cục đẩy 4 kênh x800W', badge: '56 sò khủng' },
+  { text: 'Loa Sub hơi 40 PF S15', badge: 'Bass lực' },
+  { text: 'Micro không dây chống hú', badge: 'Hát nhẹ' }
+]
+
+const matchingProducts = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return []
+  return productStore.products
+    .filter(p => {
+      const name = (p.name || '').toLowerCase()
+      const desc = (p.shortDesc || '').toLowerCase()
+      const cat = (p.category || '').toLowerCase()
+      return name.includes(q) || desc.includes(q) || cat.includes(q)
+    })
+    .slice(0, 5)
+})
+
+const openSearchDropdown = () => {
+  isSearchOpen.value = true
+}
+
+const closeSearchDropdown = () => {
+  isSearchOpen.value = false
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  productStore.setSearchQuery('')
+  searchInputRef.value?.focus()
+}
+
+const executeSearch = () => {
+  const q = searchQuery.value.trim()
+  if (q) {
+    saveSearchHistory(q)
+    productStore.setSearchQuery(q)
+  } else {
+    productStore.setSearchQuery('')
+  }
+  closeSearchDropdown()
   if (router.currentRoute.value.path !== '/san-pham') {
     router.push('/san-pham')
   }
+}
+
+const applyKeyword = (kw) => {
+  searchQuery.value = kw
+  executeSearch()
+}
+
+const selectProduct = (p) => {
+  saveSearchHistory(p.name)
+  closeSearchDropdown()
+  router.push(`/san-pham/${p.id}`)
+}
+
+const viewAllProducts = () => {
+  searchQuery.value = ''
+  productStore.setSearchQuery('')
+  closeSearchDropdown()
+  router.push('/san-pham')
 }
 
 const openConsult = () => {
@@ -335,28 +557,52 @@ const scrollToEbook = () => {
   text-overflow: ellipsis;
 }
 
-.search-box {
+.search-wrapper {
   flex: 1;
   max-width: 500px;
-  display: flex;
-  align-items: center;
-  background: #F1F5F9;
-  border: 1.5px solid #CBD5E1;
-  border-radius: 999px;
-  padding: 4px 4px 4px 14px;
-  transition: border-color 0.25s var(--ease-smooth), box-shadow 0.25s var(--ease-smooth), background 0.2s;
+  position: relative;
+  z-index: 105;
 }
 
-.search-box:focus-within {
+.search-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(2px);
+  z-index: 104;
+}
+
+.search-box {
+  position: relative;
+  z-index: 105;
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 999px;
+  padding: 3px 3px 3px 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: all 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.search-box:focus-within,
+.search-box.is-active {
   background: #FFFFFF;
   border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16), 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 .search-icon {
-  font-size: 0.88rem;
-  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  color: #64748B;
   margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.search-svg {
+  width: 17px;
+  height: 17px;
 }
 
 .search-box input {
@@ -366,37 +612,348 @@ const scrollToEbook = () => {
   border: none;
   outline: none;
   color: #0F172A;
-  font-size: 0.86rem;
-  padding: 6px 4px;
+  font-size: 0.88rem;
+  padding: 7px 4px;
 }
 
 .search-box input::placeholder {
-  color: #64748B;
+  color: #94A3B8;
+  font-size: 0.84rem;
+}
+
+.search-clear-btn {
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.search-clear-btn:hover {
+  color: #DC2626;
+  background: #F1F5F9;
 }
 
 .search-btn {
   position: relative;
   overflow: hidden;
   background: var(--gradient-gold);
-  color: #090b10;
+  color: #090B10;
   font-weight: 800;
   font-size: 0.78rem;
-  padding: 8px 17px;
+  padding: 8px 16px;
   border-radius: 999px;
   flex-shrink: 0;
   border: 1px solid rgba(255, 232, 163, 0.55);
   box-shadow: 0 4px 14px rgba(252, 183, 40, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transition: transform 0.24s var(--ease-spring), filter 0.2s, box-shadow 0.24s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .search-btn:hover {
   filter: brightness(1.06);
-  transform: translateY(-1px) scale(1.02);
-  box-shadow: 0 8px 20px rgba(252, 183, 40, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(252, 183, 40, 0.45);
 }
 
-.search-btn:active {
-  transform: scale(0.97);
+.search-btn-svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ==========================================================================
+   SMART SEARCH DROPDOWN MENU
+   ========================================================================== */
+.search-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #DCE4F0;
+  border-radius: 18px;
+  box-shadow: 0 20px 48px -10px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  padding: 16px;
+  z-index: 106;
+  max-height: 480px;
+  overflow-y: auto;
+  animation: searchDrop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes searchDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-group {
+  margin-bottom: 14px;
+}
+
+.dropdown-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.group-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-clear-all {
+  background: none;
+  border: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #DC2626;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-clear-all:hover {
+  text-decoration: underline;
+}
+
+.history-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  color: #1E293B;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.chip-history:hover {
+  background: #E2E8F0;
+  color: #1D4ED8;
+}
+
+.btn-del-chip {
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.btn-del-chip:hover {
+  color: #DC2626;
+}
+
+.trending-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.trending-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trending-item:hover {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  transform: translateY(-1px);
+}
+
+.trend-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: #FEF3C7;
+  color: #B45309;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.trend-text {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1E293B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Danh sách kết quả gợi ý trực tiếp */
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.result-item:hover {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+}
+
+.result-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  flex-shrink: 0;
+}
+
+.result-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.result-pricing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+}
+
+.result-price {
+  color: #DC2626;
+  font-weight: 800;
+}
+
+.result-old-price {
+  color: #94A3B8;
+  text-decoration: line-through;
+  font-size: 0.7rem;
+}
+
+.result-badge {
+  background: #FEF3C7;
+  color: #B45309;
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.result-arrow {
+  color: #94A3B8;
+  font-weight: 800;
+  font-size: 0.9rem;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.result-item:hover .result-arrow {
+  color: #2563EB;
+  transform: translateX(3px);
+}
+
+.btn-view-all {
+  width: 100%;
+  padding: 9px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-view-all:hover {
+  background: #DBEAFE;
+}
+
+.empty-results {
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.empty-icon {
+  font-size: 1.8rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.empty-results p {
+  font-size: 0.82rem;
+  color: #64748B;
+  margin-bottom: 10px;
+}
+
+.btn-browse-all {
+  background: var(--gradient-gold);
+  border: none;
+  color: #090B10;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .header-actions {
@@ -638,11 +1195,16 @@ const scrollToEbook = () => {
     white-space: nowrap;
   }
 
-  .search-box {
+  .search-wrapper {
     grid-column: 1 / -1;
     grid-row: 2;
     max-width: none;
-    padding: 3px 3px 3px 12px;
+    width: 100%;
+  }
+
+  .search-box {
+    max-width: none;
+    padding: 2px 2px 2px 12px;
   }
 
   .search-box input {
@@ -650,9 +1212,25 @@ const scrollToEbook = () => {
     padding: 6px 2px;
   }
 
+  .search-btn-text {
+    display: none;
+  }
+
   .search-btn {
-    padding: 7px 13px;
-    font-size: 0.76rem;
+    padding: 7px 11px;
+    border-radius: 999px;
+  }
+
+  .search-dropdown-menu {
+    position: fixed;
+    top: 108px;
+    left: 8px;
+    right: 8px;
+    max-height: 65vh;
+  }
+
+  .trending-grid {
+    grid-template-columns: 1fr;
   }
 
   .header-actions {
