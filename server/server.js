@@ -3138,6 +3138,39 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
 })
 
+// Lấy chi tiết hồ sơ 1 khách hàng Facebook kèm toàn bộ tin nhắn & đơn hàng liên quan (cho Popup CRM)
+app.get('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
+      FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
+      WHERE c.id = $1
+      GROUP BY c.id`, [req.params.id])
+    if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ khách hàng Facebook.' })
+    const customer = mapFbCare(result.rows[0])
+    let relatedOrders = []
+    if (customer.phone) {
+      const ordersRes = await query(`SELECT id, customer_name, customer_phone, shipping_address, total_amount, status, created_at FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC LIMIT 5`, [customer.phone])
+      relatedOrders = ordersRes.rows
+    }
+    res.json({ success: true, data: customer, relatedOrders })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+// Lấy chi tiết 1 Lead kèm đơn hàng liên quan (cho Popup CRM)
+app.get('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM leads WHERE id = $1', [req.params.id])
+    if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ Lead.' })
+    const lead = mapLeadRow(result.rows[0])
+    let relatedOrders = []
+    if (lead.phone) {
+      const ordersRes = await query(`SELECT id, customer_name, customer_phone, shipping_address, total_amount, status, created_at FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC LIMIT 5`, [lead.phone])
+      relatedOrders = ordersRes.rows
+    }
+    res.json({ success: true, data: lead, relatedOrders })
+  } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
 app.get('/api/v1/admin/customer-map', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const [fbResult, leadResult, ordersResult, customPointsResult] = await Promise.all([

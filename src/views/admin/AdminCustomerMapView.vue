@@ -774,11 +774,338 @@
         </div>
       </div>
     </transition>
+
+    <!-- MODAL HỒ SƠ KHÁCH HÀNG CRM TRỰC TIẾP TRÊN BẢN ĐỒ (POPUP) -->
+    <transition name="modal-fade">
+      <div v-if="showCrmModal" class="crm-modal-backdrop" @click.self="closeCrmModal">
+        <div class="crm-modal-card">
+          <!-- Mobile drag handle -->
+          <div class="mobile-modal-handle" @click="closeCrmModal">
+            <span class="handle-bar"></span>
+          </div>
+
+          <!-- Header -->
+          <div class="crm-modal-head">
+            <div class="crm-modal-head-left">
+              <div class="crm-avatar" :class="crmCustomer?.recordType?.toLowerCase()">
+                {{ crmCustomer?.recordType === 'CUSTOM' ? '📍' : (crmCustomer?.recordType === 'FACEBOOK' ? '💬' : '📋') }}
+              </div>
+              <div class="crm-head-info">
+                <div class="crm-head-name-row">
+                  <h3>{{ crmCustomer?.customerName || 'Hồ sơ khách hàng' }}</h3>
+                  <span class="crm-source-tag" :class="crmCustomer?.recordType?.toLowerCase()">
+                    {{ crmCustomer?.recordType === 'FACEBOOK' ? 'Facebook' : (crmCustomer?.recordType === 'LEAD' ? 'CRM Lead' : 'Tự thêm') }}
+                  </span>
+                </div>
+                <div class="crm-head-sub">
+                  <span v-if="crmCustomer?.phone" class="crm-phone-text">📞 {{ crmCustomer.phone }}</span>
+                  <span v-if="crmCustomer?.province" class="crm-province-text">📍 {{ crmCustomer.province }}</span>
+                  <span :class="['crm-visited-tag', { visited: crmCustomer?.visitedAt }]">
+                    {{ crmCustomer?.visitedAt ? '✓ Đã ghé' : '● Chưa đi' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="crm-modal-head-actions">
+              <button
+                type="button"
+                class="btn-open-fullscreen"
+                title="Mở toàn trang trong tab mới"
+                @click="navigateToFullCrm"
+              >
+                <span>↗ Toàn trang</span>
+              </button>
+              <button type="button" class="modal-close-btn" aria-label="Đóng" @click="closeCrmModal">✕</button>
+            </div>
+          </div>
+
+          <!-- Quick Action Toolbar -->
+          <div class="crm-quick-toolbar">
+            <a v-if="crmCustomer?.phone" :href="`tel:${crmCustomer.phone}`" class="crm-tool-btn call">
+              <span>📞 Gọi điện</span>
+            </a>
+            <a
+              v-if="crmCustomer?.phone"
+              :href="`https://zalo.me/${crmCustomer.phone.replace(/[^0-9]/g, '')}`"
+              target="_blank"
+              rel="noopener"
+              class="crm-tool-btn zalo"
+            >
+              <span>💬 Nhắn Zalo</span>
+            </a>
+            <a
+              v-if="crmCustomer && googleMapsUrl(crmCustomer)"
+              :href="googleMapsUrl(crmCustomer)"
+              target="_blank"
+              rel="noopener"
+              class="crm-tool-btn maps"
+            >
+              <span>🗺 Chỉ đường Maps</span>
+            </a>
+            <button
+              type="button"
+              class="crm-tool-btn visit"
+              :class="{ visited: crmCustomer?.visitedAt }"
+              :disabled="visitBusy"
+              @click="toggleCrmVisited"
+            >
+              <span>{{ crmCustomer?.visitedAt ? '↶ Chưa ghé' : '✓ Đã ghé thăm' }}</span>
+            </button>
+          </div>
+
+          <!-- Tabs -->
+          <div class="crm-modal-tabs">
+            <button
+              type="button"
+              :class="['crm-tab-btn', { active: crmModalTab === 'timeline' }]"
+              @click="crmModalTab = 'timeline'"
+            >
+              💬 Lịch sử trao đổi
+              <span v-if="crmMessages.length" class="tab-badge">{{ crmMessages.length }}</span>
+            </button>
+            <button
+              type="button"
+              :class="['crm-tab-btn', { active: crmModalTab === 'edit' }]"
+              @click="crmModalTab = 'edit'"
+            >
+              ⚙️ Thông tin &amp; Chăm sóc
+            </button>
+            <button
+              v-if="crmRelatedOrders.length > 0"
+              type="button"
+              :class="['crm-tab-btn', { active: crmModalTab === 'orders' }]"
+              @click="crmModalTab = 'orders'"
+            >
+              📦 Đơn hàng
+              <span class="tab-badge">{{ crmRelatedOrders.length }}</span>
+            </button>
+          </div>
+
+          <!-- TAB BODY -->
+          <div class="crm-modal-body">
+            <!-- Loading Indicator -->
+            <div v-if="crmLoading" class="crm-loading-box">
+              <span class="crm-spinner"></span>
+              <span>Đang tải thông tin chi tiết hồ sơ CRM…</span>
+            </div>
+
+            <!-- Tab 1: Timeline / Messages -->
+            <div v-else-if="crmModalTab === 'timeline'" class="crm-tab-pane pane-timeline">
+              <!-- Notice if any -->
+              <div v-if="crmSuccess" class="crm-alert success">{{ crmSuccess }}</div>
+              <div v-if="crmError" class="crm-alert error">{{ crmError }}</div>
+
+              <!-- Product interest highlight card -->
+              <div v-if="crmCustomer?.interest || crmCustomer?.notes || crmCustomer?.interestImage" class="crm-interest-banner">
+                <img
+                  v-if="crmCustomer?.interestImage"
+                  :src="crmCustomer.interestImage"
+                  alt="Sản phẩm"
+                  class="crm-banner-img"
+                />
+                <div class="crm-banner-info">
+                  <small>NHU CẦU / SẢN PHẨM QUAN TÂM:</small>
+                  <strong>{{ crmCustomer?.interest || crmCustomer?.notes || 'Dàn Karaoke gia đình' }}</strong>
+                  <div v-if="crmCustomer?.sourceAdName" class="crm-ad-tag">
+                    🎯 Quảng cáo: {{ crmCustomer.sourceAdName }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Messages List -->
+              <div class="crm-messages-container">
+                <div v-if="crmMessages.length === 0" class="crm-empty-messages">
+                  <span>📭 Chưa có tin nhắn nào được đồng bộ. Bác có thể lưu ghi chú trao đổi đầu tiên ở bên dưới!</span>
+                </div>
+                <div
+                  v-for="msg in crmMessages"
+                  :key="msg.id || msg.platformMessageId"
+                  :class="['crm-msg-bubble-wrap', msgClass(msg)]"
+                >
+                  <div class="crm-msg-meta">
+                    <span class="crm-msg-author">{{ msgAuthor(msg) }}</span>
+                    <span class="crm-msg-time">{{ formatTime(msg.createdAt) }}</span>
+                  </div>
+                  <div class="crm-msg-bubble">
+                    {{ msg.body }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Input bar for note / message -->
+              <div class="crm-input-card">
+                <div class="crm-input-type-picker">
+                  <label class="type-opt" :class="{ active: crmMessageType === 'NOTE' }">
+                    <input type="radio" v-model="crmMessageType" value="NOTE" />
+                    <span>📝 Ghi chú nội bộ (Shop)</span>
+                  </label>
+                  <label
+                    v-if="canSendMessenger"
+                    class="type-opt"
+                    :class="{ active: crmMessageType === 'SEND' }"
+                  >
+                    <input type="radio" v-model="crmMessageType" value="SEND" />
+                    <span>💬 Gửi tin Messenger</span>
+                  </label>
+                </div>
+                <div class="crm-input-field-wrap">
+                  <textarea
+                    v-model="crmMessageBody"
+                    class="crm-textarea"
+                    rows="2"
+                    :placeholder="crmMessageType === 'NOTE' ? 'Nhập ghi chú trao đổi (VD: Khách hẹn chiều mai ghé thử vang số, đã chốt cấu hình...)' : 'Nhập tin nhắn gửi tới Messenger của khách...'"
+                    @keydown.ctrl.enter="submitCrmMessage"
+                  ></textarea>
+                  <button
+                    type="button"
+                    class="crm-btn-send"
+                    :disabled="crmSendingMessage || !crmMessageBody.trim()"
+                    @click="submitCrmMessage"
+                  >
+                    {{ crmSendingMessage ? '…' : (crmMessageType === 'NOTE' ? '💾 Lưu ghi chú' : '📤 Gửi tin') }}
+                  </button>
+                </div>
+                <small class="crm-input-hint">Mẹo: Nhấn Ctrl + Enter để lưu nhanh</small>
+              </div>
+            </div>
+
+            <!-- Tab 2: Edit Customer Profile -->
+            <div v-else-if="crmModalTab === 'edit'" class="crm-tab-pane pane-edit">
+              <div v-if="crmSuccess" class="crm-alert success">{{ crmSuccess }}</div>
+              <div v-if="crmError" class="crm-alert error">{{ crmError }}</div>
+
+              <form class="crm-edit-form" @submit.prevent="saveCrmProfile">
+                <!-- Status Picker -->
+                <div class="form-group status-group">
+                  <label>Trạng thái chăm sóc:</label>
+                  <div class="crm-status-pills">
+                    <button
+                      v-for="st in statusOptions"
+                      :key="st.key"
+                      type="button"
+                      :class="['status-pill', st.key.toLowerCase(), { active: crmEditForm.status === st.key }]"
+                      @click="crmEditForm.status = st.key"
+                    >
+                      {{ st.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label>Họ và tên khách hàng *</label>
+                    <input
+                      v-model="crmEditForm.customerName"
+                      type="text"
+                      class="crm-input"
+                      placeholder="Tên khách hàng"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Số điện thoại</label>
+                    <input
+                      v-model="crmEditForm.phone"
+                      type="tel"
+                      class="crm-input"
+                      placeholder="VD: 0984259898"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label>Tỉnh / Thành phố</label>
+                    <input
+                      v-model="crmEditForm.province"
+                      type="text"
+                      class="crm-input"
+                      placeholder="VD: Phú Thọ, Hà Nội, Vĩnh Phúc..."
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Địa chỉ chi tiết / Điểm hẹn</label>
+                    <input
+                      v-model="crmEditForm.address"
+                      type="text"
+                      class="crm-input"
+                      placeholder="Số nhà, đường, xã, huyện..."
+                    />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Nhu cầu / Sản phẩm quan tâm</label>
+                  <input
+                    v-model="crmEditForm.interest"
+                    type="text"
+                    class="crm-input"
+                    placeholder="VD: Vang số CM x16+, Combo Gold Home..."
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Ghi chú tư vấn</label>
+                  <textarea
+                    v-model="crmEditForm.notes"
+                    rows="3"
+                    class="crm-input"
+                    placeholder="Ghi chú chi tiết sở thích, không gian phòng, thiết bị có sẵn..."
+                  ></textarea>
+                </div>
+
+                <div class="crm-form-actions">
+                  <button type="submit" class="crm-btn-primary" :disabled="crmSaving">
+                    {{ crmSaving ? 'Đang lưu…' : '✓ Lưu cập nhật hồ sơ' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Tab 3: Related Orders -->
+            <div v-else-if="crmModalTab === 'orders'" class="crm-tab-pane pane-orders">
+              <div v-if="crmRelatedOrders.length === 0" class="crm-empty-orders">
+                <span class="empty-icon">📦</span>
+                <strong>Chưa có đơn hàng nào</strong>
+                <p>Khách hàng chưa có đơn hàng liên kết với số điện thoại này trong hệ thống.</p>
+              </div>
+              <div v-else class="crm-orders-list">
+                <div v-for="order in crmRelatedOrders" :key="order.id" class="crm-order-card">
+                  <div class="order-card-head">
+                    <span class="order-id">#{{ String(order.id).slice(0, 8).toUpperCase() }}</span>
+                    <span class="order-status-badge" :class="order.status?.toLowerCase()">{{ order.status }}</span>
+                    <span class="order-date">{{ formatTime(order.created_at || order.createdAt) }}</span>
+                  </div>
+                  <div class="order-card-body">
+                    <div class="order-cust">👤 {{ order.customer_name || order.customerName }} · 📞 {{ order.customer_phone || order.customerPhone }}</div>
+                    <div v-if="order.shipping_address || order.shippingAddress" class="order-addr">📍 {{ order.shipping_address || order.shippingAddress }}</div>
+                    <div class="order-total">
+                      <span>Tổng tiền:</span>
+                      <strong>{{ formatMoney(order.total_amount || order.totalAmount) }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="crm-modal-foot">
+            <button type="button" class="btn-modal-open-full" @click="navigateToFullCrm">
+              <span>↗ Mở toàn trang Chăm Sóc</span>
+            </button>
+            <button type="button" class="btn-modal-close" @click="closeCrmModal">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -1608,11 +1935,289 @@ async function toggleVisited(customer) {
   }
 }
 
-function openCrm(customer) {
-  if (customer.recordType === 'FACEBOOK' || customer.facebookCareId) {
-    router.push({ path: '/admin/facebook-care', query: { customerId: customer.facebookCareId || customer.id } })
+// ====================================================================
+// MODAL HỒ SƠ KHÁCH HÀNG CRM TRỰC TIẾP TRÊN BẢN ĐỒ (POPUP)
+// ====================================================================
+const showCrmModal = ref(false)
+const crmModalTab = ref('timeline') // 'timeline' | 'edit' | 'orders'
+const crmCustomer = ref(null)
+const crmLoading = ref(false)
+const crmError = ref('')
+const crmSuccess = ref('')
+const crmSaving = ref(false)
+const crmSendingMessage = ref(false)
+
+const crmEditForm = reactive({
+  customerName: '',
+  phone: '',
+  province: '',
+  address: '',
+  interest: '',
+  notes: '',
+  status: 'MOI'
+})
+
+const crmMessageType = ref('NOTE')
+const crmMessageBody = ref('')
+const crmMessages = ref([])
+const crmRelatedOrders = ref([])
+
+const statusOptions = [
+  { key: 'MOI', label: 'Mới' },
+  { key: 'DANG_TU_VAN', label: 'Đang tư vấn' },
+  { key: 'CHO_PHAN_HOI', label: 'Chờ phản hồi' },
+  { key: 'DA_CHOT', label: 'Đã chốt' },
+  { key: 'DA_HUY', label: 'Đã dừng' }
+]
+
+const formatMoney = val => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(val) || 0)
+const formatTime = val => {
+  if (!val) return ''
+  try {
+    return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val))
+  } catch {
+    return String(val)
+  }
+}
+
+const canSendMessenger = computed(() => {
+  return Boolean(crmCustomer.value?.facebookId && (crmCustomer.value?.recordType === 'FACEBOOK' || crmCustomer.value?.facebookCareId))
+})
+
+const msgClass = msg => {
+  if (msg.direction === 'OUT') {
+    return (msg.createdBy || '').includes('AI') ? 'ai-msg' : 'out-msg'
+  }
+  if ((msg.createdBy || '').toLowerCase().includes('ghi chú')) {
+    return 'note-msg'
+  }
+  return 'in-msg'
+}
+
+const msgAuthor = msg => {
+  if (msg.direction === 'OUT') {
+    if ((msg.createdBy || '').includes('AI')) return '🤖 AI Tú Audio'
+    return `👤 Tú Audio (${msg.createdBy || 'Nhân viên'})`
+  }
+  if ((msg.createdBy || '').toLowerCase().includes('ghi chú')) {
+    return `📝 ${msg.createdBy || 'Ghi chú nội bộ'}`
+  }
+  return `💬 ${crmCustomer.value?.customerName || 'Khách hàng'}`
+}
+
+async function openCrm(customer) {
+  if (!customer) return
+  showCrmModal.value = true
+  crmCustomer.value = { ...customer }
+  crmModalTab.value = 'timeline'
+  crmError.value = ''
+  crmSuccess.value = ''
+  crmMessageBody.value = ''
+  crmMessageType.value = 'NOTE'
+
+  crmEditForm.customerName = customer.customerName || ''
+  crmEditForm.phone = customer.phone || ''
+  crmEditForm.province = customer.province || ''
+  crmEditForm.address = customer.address || ''
+  crmEditForm.interest = customer.interest || ''
+  crmEditForm.notes = customer.notes || ''
+  crmEditForm.status = customer.status || 'MOI'
+  crmMessages.value = []
+  crmRelatedOrders.value = []
+
+  crmLoading.value = true
+  try {
+    const isFb = customer.recordType === 'FACEBOOK' || customer.facebookCareId
+    const targetId = customer.facebookCareId || customer.leadId || customer.id
+
+    if (isFb) {
+      const res = await apiRequest(`/admin/facebook-care/${targetId}`)
+      if (res.data) {
+        crmCustomer.value = { ...customer, ...res.data }
+        crmMessages.value = res.data.messages || []
+        crmRelatedOrders.value = res.relatedOrders || []
+        crmEditForm.customerName = res.data.customerName || crmEditForm.customerName
+        crmEditForm.phone = res.data.phone || crmEditForm.phone
+        crmEditForm.province = res.data.province || crmEditForm.province
+        crmEditForm.address = res.data.address || crmEditForm.address
+        crmEditForm.interest = res.data.interest || crmEditForm.interest
+        crmEditForm.notes = res.data.notes || crmEditForm.notes
+        crmEditForm.status = res.data.status || crmEditForm.status
+      }
+    } else if (customer.recordType === 'LEAD' || customer.leadId) {
+      const res = await apiRequest(`/admin/leads/${targetId}`)
+      if (res.data) {
+        crmCustomer.value = { ...customer, ...res.data }
+        crmRelatedOrders.value = res.relatedOrders || []
+        crmEditForm.customerName = res.data.name || crmEditForm.customerName
+        crmEditForm.phone = res.data.phone || crmEditForm.phone
+        crmEditForm.address = res.data.address || crmEditForm.address
+        crmEditForm.status = res.data.status || crmEditForm.status
+        crmEditForm.notes = res.data.note || crmEditForm.notes
+      }
+    }
+  } catch (err) {
+    console.warn('[CRM Modal] Load detail warning:', err.message)
+  } finally {
+    crmLoading.value = false
+  }
+}
+
+function closeCrmModal() {
+  showCrmModal.value = false
+}
+
+async function submitCrmMessage() {
+  const body = crmMessageBody.value.trim()
+  if (!body || !crmCustomer.value) return
+  crmSendingMessage.value = true
+  crmError.value = ''
+  crmSuccess.value = ''
+  try {
+    const targetId = crmCustomer.value.facebookCareId || crmCustomer.value.id
+    const isFb = crmCustomer.value.recordType === 'FACEBOOK' || crmCustomer.value.facebookCareId
+
+    if (isFb) {
+      if (crmMessageType.value === 'SEND') {
+        const res = await apiRequest(`/admin/facebook-care/${targetId}/send`, {
+          method: 'POST',
+          body: JSON.stringify({ body })
+        })
+        crmMessages.value.push({
+          id: res.data?.id || `msg-${Date.now()}`,
+          body,
+          direction: 'OUT',
+          createdBy: 'Tú Audio (Messenger)',
+          createdAt: new Date().toISOString()
+        })
+      } else {
+        const res = await apiRequest(`/admin/facebook-care/${targetId}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({ body, direction: 'IN' })
+        })
+        crmMessages.value.push({
+          id: res.data?.id || `note-${Date.now()}`,
+          body,
+          direction: 'IN',
+          createdBy: 'Ghi chú nội bộ',
+          createdAt: new Date().toISOString()
+        })
+      }
+    } else {
+      const currentNote = crmEditForm.notes ? `${crmEditForm.notes}\n[${new Date().toLocaleDateString('vi-VN')}]: ${body}` : body
+      await apiRequest(`/admin/leads/${targetId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ note: currentNote })
+      })
+      crmEditForm.notes = currentNote
+      if (crmCustomer.value) crmCustomer.value.notes = currentNote
+      crmMessages.value.push({
+        id: `note-${Date.now()}`,
+        body,
+        direction: 'IN',
+        createdBy: 'Ghi chú nội bộ',
+        createdAt: new Date().toISOString()
+      })
+    }
+    crmMessageBody.value = ''
+    crmSuccess.value = 'Đã lưu trao đổi thành công!'
+    setTimeout(() => { crmSuccess.value = '' }, 3000)
+  } catch (err) {
+    crmError.value = err.message || 'Không gửi được tin nhắn/ghi chú.'
+  } finally {
+    crmSendingMessage.value = false
+  }
+}
+
+async function saveCrmProfile() {
+  if (!crmCustomer.value) return
+  crmSaving.value = true
+  crmError.value = ''
+  crmSuccess.value = ''
+  try {
+    const targetId = crmCustomer.value.facebookCareId || crmCustomer.value.leadId || crmCustomer.value.id
+    const isFb = crmCustomer.value.recordType === 'FACEBOOK' || crmCustomer.value.facebookCareId
+
+    if (isFb) {
+      const res = await apiRequest(`/admin/facebook-care/${targetId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          customerName: crmEditForm.customerName,
+          phone: crmEditForm.phone,
+          address: crmEditForm.address,
+          province: crmEditForm.province,
+          interest: crmEditForm.interest,
+          notes: crmEditForm.notes,
+          status: crmEditForm.status
+        })
+      })
+      if (res.data) {
+        Object.assign(crmCustomer.value, res.data)
+        const match = customers.value.find(c => c.id === crmCustomer.value.id || c.facebookCareId === targetId)
+        if (match) {
+          match.customerName = crmEditForm.customerName
+          match.phone = crmEditForm.phone
+          match.address = crmEditForm.address
+          match.province = crmEditForm.province
+          match.status = crmEditForm.status
+          match.interest = crmEditForm.interest
+          match.notes = crmEditForm.notes
+        }
+        if (selected.value && (selected.value.id === crmCustomer.value.id || selected.value.facebookCareId === targetId)) {
+          selected.value.customerName = crmEditForm.customerName
+          selected.value.phone = crmEditForm.phone
+          selected.value.address = crmEditForm.address
+          selected.value.province = crmEditForm.province
+          selected.value.status = crmEditForm.status
+          selected.value.interest = crmEditForm.interest
+          selected.value.notes = crmEditForm.notes
+        }
+      }
+    } else {
+      await apiRequest(`/admin/leads/${targetId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: crmEditForm.customerName,
+          phone: crmEditForm.phone,
+          address: crmEditForm.address,
+          note: crmEditForm.notes,
+          status: crmEditForm.status
+        })
+      })
+      if (selected.value) {
+        selected.value.customerName = crmEditForm.customerName
+        selected.value.phone = crmEditForm.phone
+        selected.value.address = crmEditForm.address
+        selected.value.status = crmEditForm.status
+        selected.value.notes = crmEditForm.notes
+      }
+    }
+    crmSuccess.value = 'Đã cập nhật hồ sơ khách hàng thành công!'
+    setTimeout(() => { crmSuccess.value = '' }, 3000)
+  } catch (err) {
+    crmError.value = err.message || 'Không lưu được thông tin khách hàng.'
+  } finally {
+    crmSaving.value = false
+  }
+}
+
+async function toggleCrmVisited() {
+  if (!crmCustomer.value || visitBusy.value) return
+  await toggleVisited(crmCustomer.value)
+  if (selected.value) {
+    crmCustomer.value.visitedAt = selected.value.visitedAt
   } else {
-    router.push({ path: '/admin/leads', query: { customerId: customer.id, phone: customer.phone } })
+    crmCustomer.value.visitedAt = crmCustomer.value.visitedAt ? '' : new Date().toISOString()
+  }
+}
+
+function navigateToFullCrm() {
+  if (!crmCustomer.value) return
+  showCrmModal.value = false
+  if (crmCustomer.value.recordType === 'FACEBOOK' || crmCustomer.value.facebookCareId) {
+    router.push({ path: '/admin/facebook-care', query: { customerId: crmCustomer.value.facebookCareId || crmCustomer.value.id } })
+  } else {
+    router.push({ path: '/admin/leads', query: { customerId: crmCustomer.value.id, phone: crmCustomer.value.phone } })
   }
 }
 
@@ -3796,6 +4401,588 @@ onBeforeUnmount(() => {
 @media (max-width: 680px) {
   .customer-map-page.mobile-app-mode {
     top: 52px !important;
+  }
+}
+
+/* ====================================================================
+   CRM PROFILE POPUP MODAL (CHUẨN CHỈ TRỰC TIẾP TRÊN BẢN ĐỒ)
+==================================================================== */
+.crm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.crm-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  animation: scaleUpModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes scaleUpModal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.crm-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e2e8f0;
+}
+.crm-modal-head-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.crm-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  background: #e0e7ff;
+  color: #4338ca;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+.crm-avatar.facebook { background: #eff6ff; color: #2563eb; }
+.crm-avatar.lead { background: #ecfdf5; color: #059669; }
+.crm-avatar.custom { background: #f5f3ff; color: #7c3aed; }
+
+.crm-head-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.crm-head-name-row h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.crm-source-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.crm-source-tag.facebook { background: #dbeafe; color: #1d4ed8; }
+.crm-source-tag.lead { background: #dcfce7; color: #15803d; }
+.crm-source-tag.custom { background: #ede9fe; color: #6d28d9; }
+
+.crm-head-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+.crm-phone-text { font-weight: 700; color: #0284c7; }
+.crm-province-text { color: #475569; }
+.crm-visited-tag {
+  font-weight: 700;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+.crm-visited-tag.visited { background: #dcfce7; color: #15803d; }
+
+.crm-modal-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-open-fullscreen {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+.btn-open-fullscreen:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.crm-quick-toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+}
+.crm-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.crm-tool-btn.call { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.crm-tool-btn.call:hover { background: #d1fae5; }
+.crm-tool-btn.zalo { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.crm-tool-btn.zalo:hover { background: #dbeafe; }
+.crm-tool-btn.maps { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.crm-tool-btn.maps:hover { background: #f1f5f9; }
+.crm-tool-btn.visit { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.crm-tool-btn.visit.visited { background: #dcfce7; color: #15803d; border-color: #86efac; }
+
+.crm-modal-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+.crm-tab-btn {
+  padding: 7px 14px;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.crm-tab-btn:hover { background: #e2e8f0; color: #1e293b; }
+.crm-tab-btn.active {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.tab-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.crm-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #ffffff;
+  min-height: 280px;
+  max-height: calc(85vh - 220px);
+}
+.crm-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 200px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+.crm-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0284c7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.crm-alert {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.crm-alert.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.crm-alert.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+.crm-interest-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.crm-banner-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #86efac;
+  flex-shrink: 0;
+}
+.crm-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.crm-banner-info small {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #15803d;
+  letter-spacing: 0.5px;
+}
+.crm-banner-info strong {
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+.crm-ad-tag {
+  font-size: 0.72rem;
+  color: #166534;
+  margin-top: 2px;
+}
+
+.crm-messages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.crm-empty-messages {
+  text-align: center;
+  padding: 24px 12px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+.crm-msg-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+}
+.crm-msg-bubble-wrap.in-msg { align-self: flex-start; }
+.crm-msg-bubble-wrap.out-msg { align-self: flex-end; }
+.crm-msg-bubble-wrap.ai-msg { align-self: flex-end; }
+.crm-msg-bubble-wrap.note-msg {
+  align-self: center;
+  max-width: 96%;
+  width: 100%;
+}
+.crm-msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-bottom: 2px;
+  padding: 0 4px;
+}
+.out-msg .crm-msg-meta, .ai-msg .crm-msg-meta { justify-content: flex-end; }
+.crm-msg-author { font-weight: 700; }
+.crm-msg-bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.in-msg .crm-msg-bubble {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-bottom-left-radius: 4px;
+}
+.out-msg .crm-msg-bubble {
+  background: #0284c7;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+.ai-msg .crm-msg-bubble {
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+.note-msg .crm-msg-bubble {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px dashed #fcd34d;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.crm-input-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.crm-input-type-picker {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.crm-input-type-picker .type-opt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+}
+.crm-input-type-picker .type-opt.active { color: #0284c7; }
+.crm-input-field-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.crm-textarea {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  resize: vertical;
+  background: #ffffff;
+  font-family: inherit;
+}
+.crm-textarea:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+.crm-btn-send {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  height: 38px;
+}
+.crm-btn-send:hover:not(:disabled) { background: #0369a1; }
+.crm-btn-send:disabled { opacity: 0.6; cursor: not-allowed; }
+.crm-input-hint {
+  display: block;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.crm-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.status-group label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+.crm-status-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.status-pill {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.status-pill:hover { background: #f1f5f9; }
+.status-pill.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.crm-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+.crm-input:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+.form-group label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 4px;
+}
+.crm-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.crm-btn-primary {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.crm-btn-primary:hover:not(:disabled) { background: #0369a1; }
+
+.crm-empty-orders {
+  text-align: center;
+  padding: 32px 16px;
+  color: #64748b;
+}
+.crm-empty-orders .empty-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+.crm-empty-orders p { font-size: 0.8rem; color: #94a3b8; margin: 4px 0 0; }
+.crm-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.crm-order-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+}
+.order-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.order-id { font-weight: 800; font-size: 0.85rem; color: #0284c7; }
+.order-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  color: #475569;
+}
+.order-date { font-size: 0.7rem; color: #94a3b8; }
+.order-cust { font-size: 0.8rem; color: #1e293b; font-weight: 600; margin-bottom: 2px; }
+.order-addr { font-size: 0.78rem; color: #64748b; margin-bottom: 6px; }
+.order-total { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: #0f172a; border-top: 1px dashed #cbd5e1; padding-top: 6px; }
+
+.crm-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+.btn-modal-open-full {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0284c7;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-modal-open-full:hover { background: #e0f2fe; border-color: #bae6fd; }
+.btn-modal-close {
+  background: #64748b;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-modal-close:hover { background: #475569; }
+
+@media (max-width: 768px) {
+  .crm-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .crm-modal-card {
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    max-height: 88vh;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+    animation: slideUpBottom 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mobile-modal-handle {
+    display: flex;
+  }
+  .form-grid-2 {
+    grid-template-columns: 1fr;
   }
 }
 </style>
