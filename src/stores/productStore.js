@@ -10,8 +10,9 @@ const getStoredProducts = () => {
   try {
     const local = JSON.parse(localStorage.getItem('audioshop_products'))
     if (!local || !Array.isArray(local) || local.length === 0) return productsData
+    const localById = new Map(local.map(p => [p.id, p]))
     const defaultsById = new Map(productsData.map(p => [p.id, p]))
-    return local.map(item => {
+    const result = local.map(item => {
       const def = defaultsById.get(item.id)
       if (!def) return item
       const cleanVideo = LEGACY_VIDEO_RE.test(item.videoUrl || '') ? def.videoUrl : item.videoUrl
@@ -19,8 +20,17 @@ const getStoredProducts = () => {
       const cleanDesc = typeof item.shortDesc === 'string'
         ? item.shortDesc.replace('dập tắt tiếng rít', 'triệt tiêu tiếng hú rít')
         : item.shortDesc
-      return { ...item, videoUrl: cleanVideo, videoTitle: cleanTitle, shortDesc: cleanDesc }
+      return { ...def, ...item, videoUrl: cleanVideo, videoTitle: cleanTitle, shortDesc: cleanDesc }
     })
+
+    // Tự động bổ sung các sản phẩm mới từ danh mục nếu chưa có trong bộ nhớ cục bộ
+    for (const def of productsData) {
+      if (!localById.has(def.id)) {
+        result.push(def)
+      }
+    }
+
+    return result
   } catch (e) {
     return productsData
   }

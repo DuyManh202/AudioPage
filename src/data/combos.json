@@ -151,5 +151,63 @@
       "Setup cài đặt âm học chuẩn phòng chung cư tận nơi",
       "Miễn phí vận chuyển tận nhà trong bán kính 300km"
     ]
+  },
+  {
+    "id": "CB-AMEK-30",
+    "name": "Combo Dàn Karaoke AMEK Sub 30 — Đồng Bộ Acoustic MMG",
+    "tagline": "Cấu hình chuẩn hãng AMEK đồng bộ từ Loa FB-12, Đẩy 600, Vang 800 đến Sub điện 30",
+    "image": "https://acuosticmmg.com.vn/wp-content/uploads/2022/10/sadsadadadsadsad.jpg",
+    "price": 29000000,
+    "fastActionPrice": 25100000,
+    "totalRealValue": 31000000,
+    "listPrice": 29000000,
+    "savedAmount": 3900000,
+    "roomSize": "20 - 35m²",
+    "isFeatured": false,
+    "badge": "Mua Combo Miễn Tiền Sub (Giảm 3.9Tr)",
+    "videoUrl": "https://www.youtube.com/watch?v=AwEJrll5EPk",
+    "videoTitle": "Test Trực Tiếp Bộ Dàn AMEK Đồng Bộ Hãng Acoustic MMG — Tú Audio",
+    "components": [
+      { "item": "1 Đôi Loa Full 30 AMEK FB-12 (9.900.000 đ)", "role": "Bass 30 coil 75 sáng tiếng, hát nhẹ không tốn sức" },
+      { "item": "Cục Đẩy 2 Kênh AMEK 600 (5.900.000 đ)", "role": "Mạch Class H khỏe, kéo căng loa không méo tiếng" },
+      { "item": "Vang Số AMEK 800 / VR500 (4.900.000 đ)", "role": "DSP cao cấp chống hú rít tuyệt đối, effect Reverb mượt" },
+      { "item": "Bộ Micro Không Dây AMEK X9 (2.900.000 đ)", "role": "Tự dò sóng sạch, nâng giọng người hát yếu" },
+      { "item": "Quản Lý Nguồn AMEK 10.000 (1.500.000 đ)", "role": "Bảo vệ toàn dàn, chống sốc điện nổ loa" },
+      { "item": "Loa Sub Điện 30 AMEK (3.900.000 đ)", "role": "Được miễn phí tiền Sub khi mua cả combo (trừ thẳng 3.9Tr)" }
+    ],
+    "gifts": [
+      "Mua combo thì MIỄN TIỀN SUB (trừ 3.900.000 đ) còn 25.100.000 đ",
+      "Tặng thêm sạc pin, tủ âm thanh chuyên dụng, trọn bộ phụ kiện dây giắc trị giá 2.000.000 đ",
+      "Kỹ thuật viên Tú Audio setup, đo đạc âm học và vận chuyển tận nhà trong 300km"
+    ]
+  },
+  {
+    "id": "CB-AMEK-40",
+    "name": "Combo Dàn Karaoke Cao Cấp AMEK Sub 40 — Đẩy 4 Kênh & Sub Hơi Uy Lực",
+    "tagline": "Cấu hình phòng khách lớn 25 - 50m², đẩy 4 kênh AMEK 9004 kéo Loa FB-12 và Sub hơi 40",
+    "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/08/e3d51204-b93d-4362-ab65-944cf550e20c.jpg",
+    "price": 37900000,
+    "fastActionPrice": 32000000,
+    "totalRealValue": 39900000,
+    "listPrice": 37900000,
+    "savedAmount": 5900000,
+    "roomSize": "25 - 50m²",
+    "isFeatured": true,
+    "badge": "Mua Combo Miễn Tiền Sub Hơi 40 (Giảm 5.9Tr)",
+    "videoUrl": "https://www.youtube.com/watch?v=AwEJrll5EPk",
+    "videoTitle": "Trải Nghiệm Dàn AMEK Sub Hơi 40 Đẩy 4 Kênh 9004 Đánh Rung Phòng — Tú Audio",
+    "components": [
+      { "item": "1 Đôi Loa Full 30 AMEK FB-12 (9.900.000 đ)", "role": "Bass 30 coil 75 từ 190, họng kèn titan sáng rõ" },
+      { "item": "Cục Đẩy 4 Kênh AMEK 9004 (9.800.000 đ)", "role": "56 sò NJW, 16 tụ 15.000µF, kéo 1 đôi full và 1 sub hơi 40 căng đét" },
+      { "item": "Vang Số AMEK UK-3000 Pro (6.900.000 đ)", "role": "Chip DSP đa lõi cao cấp, chống hú 4 cấp độ thông minh" },
+      { "item": "Bộ Micro Không Dây AMEK 450 Plus (3.900.000 đ)", "role": "Tay nhôm đúc nano, cảm biến tự ngắt và gia tốc rơi" },
+      { "item": "Quản Lý Nguồn AMEK 10.000 (1.500.000 đ)", "role": "Bảo vệ toàn dàn, lọc nguồn điện sạch tinh khiết" },
+      { "item": "Loa Sub Hơi 40 AMEKAUDIO 115 (5.900.000 đ)", "role": "Được miễn phí tiền Sub khi mua cả combo (trừ thẳng 5.9Tr)" }
+    ],
+    "gifts": [
+      "Mua combo thì MIỄN TIỀN SUB (trừ 5.900.000 đ) còn 32.000.000 đ",
+      "Tặng thêm sạc pin, tủ âm thanh chuyên dụng, trọn bộ phụ kiện dây giắc trị giá 2.000.000 đ",
+      "Kỹ thuật viên Tú Audio setup, đo đạc âm học và vận chuyển tận nhà trong 300km"
+    ]
   }
 ]
