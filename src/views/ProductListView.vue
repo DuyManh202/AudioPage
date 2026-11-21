@@ -639,6 +639,14 @@ const resetFilter = () => {
   scrollbar-width: thin;
 }
 
+@media (min-width: 1024px) {
+  .category-cards-scroll {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding-bottom: 2px;
+  }
+}
+
 .category-cards-scroll::-webkit-scrollbar {
   height: 5px;
 }
@@ -988,7 +996,7 @@ const resetFilter = () => {
 .top-hot-sub {
   font-size: 0.86rem;
   color: #94a3b8;
-  max-width: 620px;
+  max-width: 740px;
   margin: 0 auto;
   line-height: 1.5;
 }
