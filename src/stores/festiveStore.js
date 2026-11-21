@@ -92,7 +92,7 @@ export const useFestiveStore = defineStore('festive', {
       try {
         const res = await apiRequest('/festive-settings', { silent: true })
         if (res?.data) {
-          this.theme = res.data.theme || 'tet'
+          this.theme = res.data.theme || 'noel'
           this.fallingEnabled = res.data.fallingEnabled ?? true
           this.decorEnabled = res.data.decorEnabled ?? true
           this.customTicker = res.data.customTicker || ''

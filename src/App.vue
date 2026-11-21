@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="audio-shop-app">
+  <div :class="['audio-shop-app', `festive-theme-${festiveStore.effectiveTheme}`]">
     <!-- Thanh tải & trạng thái hệ thống toàn diện -->
     <SystemProgressBar />
 

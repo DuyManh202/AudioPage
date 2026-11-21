@@ -12,7 +12,7 @@
           <span class="eq-bars" aria-hidden="true">
             <span></span><span></span><span></span><span></span>
           </span>
-          <span>🏆 Chuyên Gia Dàn Karaoke Chuẩn Phòng Hát</span>
+          <span>{{ heroBadgeText }}</span>
         </div>
 
         <h1 class="hero-title">
@@ -55,7 +55,7 @@
       <div class="hero-card-side">
         <div class="featured-offer-box">
           <div class="box-glow-rim" aria-hidden="true"></div>
-          <div class="box-badge">🔥 KHUYẾN NGHỊ SỐ 1</div>
+          <div class="box-badge">{{ featuredBoxBadgeText }}</div>
 
           <div class="box-top-meta">
             <span class="meta-chip">Phòng {{ featuredCombo.roomSize }}</span>
@@ -89,7 +89,7 @@
           </ul>
 
           <button class="btn-primary full-width" type="button" @click="handleOrder29">
-            Đăng Ký Thử Dàn Tại Nhà
+            {{ featuredBoxBtnText }}
           </button>
         </div>
       </div>
@@ -101,11 +101,52 @@
 import { computed } from 'vue'
 import { useCartStore } from '../../stores/cartStore'
 import { useProductStore } from '../../stores/productStore'
+import { useFestiveStore } from '../../stores/festiveStore'
 import { formatCurrency } from '../../utils/formatters'
 import combosData from '../../data/combos.json'
 
 const cartStore = useCartStore()
 const productStore = useProductStore()
+const festiveStore = useFestiveStore()
+
+const heroBadgeText = computed(() => {
+  switch (festiveStore.effectiveTheme) {
+    case 'noel':
+      return '🎄 Mừng Giáng Sinh — Dàn Karaoke Chuẩn Phòng Hát'
+    case 'tet':
+      return '🌸 Đón Tết Sum Vầy — Dàn Karaoke Chuẩn Phòng Hát'
+    case 'sale':
+      return '⚡ Đại Tiệc Giảm Giá — Dàn Karaoke Chuẩn Phòng Hát'
+    default:
+      return '🏆 Chuyên Gia Dàn Karaoke Chuẩn Phòng Hát'
+  }
+})
+
+const featuredBoxBadgeText = computed(() => {
+  switch (festiveStore.effectiveTheme) {
+    case 'noel':
+      return '🎄 ƯU ĐÃI GIÁNG SINH SỐ 1'
+    case 'tet':
+      return '🌸 GÓI DÀN TẾT KHUYẾN NGHỊ'
+    case 'sale':
+      return '⚡ SIÊU SALE SỐC SỐ 1'
+    default:
+      return '🔥 KHUYẾN NGHỊ SỐ 1'
+  }
+})
+
+const featuredBoxBtnText = computed(() => {
+  switch (festiveStore.effectiveTheme) {
+    case 'noel':
+      return '🎁 Đăng Ký Thử Dàn Giáng Sinh Tại Nhà'
+    case 'tet':
+      return '🧧 Đăng Ký Thử Dàn Đón Tết Tại Nhà'
+    case 'sale':
+      return '⚡ Nhận Ưu Đãi & Thử Dàn Tại Nhà'
+    default:
+      return 'Đăng Ký Thử Dàn Tại Nhà'
+  }
+})
 
 const featuredCombo = computed(() => {
   return (
