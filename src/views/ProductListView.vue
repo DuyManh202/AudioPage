@@ -1117,31 +1117,51 @@ const resetFilter = () => {
 
 @media (max-width: 768px) {
   .product-list-view {
-    padding: 18px 10px 50px;
+    padding: 10px 8px 120px;
   }
 
   .list-hero-card {
-    padding: 18px 16px;
-    border-radius: 16px;
-    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+
+  .hero-badge {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    margin-bottom: 6px;
   }
 
   .page-title {
-    font-size: 1.45rem;
+    font-size: 1.25rem;
+    margin-bottom: 4px;
   }
 
   .page-desc {
-    font-size: 0.84rem;
+    display: none;
   }
 
   .hero-trust-bar {
-    gap: 10px;
-    margin-top: 14px;
-    padding-top: 12px;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .hero-trust-bar::-webkit-scrollbar {
+    display: none;
   }
 
   .trust-item {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
   }
 
   .trust-divider {
@@ -1149,62 +1169,139 @@ const resetFilter = () => {
   }
 
   .filter-panel {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-    margin-bottom: 20px;
+    padding: 12px 10px;
+    border-radius: 14px;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .cat-picker-header {
+    margin-bottom: 0;
+  }
+
+  .picker-label {
+    font-size: 0.88rem;
+  }
+
+  .cat-total-count {
+    font-size: 0.75rem;
+  }
+
+  .category-cards-scroll {
+    gap: 6px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .category-cards-scroll::-webkit-scrollbar {
+    display: none;
   }
 
   .cat-visual-card {
-    padding: 8px 10px;
-    border-radius: 10px;
-    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 9px;
+    gap: 6px;
   }
 
   .cat-icon-wrap {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
   }
 
   .cat-svg {
-    width: 15px;
-    height: 15px;
+    width: 13px;
+    height: 13px;
   }
 
   .cat-card-name {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
   }
 
+  .cat-card-count {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+  }
+
+  /* Đưa toàn bộ các chip lọc phụ lên 1 hàng cuộn ngang mượt mà, không bị xếp chồng 5 dòng */
   .filters-sub-bar {
-    gap: 10px;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding-top: 8px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filters-sub-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-dropdowns-group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .select-chip-wrapper {
+    flex-shrink: 0;
+    white-space: nowrap;
     padding: 2px 6px 2px 8px;
   }
 
   .chip-select {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
+    padding: 4px 2px;
+  }
+
+  .filter-toggles-group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .toggle-pill {
-    padding: 5px 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+  }
+
+  .filter-sort-group {
+    flex-shrink: 0;
+    margin-left: 0;
+  }
+
+  .sort-modern-select {
+    padding: 4px 8px;
     font-size: 0.74rem;
   }
 
   .top-hot-box {
-    padding: 18px 12px 20px;
-    border-radius: 16px;
-    margin-bottom: 24px;
+    padding: 16px 10px 18px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+  }
+
+  .spotlight-badge {
+    font-size: 0.66rem;
+    padding: 3px 9px;
+    margin-bottom: 6px;
   }
 
   .top-hot-heading {
     font-size: 1.15rem;
+    margin-bottom: 4px;
   }
 
   .top-hot-sub {
-    font-size: 0.78rem;
-    margin-bottom: 16px;
+    font-size: 0.76rem;
+    margin-bottom: 12px;
+    line-height: 1.4;
   }
 
   .catalog-sub-title {
@@ -1212,13 +1309,13 @@ const resetFilter = () => {
   }
 
   .result-counter {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
   }
 
   .products-grid,
   .products-grid.showcase-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
   }
 }
 </style>
