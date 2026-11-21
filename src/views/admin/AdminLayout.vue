@@ -159,6 +159,16 @@
           <span class="nav-text">Lịch Sử Thao Tác</span>
         </router-link>
 
+        <button
+          type="button"
+          class="nav-item festive-nav-item"
+          @click="festiveStore.isAdminModalOpen = true; mobileNavOpen = false"
+        >
+          <span class="festive-sidebar-icon">{{ festiveIcon }}</span>
+          <span class="nav-text">Dịp Lễ Hội (TGDD)</span>
+          <span class="nav-pill festive-pill">{{ festiveShortLabel }}</span>
+        </button>
+
         <router-link to="/" target="_blank" class="nav-item storefront-link">
           <AdminIcon name="globe" :size="18" />
           <span class="nav-text">Mở Trang Khách Hàng</span>
@@ -252,6 +262,17 @@
           >
             <AdminIcon name="sync" :size="15" :class="{ spinning: adminStore.isSyncing }" />
             <span>{{ adminStore.isSyncing ? 'Đang tải...' : 'Đồng bộ' }}</span>
+          </button>
+
+          <!-- Nút Cấu hình Dịp Lễ Hội (TGDD Style) -->
+          <button
+            type="button"
+            class="topbar-festive-btn"
+            @click="festiveStore.isAdminModalOpen = true"
+            :title="`Cấu hình hiệu ứng dịp lễ hội: ${festiveStore.themeLabel}`"
+          >
+            <span class="festive-btn-icon">{{ festiveIcon }}</span>
+            <span class="hide-sm">{{ festiveShortLabel }}</span>
           </button>
 
           <router-link to="/" class="topbar-store-btn" title="Xem giao diện khách hàng">
@@ -394,6 +415,9 @@
         </button>
       </nav>
     </div>
+
+    <!-- Modal Cấu Hình Dịp Lễ Hội (TGDD Style) -->
+    <FestiveSettingsModal />
   </div>
 </template>
 
@@ -402,17 +426,40 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { useAuthStore } from '../../stores/authStore'
+import { useFestiveStore } from '../../stores/festiveStore'
 import { canAccessMenu } from '../../utils/permissions'
 import { apiRequest } from '../../utils/api'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import BrandLogo from '../../components/common/BrandLogo.vue'
+import FestiveSettingsModal from '../../components/admin/FestiveSettingsModal.vue'
 import '../../assets/styles/admin.css'
 
 const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
+const festiveStore = useFestiveStore()
 const mobileNavOpen = ref(false)
+
+const festiveIcon = computed(() => {
+  switch (festiveStore.effectiveTheme) {
+    case 'tet': return '🌸'
+    case 'noel': return '🎄'
+    case 'sale': return '⚡'
+    case 'none': return '☀️'
+    default: return '🤖'
+  }
+})
+
+const festiveShortLabel = computed(() => {
+  switch (festiveStore.theme) {
+    case 'tet': return 'Tết'
+    case 'noel': return 'Noel'
+    case 'sale': return 'Sale'
+    case 'none': return 'Tắt Lễ'
+    default: return 'Tự Động'
+  }
+})
 
 function hapticClick() {
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -618,6 +665,7 @@ const sendHeartbeat = async () => {
 
 onMounted(async () => {
   adminStore.fetchAllAdminData()
+  festiveStore.fetchSettings()
   await getAdminGeo()
   sendHeartbeat()
   heartbeatTimer = setInterval(sendHeartbeat, 30000)
@@ -1633,5 +1681,61 @@ const handleLogout = async () => {
 .confirm-modal-pop-enter-from .adm-confirm-dialog,
 .confirm-modal-pop-leave-to .adm-confirm-dialog {
   transform: scale(0.92) translateY(10px);
+}
+
+/* Nút Dịp Lễ Hội trên Topbar (TGDD Style) */
+.topbar-festive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, rgba(234, 88, 12, 0.15) 100%);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  color: #facc15;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.topbar-festive-btn:hover {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.25) 0%, rgba(234, 88, 12, 0.25) 100%);
+  border-color: #facc15;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.25);
+}
+
+.festive-btn-icon {
+  font-size: 14px;
+}
+
+/* Mục Menu Lễ Hội trong Sidebar */
+.nav-item.festive-nav-item {
+  background: transparent;
+  border: 1px dashed rgba(250, 204, 21, 0.35);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item.festive-nav-item:hover {
+  background: rgba(250, 204, 21, 0.08);
+  border-color: #facc15;
+}
+
+.festive-sidebar-icon {
+  font-size: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.festive-pill {
+  background: rgba(250, 204, 21, 0.18) !important;
+  color: #facc15 !important;
+  border: 1px solid rgba(250, 204, 21, 0.3) !important;
+  font-weight: 700;
 }
 </style>

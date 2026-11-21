@@ -1,11 +1,11 @@
 <template>
   <header class="app-header">
-    <div class="top-announcement">
+    <div :class="['top-announcement', { [`festive-${festiveStore.effectiveTheme}`]: festiveStore.isFestiveActive }]">
       <div class="container flex-between">
         <div class="ticker-text">
           <span class="live-dot" aria-hidden="true"></span>
-          <span class="ticker-desktop">Lắp đặt &amp; Cân chỉnh tận nhà miễn phí bán kính 300km quanh Hà Nội - Phú Thọ</span>
-          <span class="ticker-mobile">Miễn phí lắp đặt tận nhà 300km quanh Hà Nội &amp; Phú Thọ</span>
+          <span class="ticker-desktop">{{ festiveStore.tickerMessage }}</span>
+          <span class="ticker-mobile">{{ festiveStore.tickerMessage }}</span>
         </div>
         <div class="top-contact">
           <span>
@@ -101,12 +101,14 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import { useCartStore } from '../../stores/cartStore'
+import { useFestiveStore } from '../../stores/festiveStore'
 import { CONTACT_INFO } from '../../config/contact'
 import BrandLogo from './BrandLogo.vue'
 
 const router = useRouter()
 const productStore = useProductStore()
 const cartStore = useCartStore()
+const festiveStore = useFestiveStore()
 const searchQuery = ref('')
 const mobileMenuOpen = ref(false)
 
@@ -169,6 +171,22 @@ const scrollToEbook = () => {
   color: #FFFFFF;
   font-size: 0.78rem;
   padding: 7px 0;
+  transition: background 0.3s ease;
+}
+
+.top-announcement.festive-tet {
+  background: linear-gradient(90deg, #991b1b 0%, #1e3a8a 50%, #991b1b 100%);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.4);
+}
+
+.top-announcement.festive-noel {
+  background: linear-gradient(90deg, #14532d 0%, #1e3a8a 50%, #14532d 100%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+}
+
+.top-announcement.festive-sale {
+  background: linear-gradient(90deg, #b91c1c 0%, #c2410c 50%, #b91c1c 100%);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.5);
 }
 
 .flex-between {

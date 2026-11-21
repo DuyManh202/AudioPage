@@ -4047,6 +4047,83 @@ app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_A
   }
 })
 
+// ==========================================
+// CẤU HÌNH DỊP LỄ HỘI & HIỆU ỨNG (THẾ GIỚI DI ĐỘNG STYLE)
+// ==========================================
+const DEFAULT_FESTIVE_SETTINGS = {
+  theme: 'tet', // 'tet' | 'noel' | 'sale' | 'none' | 'auto'
+  fallingEnabled: true,
+  decorEnabled: true,
+  customTicker: '',
+  updatedAt: new Date().toISOString()
+}
+
+// 1. API công khai cho khách xem web lấy cấu hình dịp lễ
+app.get('/api/v1/festive-settings', async (req, res) => {
+  try {
+    const settings = await getSystemSetting('festive_settings', DEFAULT_FESTIVE_SETTINGS)
+    res.json({
+      success: true,
+      data: {
+        ...DEFAULT_FESTIVE_SETTINGS,
+        ...(typeof settings === 'object' && settings !== null ? settings : {})
+      }
+    })
+  } catch (err) {
+    res.json({ success: true, data: DEFAULT_FESTIVE_SETTINGS })
+  }
+})
+
+// 2. API Quản trị lấy cấu hình dịp lễ
+app.get('/api/v1/admin/festive-settings', authenticateAdmin, async (req, res) => {
+  try {
+    const settings = await getSystemSetting('festive_settings', DEFAULT_FESTIVE_SETTINGS)
+    res.json({
+      success: true,
+      data: {
+        ...DEFAULT_FESTIVE_SETTINGS,
+        ...(typeof settings === 'object' && settings !== null ? settings : {})
+      }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// 3. API Quản trị lưu cập nhật cấu hình dịp lễ
+app.post('/api/v1/admin/festive-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const current = await getSystemSetting('festive_settings', DEFAULT_FESTIVE_SETTINGS)
+    const { theme, fallingEnabled, decorEnabled, customTicker } = req.body
+
+    const allowedThemes = ['tet', 'noel', 'sale', 'none', 'auto']
+    const nextTheme = allowedThemes.includes(theme) ? theme : (current.theme || 'tet')
+    const nextFalling = typeof fallingEnabled === 'boolean' ? fallingEnabled : (current.fallingEnabled ?? true)
+    const nextDecor = typeof decorEnabled === 'boolean' ? decorEnabled : (current.decorEnabled ?? true)
+    const nextTicker = typeof customTicker === 'string' ? customTicker.trim() : (current.customTicker || '')
+
+    const updated = {
+      theme: nextTheme,
+      fallingEnabled: nextFalling,
+      decorEnabled: nextDecor,
+      customTicker: nextTicker,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.username || 'admin'
+    }
+
+    await setSystemSetting('festive_settings', updated)
+    await recordAuditLog(req.user?.id, 'UPDATE_FESTIVE_SETTINGS', 'Cấu hình sự kiện dịp lễ hội kiểu Thế Giới Di Động', updated)
+
+    res.json({
+      success: true,
+      message: 'Cập nhật cấu hình dịp lễ hội thành công!',
+      data: updated
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // Tự động đảm bảo cột bảo mật cần thiết tồn tại trên CSDL khi khởi động
 const ensureDatabaseSchema = async () => {
   try {
