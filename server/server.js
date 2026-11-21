@@ -4432,6 +4432,44 @@ const ensureDatabaseSchema = async () => {
           }
         }
       }
+
+      // Tự động nạp sản phẩm mẫu vào Database PostgreSQL nếu bảng đang trống
+      try {
+        const prodCheck = await query('SELECT COUNT(*) as count FROM products')
+        const count = Number(prodCheck.rows[0]?.count || 0)
+        if (count === 0) {
+          const fallbackPath = path.join(__dirname, '../src/data/products.json')
+          if (fs.existsSync(fallbackPath)) {
+            const rawProds = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'))
+            for (const p of rawProds) {
+              await query(`
+                INSERT INTO products (
+                  id, name, slug, category_id, bass_size, power_rms, power_peak, price, original_price,
+                  room_size, badge, in_stock, rating, reviews_count,
+                  image_url, video_url, video_title, matching_amplifier, short_desc, specs, gifts
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20::json, $21::json)
+                ON CONFLICT (id) DO UPDATE SET
+                  price = EXCLUDED.price,
+                  original_price = EXCLUDED.original_price,
+                  image_url = EXCLUDED.image_url,
+                  short_desc = EXCLUDED.short_desc,
+                  specs = EXCLUDED.specs
+              `, [
+                p.id, p.name, p.slug || p.id, p.category || 'loa-full', p.bassSize || '-',
+                Number(p.powerRMS) || 0, Number(p.powerPeak) || 0,
+                Number(p.price) || 0, Number(p.originalPrice) || 0,
+                p.roomSize || '20 - 35m²', p.badge || '',
+                p.inStock ?? true, Number(p.rating) || 5.0, Number(p.reviewsCount) || 30,
+                p.image || '', p.videoUrl || '', p.videoTitle || '',
+                p.matchingAmplifier || '', p.shortDesc || '',
+                JSON.stringify(p.specs || {}), JSON.stringify(p.gifts || [])
+              ])
+            }
+          }
+        }
+      } catch (prodSeedErr) {
+        console.warn('⚠️ Lỗi nạp sản phẩm mặc định vào DB:', prodSeedErr.message)
+      }
     } catch (seedErr) {
       console.warn('⚠️ Lỗi nạp combo mặc định:', seedErr.message)
     }
