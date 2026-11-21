@@ -43,7 +43,7 @@ export const useFestiveStore = defineStore('festive', {
     },
 
     shouldShowFalling(state) {
-      return this.isFestiveActive && state.fallingEnabled && state.userFallingPreference
+      return this.isFestiveActive && state.fallingEnabled
     },
 
     shouldShowDecor(state) {

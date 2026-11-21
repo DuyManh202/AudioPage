@@ -95,12 +95,6 @@
             <p>Căn chỉnh tận nhà miễn phí bán kính 300km quanh Hà Nội - Phú Thọ</p>
           </div>
         </div>
-
-        <!-- Nút tắt bật góc dưới giả lập -->
-        <div v-if="form.fallingEnabled && form.theme !== 'none'" class="sim-user-toggle">
-          <span>{{ simEffectiveTheme === 'noel' ? '❄️' : (simEffectiveTheme === 'tet' ? '🌸' : '🎉') }}</span>
-          <span>Tắt hiệu ứng</span>
-        </div>
       </div>
     </div>
 
@@ -900,22 +894,6 @@ onBeforeUnmount(() => {
   font-size: 11.5px;
   color: #64748b;
   margin: 0;
-}
-
-.sim-user-toggle {
-  position: absolute;
-  bottom: 10px;
-  left: 12px;
-  background: rgba(15, 23, 42, 0.85);
-  color: #fef08a;
-  font-size: 9.5px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  z-index: 12;
 }
 
 /* 3. GRID CẤU HÌNH */

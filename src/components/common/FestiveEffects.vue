@@ -121,19 +121,6 @@
         </div>
       </template>
     </div>
-
-    <!-- 3. NÚT ĐIỀU KHIỂN TẮT/BẬT HIỆU ỨNG RƠI DÀNH CHO KHÁCH (TGDD STYLE) -->
-    <button
-      v-if="festiveStore.isFestiveActive && festiveStore.fallingEnabled"
-      type="button"
-      class="festive-user-toggle-btn"
-      :class="{ 'is-disabled': !festiveStore.userFallingPreference }"
-      @click="festiveStore.toggleUserFalling"
-      :title="festiveStore.userFallingPreference ? 'Bấm để tắt hiệu ứng rơi' : 'Bấm để bật lại hiệu ứng rơi'"
-    >
-      <span class="toggle-icon">{{ toggleButtonIcon }}</span>
-      <span class="toggle-text">{{ festiveStore.userFallingPreference ? 'Tắt hiệu ứng' : 'Bật hiệu ứng' }}</span>
-    </button>
   </div>
 </template>
 
@@ -635,48 +622,6 @@ onBeforeUnmount(() => {
   50% { transform: scale(1.05); }
 }
 
-/* 3. NÚT TẮT/BẬT HIỆU ỨNG RƠI CHO KHÁCH HÀNG (TGDD STYLE) */
-.festive-user-toggle-btn {
-  pointer-events: auto;
-  position: fixed;
-  bottom: 84px;
-  left: 18px;
-  z-index: 9990;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(17, 24, 39, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(250, 204, 21, 0.4);
-  border-radius: 999px;
-  color: #fef08a;
-  font-size: 11.5px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  transition: all 0.25s ease;
-  user-select: none;
-}
-
-.festive-user-toggle-btn:hover {
-  background: rgba(17, 24, 39, 0.98);
-  border-color: #facc15;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(250, 204, 21, 0.3);
-}
-
-.festive-user-toggle-btn.is-disabled {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(148, 163, 184, 0.3);
-  color: #94a3b8;
-}
-
-.toggle-icon {
-  font-size: 13px;
-}
-
 /* Tối ưu màn hình Mobile */
 @media (max-width: 640px) {
   .corner-branch.left-branch {
@@ -694,12 +639,6 @@ onBeforeUnmount(() => {
   .lantern-small .lantern-body {
     width: 22px;
     height: 27px;
-  }
-  .festive-user-toggle-btn {
-    bottom: 68px;
-    left: 12px;
-    padding: 5px 10px;
-    font-size: 11px;
   }
 }
 </style>
