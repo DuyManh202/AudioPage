@@ -328,7 +328,10 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
         return { ok: res.ok, status: res.status, body }
       }
 
-      let resp = await fetchConversations('id,updated_time,participants,messages.limit(25){id,message,created_time,from,attachments,sticker}')
+      let resp = await fetchConversations('id,updated_time,participants,messages.limit(25){id,message,created_time,from,attachments{image_data,file_url,video_data,name,mime_type},sticker}')
+      if (!resp.ok && resp.body?.error?.code === 100) {
+        resp = await fetchConversations('id,updated_time,participants,messages.limit(25){id,message,created_time,from,attachments,sticker}')
+      }
       if (!resp.ok && resp.body?.error?.code === 100) {
         resp = await fetchConversations('id,updated_time,participants,messages.limit(25){id,message,created_time,from}')
       }
@@ -353,7 +356,15 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
         const normalizedMessages = rawMessages
           .map(m => {
             const fromPage = String(m.from?.id || '') === String(pageId)
-            const hasMedia = Boolean(m.attachments?.data?.length || m.sticker)
+            const rawAttachments = Array.isArray(m.attachments?.data) ? m.attachments.data : []
+            const attachments = rawAttachments.map(att => {
+              const url = att.image_data?.url || att.file_url || att.video_data?.url || ''
+              const previewUrl = att.image_data?.preview_url || url
+              const type = att.image_data ? 'image' : (att.video_data ? 'video' : (att.mime_type?.startsWith('image/') ? 'image' : 'file'))
+              return { url, previewUrl, type, name: att.name || '' }
+            }).filter(a => Boolean(a.url))
+
+            const hasMedia = attachments.length > 0 || Boolean(m.sticker)
             const text = String(m.message || '').trim() || (hasMedia ? (fromPage ? '[Trang gửi hình ảnh / tệp đính kèm]' : '[Khách gửi hình ảnh / tệp đính kèm]') : '')
             const createdAt = m.created_time && !Number.isNaN(Date.parse(m.created_time)) ? new Date(m.created_time).toISOString() : new Date().toISOString()
             return {
@@ -361,7 +372,8 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
               body: text,
               direction: fromPage ? 'OUT' : 'IN',
               createdBy: fromPage ? (m.from?.name || 'Tú Audio Page') : (m.from?.name || resolvedName),
-              createdAt
+              createdAt,
+              attachments
             }
           })
           .filter(m => m.body && m.platformMessageId)
@@ -407,18 +419,21 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
 
         for (const msg of normalizedMessages) {
           await query(`UPDATE facebook_care_messages
-            SET platform_message_id = $1
+            SET platform_message_id = $1,
+                attachments = CASE WHEN $6::jsonb IS NOT NULL AND jsonb_array_length($6::jsonb) > 0 THEN $6::jsonb ELSE facebook_care_messages.attachments END
             WHERE id = (
               SELECT id FROM facebook_care_messages
               WHERE customer_id = $2 AND platform_message_id IS NULL AND direction = $3 AND body = $4
                 AND ABS(EXTRACT(EPOCH FROM (created_at - $5::timestamptz))) <= 180
               LIMIT 1
-            )`, [msg.platformMessageId, customerId, msg.direction, msg.body, msg.createdAt])
+            )`, [msg.platformMessageId, customerId, msg.direction, msg.body, msg.createdAt, JSON.stringify(msg.attachments || [])])
           const inserted = await query(`INSERT INTO facebook_care_messages
-            (id, customer_id, body, direction, created_by, platform_message_id, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)
-            ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`,
-            [randomUUID(), customerId, msg.body, msg.direction, msg.createdBy, msg.platformMessageId, msg.createdAt])
+            (id, customer_id, body, direction, created_by, platform_message_id, created_at, attachments)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::jsonb)
+            ON CONFLICT (platform_message_id) DO UPDATE SET
+              attachments = CASE WHEN EXCLUDED.attachments IS NOT NULL AND jsonb_array_length(EXCLUDED.attachments) > 0 THEN EXCLUDED.attachments ELSE facebook_care_messages.attachments END
+            RETURNING id`,
+            [randomUUID(), customerId, msg.body, msg.direction, msg.createdBy, msg.platformMessageId, msg.createdAt, JSON.stringify(msg.attachments || [])])
           if (inserted.rows[0]) syncedMessages += 1
         }
       }
@@ -579,7 +594,12 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
     for (const entry of req.body.entry || []) {
       for (const event of entry.messaging || []) {
         const psid = event.sender?.id
-        const text = event.message?.text || event.postback?.title || (event.message?.attachments?.length ? '[Khách gửi tệp đính kèm hoặc hình ảnh qua Messenger]' : '')
+        const rawAtts = Array.isArray(event.message?.attachments) ? event.message.attachments : []
+        const webhookAttachments = rawAtts.map(att => ({
+          url: att.payload?.url || '',
+          type: att.type || 'image'
+        })).filter(a => Boolean(a.url))
+        const text = event.message?.text || event.postback?.title || (webhookAttachments.length ? '[Khách gửi hình ảnh / tệp đính kèm]' : '')
         if (!psid || event.message?.is_echo) continue
         const referral = event.referral || event.message?.referral || event.postback?.referral || {}
         const referralAdId = referral.ad_id || referral.adId || null
@@ -625,8 +645,11 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         }
         if (!text) continue
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
-        const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
-          VALUES ($1,$2,$3,'IN','Facebook Page',$4) ON CONFLICT (platform_message_id) DO NOTHING RETURNING id`, [randomUUID(), customer.rows[0].id, text, platformMessageId])
+        const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id, attachments)
+          VALUES ($1,$2,$3,'IN','Facebook Page',$4,$5::jsonb)
+          ON CONFLICT (platform_message_id) DO UPDATE SET
+            attachments = CASE WHEN EXCLUDED.attachments IS NOT NULL AND jsonb_array_length(EXCLUDED.attachments) > 0 THEN EXCLUDED.attachments ELSE facebook_care_messages.attachments END
+          RETURNING id`, [randomUUID(), customer.rows[0].id, text, platformMessageId, JSON.stringify(webhookAttachments)])
         if (inserted.rows[0]) {
           isFacebookAiEnabled().then(enabled => {
             if (enabled) autoReplyToFacebookCustomer(customer.rows[0].id, psid)
@@ -3123,7 +3146,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
         new Promise(resolve => setTimeout(resolve, 10000))
       ])
     }
-    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
+    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by, 'attachments', COALESCE(m.attachments, '[]'::jsonb)) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
       FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
       GROUP BY c.id ORDER BY c.updated_at DESC`)
     const connected = isFacebookMessengerConfigured()
@@ -3141,7 +3164,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
 // Lấy chi tiết hồ sơ 1 khách hàng Facebook kèm toàn bộ tin nhắn & đơn hàng liên quan (cho Popup CRM)
 app.get('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
+    const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by, 'attachments', COALESCE(m.attachments, '[]'::jsonb)) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
       FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
       WHERE c.id = $1
       GROUP BY c.id`, [req.params.id])
@@ -3154,6 +3177,64 @@ app.get('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SU
     }
     res.json({ success: true, data: customer, relatedOrders })
   } catch (err) { res.status(500).json({ success: false, message: err.message }) }
+})
+
+// Tải hình ảnh / tệp đính kèm tươi từ Meta Graph API theo messageId khi xem chi tiết
+app.get('/api/v1/admin/facebook-care/message-media/:platformMessageId', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { platformMessageId } = req.params
+    const { META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    if (!pageToken || !graphVersion) {
+      return res.status(503).json({ success: false, message: 'Chưa cấu hình Meta Page Token trên máy chủ.' })
+    }
+
+    // 1. Kiểm tra cache trong database trước
+    const existing = await query('SELECT attachments FROM facebook_care_messages WHERE platform_message_id = $1', [platformMessageId])
+    const existingAtts = existing.rows[0]?.attachments
+    if (Array.isArray(existingAtts) && existingAtts.length > 0 && existingAtts[0]?.url) {
+      return res.json({ success: true, attachments: existingAtts })
+    }
+
+    // 2. Gọi Meta Graph API lấy attachments
+    const url = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(platformMessageId)}/attachments`)
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(10000) })
+    const data = await response.json().catch(() => ({}))
+
+    let atts = []
+    if (response.ok && Array.isArray(data.data)) {
+      atts = data.data.map(att => ({
+        url: att.image_data?.url || att.file_url || att.video_data?.url || '',
+        previewUrl: att.image_data?.preview_url || att.image_data?.url || att.file_url || '',
+        type: att.image_data ? 'image' : (att.video_data ? 'video' : 'file'),
+        name: att.name || ''
+      })).filter(a => Boolean(a.url))
+    }
+
+    if (atts.length === 0) {
+      // Fallback: Gọi endpoint chi tiết của message
+      const fbUrl = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(platformMessageId)}`)
+      fbUrl.searchParams.set('fields', 'id,message,attachments{image_data,file_url,video_data,name,mime_type}')
+      const fbRes = await fetch(fbUrl, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(10000) })
+      const fbData = await fbRes.json().catch(() => ({}))
+      if (fbRes.ok && Array.isArray(fbData.attachments?.data)) {
+        atts = fbData.attachments.data.map(att => ({
+          url: att.image_data?.url || att.file_url || att.video_data?.url || '',
+          previewUrl: att.image_data?.preview_url || att.image_data?.url || att.file_url || '',
+          type: att.image_data ? 'image' : (att.video_data ? 'video' : 'file'),
+          name: att.name || ''
+        })).filter(a => Boolean(a.url))
+      }
+    }
+
+    if (atts.length > 0) {
+      await query('UPDATE facebook_care_messages SET attachments = $1::jsonb WHERE platform_message_id = $2', [JSON.stringify(atts), platformMessageId]).catch(() => {})
+      return res.json({ success: true, attachments: atts })
+    }
+
+    res.json({ success: false, message: 'Không tìm thấy tệp đính kèm trên Meta cho tin nhắn này.', attachments: [] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 })
 
 // Lấy chi tiết 1 Lead kèm đơn hàng liên quan (cho Popup CRM)
@@ -4010,6 +4091,7 @@ const ensureDatabaseSchema = async () => {
       body TEXT NOT NULL, direction VARCHAR(3) NOT NULL DEFAULT 'IN', created_by VARCHAR(100), platform_message_id TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`)
     await query('ALTER TABLE facebook_care_messages ADD COLUMN IF NOT EXISTS platform_message_id TEXT')
+    await query("ALTER TABLE facebook_care_messages ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'")
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_platform_message_id ON facebook_care_messages(platform_message_id)')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL')
     await query(`CREATE TABLE IF NOT EXISTS customer_map_visits (

@@ -305,7 +305,44 @@
                 </template>
                 · {{ displayDate(m.createdAt) }}
               </small>
-              <p>{{ m.body }}</p>
+              <div v-if="m.body && !isPureImageLabel(m.body)" class="message-text">
+                <p>{{ m.body }}</p>
+              </div>
+
+              <!-- Hiển thị ảnh thực tế nếu đã có attachments -->
+              <div v-if="m.attachments && m.attachments.length" class="fb-media-grid">
+                <div v-for="(att, i) in m.attachments" :key="i" class="fb-media-item">
+                  <img
+                    v-if="att.type === 'image' || isImageUrl(att.url)"
+                    :src="att.previewUrl || att.url"
+                    alt="Ảnh thiết bị khách gửi"
+                    class="fb-msg-img"
+                    loading="lazy"
+                    title="Bấm để xem ảnh phóng to"
+                    @click="openLightbox(att.url)"
+                  />
+                  <a v-else :href="att.url" target="_blank" rel="noopener" class="fb-file-link">
+                    📎 {{ att.name || 'Tải tệp đính kèm' }}
+                  </a>
+                </div>
+              </div>
+
+              <!-- Nếu là tin nhắn đính kèm nhưng chưa tải xong ảnh từ Meta -->
+              <div v-else-if="isMediaPlaceholder(m.body)" class="fb-media-placeholder">
+                <span class="placeholder-icon">📷</span>
+                <div class="placeholder-info">
+                  <strong>Khách gửi ảnh thiết bị qua Messenger</strong>
+                  <button
+                    type="button"
+                    class="btn-fetch-fb-image"
+                    :disabled="loadingMediaId === (m.platformMessageId || m.id)"
+                    @click="loadMessageMedia(m)"
+                  >
+                    <span v-if="loadingMediaId === (m.platformMessageId || m.id)">⏳ Đang tải ảnh từ Facebook…</span>
+                    <span v-else>🔍 Bấm để tải &amp; xem ảnh thực tế</span>
+                  </button>
+                </div>
+              </div>
             </div>
             <p v-if="!selected.messages?.length" class="empty">Chưa có ghi nhận hội thoại.</p>
           </div>
@@ -708,6 +745,21 @@
         ↑ Đầu trang
       </button>
     </Transition>
+
+    <!-- LIGHTBOX XEM ẢNH PHÓNG TO TOÀN MÀN HÌNH -->
+    <Transition name="fade">
+      <div v-if="lightboxImage" class="crm-lightbox-backdrop" @click.self="lightboxImage = ''">
+        <div class="crm-lightbox-box">
+          <button type="button" class="crm-lightbox-close" aria-label="Đóng ảnh" @click="lightboxImage = ''">✕</button>
+          <img :src="lightboxImage" alt="Hình ảnh phóng to" class="crm-lightbox-img" />
+          <div class="crm-lightbox-foot">
+            <a :href="lightboxImage" target="_blank" rel="noopener" class="btn-lightbox-download">
+              ⬇ Mở ảnh gốc kích thước đầy đủ (Tab mới)
+            </a>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -845,10 +897,60 @@ const messengerPolicyInfo = computed(() => {
   }
 })
 
+const lightboxImage = ref('')
+const loadingMediaId = ref('')
+
+function isPureImageLabel(text) {
+  if (!text) return false
+  const t = text.trim().toLowerCase()
+  return t === '[khách gửi hình ảnh / tệp đính kèm]' ||
+         t === '[khách gửi tệp đính kèm hoặc hình ảnh qua messenger]' ||
+         t === '[trang gửi hình ảnh / tệp đính kèm]'
+}
+
+function isMediaPlaceholder(text) {
+  if (!text) return false
+  const t = text.toLowerCase()
+  return t.includes('hình ảnh') || t.includes('tệp đính kèm')
+}
+
+function isImageUrl(url) {
+  if (!url) return false
+  return /\.(jpeg|jpg|gif|png|webp)($|\?)/i.test(url) || url.includes('fbcdn.net') || url.includes('fbsbx.com')
+}
+
+function openLightbox(url) {
+  lightboxImage.value = url
+}
+
+async function loadMessageMedia(msg) {
+  const targetId = msg.platformMessageId || msg.id
+  if (!targetId || loadingMediaId.value === targetId) return
+  loadingMediaId.value = targetId
+  try {
+    const res = await apiRequest(`/admin/facebook-care/message-media/${encodeURIComponent(targetId)}`)
+    if (res.attachments && res.attachments.length > 0) {
+      msg.attachments = res.attachments
+    }
+  } catch (err) {
+    console.warn('[FB Media] Load media warning:', err.message)
+  } finally {
+    loadingMediaId.value = ''
+  }
+}
+
 function select(c) {
   error.value = ''
   selected.value = c
   if (c) {
+    // Tự động kiểm tra và tải hình ảnh thực tế cho các tin nhắn đính kèm
+    if (Array.isArray(c.messages)) {
+      c.messages.forEach(m => {
+        if (isMediaPlaceholder(m.body) && m.platformMessageId && (!m.attachments || m.attachments.length === 0)) {
+          loadMessageMedia(m).catch(() => {})
+        }
+      })
+    }
     Object.assign(edit, {
       status: c.status,
       interest: c.interest,
@@ -3187,5 +3289,137 @@ onBeforeUnmount(() => {
   .cockpit-hero-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* FB Media & Lightbox */
+.fb-media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.fb-media-item {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.fb-msg-img {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  display: block;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  background: #000;
+}
+.fb-msg-img:hover {
+  transform: scale(1.03);
+  filter: brightness(1.05);
+}
+.fb-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0284c7;
+  text-decoration: none;
+}
+.fb-media-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  border-radius: 12px;
+  color: #1e40af;
+  margin-top: 4px;
+}
+.placeholder-icon {
+  font-size: 1.2rem;
+}
+.btn-fetch-fb-image {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+}
+.btn-fetch-fb-image:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+.btn-fetch-fb-image:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.crm-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 110000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.crm-lightbox-box {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.crm-lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.crm-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+.crm-lightbox-img {
+  max-width: 88vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.crm-lightbox-foot {
+  margin-top: 12px;
+}
+.btn-lightbox-download {
+  color: #93c5fd;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: underline;
 }
 </style>
