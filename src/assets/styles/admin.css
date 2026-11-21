@@ -2,6 +2,22 @@
    TÚ AUDIO — ENTERPRISE ADMIN DESIGN SYSTEM (BRIGHT LIGHT SAAS)
    ========================================================================== */
 
+/* Tối ưu trải nghiệm Native Mobile App (Chống giật nảy, trễ cảm ứng & nháy xám) */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+button, a, .nav-item, .mobile-tab-item, .xanhsm-chip, .card {
+  -webkit-touch-callout: none;
+}
+
+.admin-mobile-tabbar, .xanhsm-top-bar, .xanhsm-sub-actions, .mobile-tab-item {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .adm-page {
   display: flex;
   flex-direction: column;

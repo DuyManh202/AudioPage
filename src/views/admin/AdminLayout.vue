@@ -365,17 +365,22 @@
 
       <!-- Thanh Điều Hướng Dưới Mobile (Apple iOS Style Bottom Tab Bar) -->
       <nav class="admin-mobile-tabbar" aria-label="Điều hướng nhanh điện thoại">
-        <router-link to="/admin/dashboard" class="mobile-tab-item">
+        <router-link to="/admin/dashboard" class="mobile-tab-item" @click="hapticClick">
           <AdminIcon name="dashboard" :size="20" />
           <span>Tổng quan</span>
         </router-link>
 
-        <router-link to="/admin/facebook-care" class="mobile-tab-item">
+        <router-link to="/admin/facebook-care" class="mobile-tab-item" @click="hapticClick">
           <AdminIcon name="message" :size="20" />
           <span>Facebook</span>
         </router-link>
 
-        <router-link to="/admin/leads" class="mobile-tab-item">
+        <router-link to="/admin/customer-map" class="mobile-tab-item" @click="hapticClick">
+          <AdminIcon name="map" :size="20" />
+          <span>Bản đồ</span>
+        </router-link>
+
+        <router-link to="/admin/leads" class="mobile-tab-item" @click="hapticClick">
           <div class="tab-icon-wrap">
             <AdminIcon name="leads" :size="20" />
             <span v-if="adminStore.newLeadsCount > 0" class="mobile-badge">{{ adminStore.newLeadsCount }}</span>
@@ -383,15 +388,7 @@
           <span>Khách CRM</span>
         </router-link>
 
-        <router-link to="/admin/orders" class="mobile-tab-item">
-          <div class="tab-icon-wrap">
-            <AdminIcon name="orders" :size="20" />
-            <span v-if="adminStore.newOrdersCount > 0" class="mobile-badge">{{ adminStore.newOrdersCount }}</span>
-          </div>
-          <span>Đơn hàng</span>
-        </router-link>
-
-        <button type="button" class="mobile-tab-item" @click="mobileNavOpen = true" aria-label="Mở tất cả menu">
+        <button type="button" class="mobile-tab-item" @click="openMenuDrawer" aria-label="Mở tất cả menu">
           <AdminIcon name="menu" :size="20" />
           <span>Menu</span>
         </button>
@@ -416,6 +413,17 @@ const router = useRouter()
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const mobileNavOpen = ref(false)
+
+function hapticClick() {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try { navigator.vibrate(12) } catch {}
+  }
+}
+
+function openMenuDrawer() {
+  hapticClick()
+  mobileNavOpen.value = true
+}
 
 const can = (permission) => canAccessMenu(authStore.currentUser, permission)
 
