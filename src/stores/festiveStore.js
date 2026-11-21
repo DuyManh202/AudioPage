@@ -3,7 +3,7 @@ import { apiRequest } from '../utils/api'
 
 export const useFestiveStore = defineStore('festive', {
   state: () => ({
-    theme: 'tet', // 'tet' | 'noel' | 'sale' | 'none' | 'auto'
+    theme: 'noel', // Mặc định chuyển sang 'noel' (Giáng Sinh sắp tới)
     fallingEnabled: true,
     decorEnabled: true,
     customTicker: '',
@@ -22,20 +22,20 @@ export const useFestiveStore = defineStore('festive', {
       const month = now.getMonth() + 1 // 1-12
       const date = now.getDate()
 
-      // Tháng 12 hoặc đầu tháng 1: Giáng Sinh / Noel
-      if (month === 12 || (month === 1 && date <= 5)) {
+      // Nửa cuối tháng 11 (từ 15/11 trở đi), tháng 12 hoặc đầu tháng 1: Mùa Giáng Sinh / Noel
+      if ((month === 11 && date >= 15) || month === 12 || (month === 1 && date <= 5)) {
         return 'noel'
       }
       // Tháng 1 & tháng 2: Tết Nguyên Đán
       if (month === 1 || month === 2) {
         return 'tet'
       }
-      // Tháng 11 (Black Friday, 11/11): Siêu Sale
+      // Tháng 11 trước ngày 15: Siêu Sale (11/11)
       if (month === 11) {
         return 'sale'
       }
-      // Mặc định các tháng còn lại
-      return 'tet'
+      // Mặc định
+      return 'noel'
     },
 
     isFestiveActive() {

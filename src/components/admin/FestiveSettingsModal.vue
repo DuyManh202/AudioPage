@@ -20,27 +20,27 @@
           <div class="setting-section">
             <label class="section-label">1. Chọn Dịp Sự Kiện / Lễ Hội Đang Diễn Ra</label>
             <div class="theme-grid">
-              <!-- TẾT NGUYÊN ĐÁN -->
-              <div
-                class="theme-card"
-                :class="{ 'is-selected': tempSettings.theme === 'tet' }"
-                @click="tempSettings.theme = 'tet'"
-              >
-                <div class="card-badge">🌸 Nổi bật</div>
-                <div class="card-icon">🌸</div>
-                <div class="card-title">Tết Nguyên Đán</div>
-                <div class="card-desc">Hoa mai &amp; hoa đào rơi nhẹ, cành mai may mắn, lồng đèn đỏ Phúc Lộc, hoa trên logo</div>
-              </div>
-
               <!-- GIÁNG SINH / NOEL -->
               <div
                 class="theme-card"
                 :class="{ 'is-selected': tempSettings.theme === 'noel' }"
                 @click="tempSettings.theme = 'noel'"
               >
+                <div class="card-badge" style="background: #166534;">🎄 Mùa Hiện Tại</div>
                 <div class="card-icon">🎄</div>
                 <div class="card-title">Giáng Sinh / Noel</div>
-                <div class="card-desc">Bông tuyết trắng rơi lung linh, mũ Noel đội trên logo Tú Audio, chuông vàng giáng sinh</div>
+                <div class="card-desc">Bông tuyết trắng &amp; tinh thể rơi lung linh, mũ Noel đội trên logo Tú Audio, cành thông tuyết, chuông vàng giáng sinh</div>
+              </div>
+
+              <!-- TẾT NGUYÊN ĐÁN -->
+              <div
+                class="theme-card"
+                :class="{ 'is-selected': tempSettings.theme === 'tet' }"
+                @click="tempSettings.theme = 'tet'"
+              >
+                <div class="card-icon">🌸</div>
+                <div class="card-title">Tết Nguyên Đán</div>
+                <div class="card-desc">Hoa mai &amp; hoa đào rơi nhẹ, cành mai may mắn, lồng đèn đỏ Phúc Lộc, hoa trên logo</div>
               </div>
 
               <!-- ĐẠI TIỆC SIÊU SALE -->
@@ -147,7 +147,7 @@ import { useFestiveStore } from '../../stores/festiveStore'
 const festiveStore = useFestiveStore()
 
 const tempSettings = reactive({
-  theme: 'tet',
+  theme: 'noel',
   fallingEnabled: true,
   decorEnabled: true,
   customTicker: ''

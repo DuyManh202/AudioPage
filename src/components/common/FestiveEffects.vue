@@ -72,12 +72,43 @@
         </div>
       </template>
 
-      <!-- Dịp NOEL: Dải chuông vàng & nhánh thông tuyết góc phải -->
+      <!-- Dịp NOEL: Cành thông tuyết phủ góc trái & Cặp chuông vàng nơ đỏ góc phải -->
       <template v-else-if="festiveStore.effectiveTheme === 'noel'">
+        <!-- Cành thông tuyết phủ góc trên trái -->
+        <div class="corner-pine-branch" title="Giáng Sinh An Lành">
+          <svg viewBox="0 0 160 110" class="pine-svg" fill="none">
+            <!-- Cành thông nâu gỗ -->
+            <path d="M -10 -5 C 20 25, 70 20, 110 50 C 130 65, 145 90, 155 108" stroke="#5c3826" stroke-width="4.5" stroke-linecap="round"/>
+            <!-- Các chùm lá thông kim xanh mướt -->
+            <path d="M 30 15 L 15 32 M 35 18 L 30 38 M 55 20 L 45 42 M 65 24 L 62 48 M 80 30 L 75 56 M 95 38 L 92 65 M 110 50 L 105 78 M 125 65 L 120 92 M 140 82 L 138 105" stroke="#166534" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M 25 12 L 10 26 M 50 18 L 40 34 M 75 26 L 68 46 M 90 35 L 85 58 M 105 46 L 100 70 M 120 60 L 115 85" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/>
+            <!-- Lớp tuyết trắng phủ mềm mại -->
+            <path d="M 18 16 Q 30 22 42 18 Q 55 24 66 20 Q 80 26 95 28 Q 110 38 125 46" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" opacity="0.95"/>
+            <!-- Quả châu đỏ & quả chuông vàng lấp lánh -->
+            <circle cx="48" cy="46" r="6.5" fill="#dc2626"/>
+            <circle cx="46" cy="44" r="2" fill="#fecaca"/>
+            <circle cx="95" cy="68" r="7" fill="#ea580c"/>
+            <circle cx="93" cy="66" r="2.2" fill="#ffedd5"/>
+            <circle cx="138" cy="98" r="6" fill="#eab308"/>
+            <circle cx="136" cy="96" r="1.8" fill="#fef9c3"/>
+          </svg>
+        </div>
+
+        <!-- Cặp chuông vàng nơ đỏ lắc lư góc phải -->
         <div class="noel-bells-cluster" title="Mừng Giáng Sinh & Năm Mới">
-          <div class="noel-bow">🎀</div>
-          <div class="noel-bell left-bell">🔔</div>
-          <div class="noel-bell right-bell">🔔</div>
+          <div class="noel-bow-decor">
+            <svg viewBox="0 0 40 30" width="38" height="28" fill="none">
+              <path d="M 20 10 C 12 2, 2 4, 4 14 C 6 20, 14 16, 20 12" fill="#dc2626" stroke="#b91c1c" stroke-width="1"/>
+              <path d="M 20 10 C 28 2, 38 4, 36 14 C 34 20, 26 16, 20 12" fill="#dc2626" stroke="#b91c1c" stroke-width="1"/>
+              <circle cx="20" cy="11" r="3.5" fill="#ef4444" stroke="#facc15" stroke-width="1"/>
+              <path d="M 18 14 Q 14 24 10 28" stroke="#dc2626" stroke-width="2.8" stroke-linecap="round"/>
+              <path d="M 22 14 Q 26 24 30 28" stroke="#dc2626" stroke-width="2.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="noel-bells-pair">
+            <div class="noel-bell left-bell">🔔</div>
+            <div class="noel-bell right-bell">🔔</div>
+          </div>
         </div>
       </template>
 
@@ -150,19 +181,20 @@ function createParticle() {
       opacity: Math.random() * 0.35 + 0.65
     }
   } else if (theme === 'noel') {
-    // Bông tuyết trắng
+    // 35% Cánh hoa tuyết tinh thể 6 nhánh, 65% bông tuyết tròn mềm mại
+    const isCrystal = Math.random() < 0.35
     return {
-      type: 'snow',
+      type: isCrystal ? 'crystal' : 'snow',
       x,
       y,
-      size: Math.random() * 4 + 2, // 2px - 6px
-      speedY: Math.random() * 1.5 + 0.8,
-      speedX: Math.random() * 0.8 - 0.4,
+      size: isCrystal ? (Math.random() * 5 + 6) : (Math.random() * 4 + 2.5),
+      speedY: Math.random() * 1.3 + 0.7,
+      speedX: Math.random() * 0.9 - 0.45,
       rotation: Math.random() * 360,
-      rotSpeed: (Math.random() - 0.5) * 1.5,
+      rotSpeed: (Math.random() - 0.5) * 1.8,
       wobble: Math.random() * Math.PI * 2,
       wobbleSpeed: Math.random() * 0.03 + 0.015,
-      opacity: Math.random() * 0.45 + 0.55
+      opacity: Math.random() * 0.4 + 0.6
     }
   } else {
     // Confetti kim tuyến đa sắc
@@ -236,6 +268,40 @@ function drawSnow(ctx, p) {
   ctx.restore()
 }
 
+// Vẽ cánh hoa tuyết tinh thể 6 nhánh (Noel)
+function drawCrystal(ctx, p) {
+  ctx.save()
+  ctx.translate(p.x, p.y)
+  ctx.rotate((p.rotation * Math.PI) / 180)
+  ctx.globalAlpha = p.opacity
+
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 1.3
+  ctx.lineCap = 'round'
+
+  // 6 nhánh hoa tuyết đối xứng
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(0, p.size)
+    // Nhánh phụ chữ V
+    ctx.moveTo(0, p.size * 0.55)
+    ctx.lineTo(p.size * 0.28, p.size * 0.8)
+    ctx.moveTo(0, p.size * 0.55)
+    ctx.lineTo(-p.size * 0.28, p.size * 0.8)
+    ctx.stroke()
+    ctx.rotate(Math.PI / 3)
+  }
+
+  // Điểm sáng tròn ở tâm
+  ctx.beginPath()
+  ctx.arc(0, 0, 1.2, 0, Math.PI * 2)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
+
+  ctx.restore()
+}
+
 // Vẽ confetti
 function drawConfetti(ctx, p) {
   ctx.save()
@@ -277,6 +343,8 @@ function loop() {
       drawFlower(ctx, p)
     } else if (p.type === 'snow') {
       drawSnow(ctx, p)
+    } else if (p.type === 'crystal') {
+      drawCrystal(ctx, p)
     } else if (p.type === 'confetti') {
       drawConfetti(ctx, p)
     }
@@ -487,23 +555,45 @@ onBeforeUnmount(() => {
   100% { transform: rotate(5deg); }
 }
 
+/* Cành thông phủ tuyết góc trên trái (Noel) */
+.corner-pine-branch {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 145px;
+  height: 105px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+  animation: branchSway 4s ease-in-out infinite alternate;
+  transform-origin: top left;
+}
+
+.pine-svg {
+  width: 100%;
+  height: 100%;
+}
+
 /* Chuông Noel góc phải */
 .noel-bells-cluster {
   position: fixed;
-  top: 10px;
-  right: 20px;
-  font-size: 26px;
+  top: 6px;
+  right: 18px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-  animation: bellRing 2.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+  animation: bellRing 2.6s ease-in-out infinite alternate;
   transform-origin: top center;
 }
 
-.noel-bow {
-  font-size: 24px;
-  margin-right: -10px;
+.noel-bow-decor {
+  margin-bottom: -6px;
   z-index: 2;
+}
+
+.noel-bells-pair {
+  display: flex;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .noel-bell.left-bell {
@@ -512,6 +602,7 @@ onBeforeUnmount(() => {
 
 .noel-bell.right-bell {
   transform: rotate(12deg);
+  margin-left: -6px;
 }
 
 @keyframes bellRing {

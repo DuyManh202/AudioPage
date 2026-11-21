@@ -4051,7 +4051,7 @@ app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_A
 // CẤU HÌNH DỊP LỄ HỘI & HIỆU ỨNG (THẾ GIỚI DI ĐỘNG STYLE)
 // ==========================================
 const DEFAULT_FESTIVE_SETTINGS = {
-  theme: 'tet', // 'tet' | 'noel' | 'sale' | 'none' | 'auto'
+  theme: 'noel', // 'noel' | 'tet' | 'sale' | 'none' | 'auto' - Mặc định Giáng Sinh / Noel sắp tới
   fallingEnabled: true,
   decorEnabled: true,
   customTicker: '',
