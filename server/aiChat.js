@@ -111,6 +111,17 @@ export const checkDeterministicAiResponse = (message) => {
     }
   }
 
+  // 8. Chào hỏi / Nút BẮT ĐẦU (Get Started) trên Facebook Messenger
+  if (
+    norm === 'bat dau' || norm.includes('bat dau') || norm === 'chao' || norm === 'xin chao' ||
+    norm === 'alo' || norm === 'hi' || norm === 'hello' || norm.startsWith('chao shop') || norm.startsWith('chao ad')
+  ) {
+    return {
+      type: 'GREETING',
+      reply: 'Dạ, em Tú Audio xin chào bác ạ! Bác đang tìm cấu hình dàn karaoke gia đình, cần nâng cấp vang số chống hú rít hay muốn cân chỉnh âm thanh ạ? Bác cứ nhắn phòng khách nhà bác rộng bao nhiêu m2 hoặc các thiết bị đang có, em tư vấn chuẩn âm học cho bác ngay nhé ạ!'
+    }
+  }
+
   // 8. Tải phần mềm vang số / driver / setup vang
   if (
     norm.includes('phan mem') || norm.includes('tai phan mem') || norm.includes('driver') ||

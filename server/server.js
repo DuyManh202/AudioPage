@@ -274,7 +274,7 @@ const getGeminiModel = async () => {
   return await getSystemSetting('gemini_model', 'gemini-3.8-flash')
 }
 
-const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && process.env.META_APP_SECRET && process.env.META_VERIFY_TOKEN && process.env.META_GRAPH_VERSION)
+const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 const isFacebookAiEnabled = async () => {
   const apiKey = await getGeminiApiKey()
@@ -437,6 +437,21 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             [randomUUID(), customerId, msg.body, msg.direction, msg.createdBy, msg.platformMessageId, msg.createdAt, JSON.stringify(msg.attachments || [])])
           if (inserted.rows[0]) syncedMessages += 1
         }
+
+        // Tự động kích hoạt AI phản hồi nếu tin nhắn mới nhất trong hội thoại là khách gửi và chưa có ai trả lời
+        if (latestMsg && latestMsg.direction === 'IN' && psid) {
+          const msgAgeMs = Date.now() - Date.parse(latestMsg.createdAt)
+          // Chỉ phản hồi các tin nhắn trong vòng 24 giờ (tuân thủ chính sách Meta Messenger)
+          if (msgAgeMs >= 0 && msgAgeMs <= 24 * 60 * 60 * 1000) {
+            isFacebookAiEnabled().then(enabled => {
+              if (enabled) {
+                autoReplyToFacebookCustomer(customerId, psid).catch(err => {
+                  console.warn('[Sync AutoReply] Lỗi phản hồi khách', customerId, err.message)
+                })
+              }
+            }).catch(() => {})
+          }
+        }
       }
 
       fbLastSyncMs = Date.now()
@@ -491,12 +506,17 @@ const sendFacebookText = async (psid, text, tag = null) => {
   return payload
 }
 
+const fbAutoReplyInFlight = new Set()
+
 const autoReplyToFacebookCustomer = async (customerId, psid) => {
+  if (fbAutoReplyInFlight.has(customerId)) return
   if (!(await isFacebookAiEnabled()) || !isFacebookMessengerConfigured()) return
+
+  fbAutoReplyInFlight.add(customerId)
   try {
     const [customerResult, historyResult, productsResult, combosResult] = await Promise.all([
       query('SELECT customer_name, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
-      query('SELECT direction, body FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 12', [customerId]),
+      query('SELECT direction, body, created_at FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 12', [customerId]),
       query('SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24'),
       query('SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC')
     ])
@@ -505,10 +525,26 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     const msgs = historyResult.rows.reverse()
     const latestInbound = msgs.filter(m => m.direction === 'IN').slice(-1)[0]
+    const latestMsg = msgs[msgs.length - 1]
+
+    // Nếu tin nhắn mới nhất trong hội thoại đã là OUT (Tú Audio hoặc AI đã trả lời) -> Dừng, không gửi lặp
+    if (!latestMsg || latestMsg.direction !== 'IN') return
+
     const latestText = latestInbound?.body || ''
+    if (!latestText || latestText.includes('đã trả lời tin nhắn chào mừng tự động')) return
+
+    // Kiểm tra thời gian 24h của chính sách Meta Messenger
+    if (latestInbound.created_at) {
+      const diffHours = (Date.now() - new Date(latestInbound.created_at).getTime()) / (1000 * 60 * 60)
+      if (diffHours > 24) {
+        console.warn(`[Facebook AI] Bỏ qua khách ${customerId} vì tin nhắn quá 24h (${diffHours.toFixed(1)}h)`)
+        return
+      }
+    }
+
     let reply = ''
 
-    // 1. Gọi Gemini 3.8 Flash AI Chuyên Gia
+    // 1. Gọi Gemini Flash AI Chuyên Gia
     const productContext = {
       products: productsResult.rows.map(p => ({ ...p, price: Number(p.price), original_price: Number(p.original_price) })),
       combos: combosResult.rows.map(c => ({ ...c, price: Number(c.price), fast_action_price: Number(c.fast_action_price) }))
@@ -540,21 +576,21 @@ BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
     try {
       const apiKey = await getGeminiApiKey()
       const model = await getGeminiModel()
-      if (!apiKey) return
-      const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
+      if (apiKey) {
+        const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
+        const geminiRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời:' }] }],
+            generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
+          }),
+          signal: AbortSignal.timeout(15000)
+        })
 
-      const geminiRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời:' }] }],
-          generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
-        }),
-        signal: AbortSignal.timeout(15000)
-      })
-
-      const geminiData = await geminiRes.json().catch(() => ({}))
-      reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        const geminiData = await geminiRes.json().catch(() => ({}))
+        reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      }
     } catch (aiErr) {
       console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
     }
@@ -571,6 +607,8 @@ BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
   } catch (err) {
     console.error('[Facebook AI] Auto reply failed:', err.message)
     await query("UPDATE facebook_care_customers SET status='CHO_PHAN_HOI', notes=CONCAT(COALESCE(notes,''), CASE WHEN COALESCE(notes,'')='' THEN '' ELSE E'\\n' END, '[AI chưa trả lời được; cần nhân viên xử lý]'), updated_at=CURRENT_TIMESTAMP WHERE id=$1", [customerId]).catch(() => {})
+  } finally {
+    fbAutoReplyInFlight.delete(customerId)
   }
 }
 
@@ -4481,7 +4519,7 @@ ensureDatabaseSchema().finally(() => {
     }
     setInterval(() => {
       if (canReadFacebookPageInbox()) syncFacebookConversations().catch(() => {})
-    }, 45000).unref()
+    }, 30000).unref()
   })
 })
 
