@@ -17,7 +17,8 @@
               :title="activeCase.title"
               loading="lazy"
               frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
               allowfullscreen
             ></iframe>
           </div>
@@ -114,7 +115,7 @@ const cases = [
 ]
 
 const activeCase = computed(() => cases[activeIndex.value] || cases[0])
-const activeEmbedUrl = computed(() => `https://www.youtube.com/embed/${activeCase.value.videoId}?rel=0`)
+const activeEmbedUrl = computed(() => `https://www.youtube-nocookie.com/embed/${activeCase.value.videoId}?rel=0&enablejsapi=1&playsinline=1`)
 
 const openQuickConsult = () => {
   cartStore.openQuickOrder({

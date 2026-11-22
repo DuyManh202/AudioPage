@@ -2,25 +2,32 @@
  * Tiện ích xử lý URL Video (YouTube embed, Shorts, video MP4)
  */
 
-export function getEmbedVideoUrl(url) {
-  if (!url) return ''
+export function getEmbedVideoUrl(url, autoplay = false) {
+  if (!url || typeof url !== 'string') return ''
   const trimmed = url.trim()
 
-  // Xử lý link YouTube thông thường: https://www.youtube.com/watch?v=ID
-  const watchMatch = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)
-  if (watchMatch && watchMatch[1]) {
-    return `https://www.youtube.com/embed/${watchMatch[1]}`
-  }
-
-  // Xử lý YouTube Shorts: https://www.youtube.com/shorts/ID
-  const shortsMatch = trimmed.match(/youtube\.com\/shorts\/([^"&?\/\s]{11})/)
-  if (shortsMatch && shortsMatch[1]) {
-    return `https://www.youtube.com/embed/${shortsMatch[1]}`
+  // Xử lý link YouTube thông thường: watch?v=ID hoặc youtu.be/ID hoặc shorts/ID
+  const match = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/)
+  if (match && match[1]) {
+    const videoId = match[1]
+    const params = [
+      'rel=0',
+      'enablejsapi=1',
+      'playsinline=1'
+    ]
+    if (autoplay) {
+      params.push('autoplay=1')
+    }
+    return `https://www.youtube-nocookie.com/embed/${videoId}?${params.join('&')}`
   }
 
   // Nếu đã là link embed
   if (trimmed.includes('youtube.com/embed/')) {
-    return trimmed
+    let clean = trimmed.replace('youtube.com/embed/', 'youtube-nocookie.com/embed/')
+    if (autoplay && !clean.includes('autoplay=')) {
+      clean += (clean.includes('?') ? '&' : '?') + 'autoplay=1'
+    }
+    return clean
   }
 
   return trimmed

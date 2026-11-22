@@ -195,38 +195,56 @@
     </div>
 
     <!-- MODAL POPUP CHI TIẾT CẤU HÌNH & VIDEO TEST CHUẨN THẾ GIỚI DI ĐỘNG -->
-    <div v-if="activeModalCombo" class="tgdd-modal-backdrop" @click.self="activeModalCombo = null">
-      <div class="tgdd-modal-box">
-        <div class="tgdd-modal-head">
-          <div>
-            <span class="modal-badge-sku">MÃ: {{ activeModalCombo.id }}</span>
-            <h2 class="modal-title">{{ activeModalCombo.name }}</h2>
-            <p class="modal-sub">{{ activeModalCombo.tagline }}</p>
+    <Teleport to="body">
+      <div v-if="activeModalCombo" class="tgdd-modal-backdrop" @click.self="activeModalCombo = null">
+        <div class="tgdd-modal-box">
+          <div class="tgdd-modal-head">
+            <div>
+              <span class="modal-badge-sku">MÃ: {{ activeModalCombo.id }}</span>
+              <h2 class="modal-title">{{ activeModalCombo.name }}</h2>
+              <p class="modal-sub">{{ activeModalCombo.tagline }}</p>
+            </div>
+            <button type="button" class="modal-close-icon" @click="activeModalCombo = null" title="Đóng">
+              ✕
+            </button>
           </div>
-          <button type="button" class="modal-close-icon" @click="activeModalCombo = null" title="Đóng">
-            ✕
-          </button>
-        </div>
 
-        <div class="tgdd-modal-body">
-          <!-- Video Test Hát Thử Player -->
-          <div v-if="activeModalCombo.videoUrl" class="modal-video-frame">
-            <video
-              v-if="isDirectVideo(activeModalCombo.videoUrl)"
-              :src="activeModalCombo.videoUrl"
-              controls
-              playsinline
-              autoplay
-            ></video>
-            <iframe
-              v-else
-              :src="getEmbedVideoUrl(activeModalCombo.videoUrl) + '?autoplay=1'"
-              title="Video test dàn"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-            ></iframe>
-          </div>
+          <div class="tgdd-modal-body">
+            <!-- Video Test Hát Thử Player -->
+            <div v-if="activeModalCombo.videoUrl" class="modal-video-frame">
+              <video
+                v-if="isDirectVideo(activeModalCombo.videoUrl)"
+                :src="activeModalCombo.videoUrl"
+                controls
+                playsinline
+                autoplay
+              ></video>
+              <iframe
+                v-else
+                :src="getEmbedVideoUrl(activeModalCombo.videoUrl, true)"
+                title="Video test dàn"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen
+              ></iframe>
+            </div>
+
+            <!-- Nút liên kết xem trực tiếp YouTube nếu trình duyệt chặn iframe -->
+            <div v-if="activeModalCombo.videoUrl && !isDirectVideo(activeModalCombo.videoUrl)" class="modal-video-actions">
+              <a
+                :href="activeModalCombo.videoUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-youtube-fallback"
+              >
+                <svg viewBox="0 0 24 24" class="yt-svg-icon" fill="currentColor">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                <span>Mở xem trên YouTube (Nếu video không phát)</span>
+                <span class="yt-arrow">↗</span>
+              </a>
+            </div>
 
           <!-- Bảng Giá & Ưu Đãi -->
           <div class="modal-pricing-bar">
@@ -292,6 +310,7 @@
         </div>
       </div>
     </div>
+  </Teleport>
   </section>
 </template>
 
@@ -908,7 +927,7 @@ const orderFromModal = () => {
   inset: 0;
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1003,6 +1022,48 @@ const orderFromModal = () => {
   height: 100%;
   border: none;
   object-fit: cover;
+}
+
+.modal-video-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: -4px;
+}
+
+.btn-youtube-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-youtube-fallback:hover {
+  background: #ffe4e6;
+  color: #be123c;
+  border-color: #fda4af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.15);
+}
+
+.yt-svg-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #e11d48;
+}
+
+.yt-arrow {
+  font-size: 0.9rem;
+  font-weight: 900;
 }
 
 .modal-pricing-bar {
