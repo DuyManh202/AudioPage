@@ -30,6 +30,15 @@ export const normalizeTextSimple = (str) => {
 export const checkDeterministicAiResponse = (message) => {
   const norm = normalizeTextSimple(message)
 
+  // 0. Khách gửi số điện thoại / Zalo trong tin nhắn
+  const detectedPhone = phoneFromMessage(message)
+  if (detectedPhone) {
+    return {
+      type: 'PHONE_CAPTURED',
+      reply: `Dạ vâng anh, em Tú đã nhận được số Zalo ${detectedPhone} của anh rồi ạ! Em kết bạn nhắn qua Zalo với anh ngay bây giờ nhé anh!`
+    }
+  }
+
   // 1. Vang số CM x16+ và PF K9
   if (
     norm.includes('cm x16') || norm.includes('cmx16') || norm.includes('x16+') || norm.includes('x16') ||
@@ -37,18 +46,18 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'VANG_SO',
-      reply: 'Dạ, 2 dòng vang số cao cấp đang bán chạy nhất tại Tú Audio gồm:\n\n1. Vang số CM x16+ chính hãng: 4.200.000đ — Dòng vang số quốc dân, chip xử lý cao cấp, chống hú rít 99%, đã cài đặt sẵn 4 chế độ Echo/Reverb chuẩn cho giọng hát gia đình.\n2. Vang số cao cấp PF K9: 6.800.000đ — Chip xử lý DSP 32-bit thế hệ mới, giải mã âm thanh siêu chi tiết, tiếng Reverb mịn sâu, Echo mượt mà, chống rú rít tuyệt đối.\n\n🎁 Đặc biệt khi mua vang số tại Tú Audio, em đều tự tay setup thông số chuẩn theo không gian phòng và chất giọng của bác, tặng kèm đầy đủ dây Canon kết nối xịn và bảo hành 12 tháng lỗi 1 đổi 1 ạ! Bác đang phối ghép với cục đẩy hay amply gì thế ạ?'
+      reply: 'Dạ vâng a, vang số bên em có dòng CM x16+ (4tr2) và PF K9 (6tr8) chống hú rít tuyệt đối. Anh cho em xin số Zalo em gửi video test chất âm và tư vấn chi tiết cho tiện nhé anh!'
     }
   }
 
-  // 2. Giá các gói Combo Dàn Karaoke gia đình
+  // 2. Giá các gói Combo Dàn Karaoke / Loa gia đình
   if (
-    (norm.includes('combo') || norm.includes('dan karaoke') || norm.includes('bo dan') || norm.includes('tron goi')) &&
-    (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('tu van') || norm.includes('co nhung'))
+    (norm.includes('combo') || norm.includes('dan') || norm.includes('bo dan') || norm.includes('loa') || norm.includes('tron goi')) &&
+    (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('tu van') || norm.includes('co nhung') || norm.includes('nhiu'))
   ) {
     return {
       type: 'COMBO',
-      reply: 'Dạ, Tú Audio có 2 cấu hình dàn karaoke gia đình đồng bộ chuẩn âm học đang được các bác chuộng nhất:\n\n1. Combo Gold Home (19.800.000đ): Phù hợp phòng 20 - 30m2. Cấu hình gồm cục đẩy công suất lớn, vang số chống hú setup sẵn, micro không dây bắt mic trợ giọng tốt, loa Full bass 30cm tiếng sáng thoát âm.\n2. Combo Luxury Home (29.900.000đ): Phù hợp phòng 30 - 45m2 hoặc thông tầng. Cấu hình cao cấp chuẩn quán hát gia đình, tiếng bass đánh chắc nịch, hát nhẹ tênh không tốn hơi.\n\nBác cho em hỏi phòng khách nhà bác rộng khoảng bao nhiêu m2 và không gian kín hay có thông cầu thang để em tư vấn cấu hình vừa vặn nhất ạ?'
+      reply: 'Dạ vâng a, bên em có các cấu hình dàn từ 19tr đến 29tr chuẩn phòng hát gia đình. Anh cho em xin số Zalo em gửi video test thực tế và tư vấn cấu hình vừa vặn cho tiện nhé anh!'
     }
   }
 
@@ -61,7 +70,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'ADDRESS',
-      reply: 'Dạ, cửa hàng Tú Audio bên em ở tại số 220 đường Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, nhà mặt đường rộng rãi có chỗ đỗ ô tô thoải mái ạ).\n\nCửa hàng mở cửa từ 8h00 đến 21h00 tất cả các ngày trong tuần. Bác ghé lúc nào cũng có sẵn phòng test âm thanh thực tế với đầy đủ các cấu hình để bác trải nghiệm trực tiếp chất âm ạ!'
+      reply: 'Dạ showroom bên em ở tại số 220 đường Nguyễn Danh Phương, Vĩnh Yên, Vĩnh Phúc ạ. Anh nhắn em xin số Zalo em gửi vị trí định vị qua cho tiện đi nhé anh!'
     }
   }
 
@@ -74,7 +83,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'SETUP_HOME',
-      reply: 'Dạ vâng em CÓ nhận qua tận nhà căn chỉnh và setup lại dàn âm thanh cho các bác ạ!\n\nEm ở ngay Vĩnh Yên và thường xuyên có các chuyến đi qua Hà Nội, Đông Anh, Mê Linh, Bắc Ninh, Bắc Giang, Hải Phòng, Thanh Hóa... Chi phí đi lại em hỗ trợ ghép chuyến nên rất hợp lý.\n\nBác nhắn giúp em số điện thoại hoặc kết bạn Zalo em 0984.259.898, chụp gửi em ảnh bộ dàn nhà mình đang dùng để em xem trước thiết bị và hẹn lịch tiện chuyến qua phục vụ bác nhé ạ!'
+      reply: 'Dạ bên em CÓ nhận qua tận nhà căn chỉnh âm thanh ạ. Anh cho em xin số Zalo để em gọi trao đổi cụ thể và hẹn lịch tiện chuyến qua hỗ trợ anh nhé!'
     }
   }
 
@@ -85,7 +94,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'EQUALIZER_ADVICE',
-      reply: 'Dạ anh ơi, đã dùng Vang số chuẩn rồi thì TUYỆT ĐỐI KHÔNG CẦN ghép thêm lọc xì hay nâng tiếng đâu anh nhé!\n\nTrong vang số cao cấp (như CM x16+, PF K9...) đã tích hợp sẵn hệ thống Equalizer tham số (PEQ) cực kỳ chi tiết cho cả đường mic và đường nhạc. Thợ tư vấn lắp thêm lọc xì là họ cố vẽ ra để bán lấy tiền thôi ạ. Ghép nhiều thiết bị tín hiệu qua nhiều tầng xử lý bị méo pha và bí tiếng.\n\nNguyên nhân gốc rễ là ở cách phối ghép thiết bị và căn chỉnh vang số chứ không phải phần ngọn là lọc. Bác nhắn số Zalo qua 0984.259.898, em hỗ trợ chỉnh lại vang số là tiếng sáng đẹp ngay ạ!'
+      reply: 'Dạ anh ơi, đã dùng vang số chuẩn rồi thì không cần ghép lọc xì đâu ạ, dễ méo tiếng. Anh cho em xin số Zalo em hướng dẫn anh chỉnh lại vang số là tiếng sáng đẹp ngay nhé anh!'
     }
   }
 
@@ -96,7 +105,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'TRADE_IN',
-      reply: 'Dạ bên em CÓ chính sách Thu cũ đổi mới hỗ trợ các bác lên đời thiết bị âm thanh ạ!\n\nBác đang dùng amply hoặc vang cơ, vang số đời cũ muốn lên dòng Vang số quốc dân CM x16+ (4.200.000đ) hay PF K9 (6.800.000đ) chống hú 99%, em đều hỗ trợ định giá thu lại tốt nhất.\n\nBác chụp giúp em ảnh mặt trước mặt sau thiết bị cũ gửi qua Zalo 0984.259.898 hoặc để lại số Zalo tại đây, em định giá và báo mức bù trừ cụ thể cho bác nhé ạ!'
+      reply: 'Dạ bên em CÓ nhận thu cũ đổi mới lên vang số chống hú ạ. Anh cho em xin số Zalo gửi ảnh máy cũ em định giá hỗ trợ mình cụ thể nhé anh!'
     }
   }
 
@@ -107,33 +116,33 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'TRIAL_POLICY',
-      reply: 'Dạ bác hoàn toàn yên tâm 100% ạ! Phương châm làm nghề của em Tú là "Lấy chữ Tín làm đầu":\n\n1. Toàn bộ thiết bị em gửi đi đều được chính tay em Tú cắm máy đo RTA setup sẵn phần mềm chuẩn chỉ theo chất giọng của bác.\n2. Khi nhận hàng bác được mở kiểm tra, cắm hát thử thực tế ưng ý mới thanh toán tiền.\n3. Trong 7 ngày đầu trải nghiệm, nếu bác thấy chưa hợp hoặc không ưng, em hỗ trợ đổi cấu hình khác hoặc nhận lại hàng hoàn tiền đàng hoàng cho bác.\n\nBác nhắn em số Zalo 0984.259.898 em tư vấn cấu hình chuẩn cho nhà mình nhé ạ!'
+      reply: 'Dạ bên em bao test 7 ngày, nhận hàng hát thử ưng ý mới thanh toán ạ. Anh cho em xin số Zalo em tư vấn chi tiết cho tiện nhé anh!'
     }
   }
 
   // 8. Chào hỏi / Nút BẮT ĐẦU (Get Started) trên Facebook Messenger
   if (
     norm === 'bat dau' || norm.includes('bat dau') || norm === 'chao' || norm === 'xin chao' ||
-    norm === 'alo' || norm === 'hi' || norm === 'hello' || norm.startsWith('chao shop') || norm.startsWith('chao ad')
+    norm.startsWith('alo') || norm.startsWith('chao') || norm === 'hi' || norm === 'hello'
   ) {
     return {
       type: 'GREETING',
-      reply: 'Dạ, em Tú Audio xin chào bác ạ! Bác đang tìm cấu hình dàn karaoke gia đình, cần nâng cấp vang số chống hú rít hay muốn cân chỉnh âm thanh ạ? Bác cứ nhắn phòng khách nhà bác rộng bao nhiêu m2 hoặc các thiết bị đang có, em tư vấn chuẩn âm học cho bác ngay nhé ạ!'
+      reply: 'Dạ em Tú Audio xin chào anh ạ! Anh nhắn em xin số Zalo em tư vấn cấu hình dàn hoặc vang số trực tiếp cho tiện và nhanh nhất nhé anh!'
     }
   }
 
-  // 8. Tải phần mềm vang số / driver / setup vang
+  // 9. Tải phần mềm vang số / driver / setup vang
   if (
     norm.includes('phan mem') || norm.includes('tai phan mem') || norm.includes('driver') ||
     norm.includes('link tai') || norm.includes('cai dat vang') || norm.includes('chinh vang')
   ) {
     return {
       type: 'SOFTWARE',
-      reply: 'Dạ, toàn bộ link tải phần mềm căn chỉnh vang số chuẩn của các dòng vang bên em (như CM x16+, PF K9, S690, X5, X6...) đều được cập nhật đầy đủ tại website https://tuaudio.vn.\n\nHoặc bác nhắn trực tiếp qua Zalo 0984.259.898, em gửi link Google Drive tốc độ cao và hỗ trợ kết nối máy tính chỉnh vang qua Ultraview/TeamViewer miễn phí cho bác nhé ạ!'
+      reply: 'Dạ anh nhắn em xin số Zalo em gửi link tải phần mềm driver và hỗ trợ cắm Ultraview chỉnh vang miễn phí cho anh luôn nhé!'
     }
   }
 
-  // 9. Khách hỏi số điện thoại / Hotline / Zalo của shop
+  // 10. Khách hỏi số điện thoại / Hotline / Zalo của shop
   const isAskingHotline = (
     norm.includes('xin sdt') || norm.includes('xin so dien thoai') || norm.includes('xin so dt') ||
     norm.includes('hotline') || norm.includes('cho sdt') || norm.includes('cho xin so') ||
@@ -145,7 +154,7 @@ export const checkDeterministicAiResponse = (message) => {
   if (isAskingHotline) {
     return {
       type: 'HOTLINE',
-      reply: 'Dạ, số hotline và Zalo chính thức của em Tú Audio là 0984.259.898 ạ.\n\nBác có thể gọi trực tiếp hoặc kết bạn Zalo với em bất cứ lúc nào để em gửi video test chất âm bộ dàn thực tế và hỗ trợ kỹ thuật nhanh nhất cho bác nhé ạ!'
+      reply: 'Dạ số Zalo và hotline trực tiếp của em Tú là 0984.259.898 ạ. Hoặc anh nhắn lại số Zalo của anh tại đây, em Tú kết bạn tư vấn trực tiếp ngay nhé anh!'
     }
   }
 

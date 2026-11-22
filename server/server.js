@@ -544,61 +544,60 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     let reply = ''
 
-    // 1. Gọi Gemini Flash AI Chuyên Gia
-    const productContext = {
-      products: productsResult.rows.map(p => ({ ...p, price: Number(p.price), original_price: Number(p.original_price) })),
-      combos: combosResult.rows.map(c => ({ ...c, price: Number(c.price), fast_action_price: Number(c.fast_action_price) }))
-    }
-    const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
-
-    const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của Tú Audio (thương hiệu âm thanh karaoke gia đình của anh Phùng Văn Tú tại Vĩnh Yên, Vĩnh Phúc).
-Bối cảnh & Phong cách:
-- Bạn đại diện cho em Tú tư vấn tận tâm cho khách nhắn tin qua Fanpage Facebook.
-- Xưng "em" hoặc "em Tú", gọi khách là "bác" hoặc "anh" (phong cách chuyên gia âm thanh miền Bắc gần gũi, chân thành, nhiệt tình, am hiểu kỹ thuật).
-- Tuyệt đối trung thực 100%, không bịa đặt số nhà hay giá ngoài danh mục.
-THÔNG TIN CHUẨN XÁC 100%:
-- Showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, thành phố Vĩnh Yên, tỉnh Vĩnh Phúc (gần khu Quán Tiên, có chỗ đỗ ô tô thoải mái).
-- Hotline / Zalo: 0984.259.898.
-- Phần mềm vang số: Đầy đủ link tải driver và phần mềm cho CM x16+, PF K9, X5, X6, S690... trên web hoặc gửi qua Zalo 0984.259.898 kèm hỗ trợ Ultraview.
-- Vang số tiêu biểu: CM x16+ (4.200.000đ), PF K9 (6.800.000đ).
-- Dàn Karaoke: Combo Gold Home (19.800.000đ), Combo Luxury Home (29.900.000đ).
-DANH MỤC SẢN PHẨM: ${JSON.stringify(productContext)}
-BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
-1. Setup tại nhà (Đông Anh, Hà Nội, Bắc Ninh, Hải Phòng, Thanh Hóa...): Em CÓ nhận làm tại nhà, có ghép chuyến các tỉnh nên chi phí rất hợp lý; mời khách gửi ảnh dàn máy qua Zalo 0984.259.898 để em hẹn lịch.
-2. Lọc xì / EQ: ĐÃ CÓ VANG SỐ THÌ KHÔNG CẦN LỌC XÌ. Thợ vẽ ra để bán lấy tiền, tín hiệu qua nhiều tầng bị méo pha; giải pháp là chỉnh chuẩn EQ trong vang số.
-3. Thu cũ đổi mới: Có nhận thu cũ vang cơ/amply/vang X5 để lên vang số CM x16+ hoặc PF K9. Xin ảnh dàn máy cũ để định giá thu lại cao nhất.
-4. Phần mềm vang số: Hỏi rõ model máy, mời kết bạn Zalo 0984.259.898 gửi link Drive và hỗ trợ Ultraview.
-5. Nghe thử / đổi trả: Em Tú setup đo RTA trước khi gửi, nhận hàng hát thử ưng ý mới thanh toán, bao test 7 ngày không ưng hoàn tiền.
-6. Địa chỉ: Số 220 Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc.
-7. Trả lời ngắn gọn, tự nhiên như tin nhắn Facebook Messenger (2-4 câu).
-8. Luôn khéo léo mời khách để lại SĐT/Zalo hoặc nhắn qua Zalo 0984.259.898 để em Tú gửi video test dàn thực tế.`
-
-    try {
-      const apiKey = await getGeminiApiKey()
-      const model = await getGeminiModel()
-      if (apiKey) {
-        const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
-        const geminiRes = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời:' }] }],
-            generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
-          }),
-          signal: AbortSignal.timeout(15000)
-        })
-
-        const geminiData = await geminiRes.json().catch(() => ({}))
-        reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      }
-    } catch (aiErr) {
-      console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
+    // 1. Kiểm tra kịch bản phản xạ nhanh chuẩn phong cách anh Tú (Ưu tiên phản hồi tức thì 1-2 câu xin Zalo)
+    const quickResponse = checkDeterministicAiResponse(latestText)
+    if (quickResponse?.reply) {
+      reply = quickResponse.reply
     }
 
-    // 2. Dự phòng bằng Guardrail cố định nếu mạng hoặc AI gián đoạn
+    // 2. Nếu chưa có kịch bản mẫu, gọi Gemini Flash AI tạo phản hồi ngắn 1-2 câu xin Zalo
     if (!reply) {
-      const fallbackDeterministic = checkDeterministicAiResponse(latestText)
-      reply = fallbackDeterministic?.reply || 'Dạ em Tú Audio đây ạ! Bác đang quan tâm đến vang số hay cả bộ dàn cho phòng khách bao nhiêu m2 thế ạ? Bác nhắn em tư vấn cấu hình chuẩn nhất cho bác nhé ạ!'
+      const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
+
+      const systemInstruction = `Bạn là Trợ lý AI của anh Phùng Văn Tú (Tú Audio - Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
+BẠN ĐẠI DIỆN CHO ANH TÚ NHẮN TIN TƯ VẤN TRÊN FACEBOOK MESSENGER.
+
+QUY TẮC BẮT BUỘC (TUÂN THỦ 100%):
+1. ĐỘ DÀI: CHỈ ĐƯỢC PHÉP TRẢ LỜI TỪ 1 ĐẾN 2 CÂU NGẮN (TỐI ĐA 30-35 TỪ). TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG LIỆT KÊ DANH SÁCH THIẾT BỊ.
+2. MỤC TIÊU CỐT LÕI: Trả lời ngắn đúng ý khách + XIN SỐ ĐIỆN THOẠI HOẶC SỐ ZALO CỦA KHÁCH để anh Tú gọi điện hoặc nhắn Zalo tư vấn trực tiếp, gửi video test thực tế.
+3. PHONG CÁCH ANH TÚ: Xưng "em" hoặc "em Tú", gọi khách là "anh" (hoặc "bác"). Giọng chân thành, thân thiện, đời thường của anh em kỹ thuật âm thanh.
+   Ví dụ mẫu chuẩn:
+   - Khách hỏi dàn / loa / vang / giá: "Dạ vâng a, anh cho em xin số Zalo em gửi thông tin chi tiết và video test dàn qua cho tiện nhé anh!"
+   - Khách hỏi chỉnh dàn / setup tại nhà: "Dạ bên em có nhận qua tận nhà căn chỉnh ạ. Anh nhắn em số Zalo em gọi trao đổi cụ thể và hẹn lịch qua phục vụ anh nhé!"
+   - Khách hỏi địa chỉ showroom: "Dạ showroom bên em ở 220 Nguyễn Danh Phương, Hội Hợp, Vĩnh Yên. Anh cho em xin số Zalo em gửi định vị vị trí qua cho tiện đi nhé anh!"
+   - Khách hỏi thu cũ đổi mới: "Dạ bên em có thu cũ đổi mới ạ. Anh cho em xin số Zalo gửi ảnh máy cũ em định giá hỗ trợ mình nhé anh!"
+   - Khách hỏi phần mềm / driver: "Dạ anh nhắn em số Zalo em gửi link tải driver và hỗ trợ Ultraview chỉnh cho anh nhé!"
+   - Khách chào hỏi / Bắt đầu: "Dạ em Tú Audio xin chào anh! Anh nhắn em xin số Zalo em tư vấn trực tiếp cho tiện và nhanh nhất nhé anh!"
+   - Nếu khách đã để lại số điện thoại/Zalo trong tin nhắn: "Dạ vâng anh, em Tú nhận được số Zalo của anh rồi ạ! Em kết bạn với anh ngay bây giờ nhé anh!"
+
+HÃY TRẢ LỜI NGAY (CHỈ 1-2 CÂU NGẮN, XIN SỐ ZALO):`
+
+      try {
+        const apiKey = await getGeminiApiKey()
+        const model = await getGeminiModel()
+        if (apiKey) {
+          const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
+          const geminiRes = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời:' }] }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 120 }
+            }),
+            signal: AbortSignal.timeout(15000)
+          })
+
+          const geminiData = await geminiRes.json().catch(() => ({}))
+          reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        }
+      } catch (aiErr) {
+        console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
+      }
+    }
+
+    // 3. Dự phòng mặc định nếu gián đoạn mạng
+    if (!reply) {
+      reply = 'Dạ em Tú Audio đây ạ! Anh nhắn em xin số Zalo em gọi điện tư vấn chi tiết và gửi video test máy cho tiện nhé anh!'
     }
 
     const sentPayload = await sendFacebookText(psid, reply)
