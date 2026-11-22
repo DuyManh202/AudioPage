@@ -4,8 +4,20 @@
       <div class="container flex-between">
         <div class="ticker-text">
           <span class="live-dot" aria-hidden="true"></span>
-          <span class="ticker-desktop">{{ festiveStore.tickerMessage }}</span>
-          <span class="ticker-mobile">{{ festiveStore.tickerMessage }}</span>
+          <div class="ticker-marquee-box">
+            <div class="marquee-group">
+              <span class="marquee-item">{{ festiveStore.tickerMessage }}</span>
+              <span class="marquee-spacer" aria-hidden="true">✦</span>
+              <span class="marquee-item">{{ festiveStore.tickerMessage }}</span>
+              <span class="marquee-spacer" aria-hidden="true">✦</span>
+            </div>
+            <div class="marquee-group" aria-hidden="true">
+              <span class="marquee-item">{{ festiveStore.tickerMessage }}</span>
+              <span class="marquee-spacer" aria-hidden="true">✦</span>
+              <span class="marquee-item">{{ festiveStore.tickerMessage }}</span>
+              <span class="marquee-spacer" aria-hidden="true">✦</span>
+            </div>
+          </div>
         </div>
         <div class="top-contact">
           <span>
@@ -13,7 +25,6 @@
             <a :href="CONTACT_INFO.phoneHref" class="hotline-link"><strong>{{ CONTACT_INFO.phone }}</strong></a>
             (Anh Tú)
           </span>
-          <router-link to="/admin" class="admin-entry-link">⚙️ Quản Trị</router-link>
         </div>
       </div>
     </div>
@@ -421,17 +432,54 @@ const scrollToEbook = () => {
 .ticker-text {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   flex: 1;
+  overflow: hidden;
 }
 
-.ticker-mobile {
-  display: none;
+.ticker-marquee-box {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  gap: 36px;
+  width: 100%;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 2%, #000 98%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 2%, #000 98%, transparent 100%);
 }
 
-.ticker-desktop {
-  display: inline-block;
+.marquee-group {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  min-width: 100%;
+  animation: tickerScroll 26s linear infinite;
+  white-space: nowrap;
+}
+
+.ticker-marquee-box:hover .marquee-group {
+  animation-play-state: paused;
+}
+
+.marquee-item {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.marquee-spacer {
+  color: #FDE047;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+@keyframes tickerScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - 36px));
+  }
 }
 
 .live-dot {
@@ -465,25 +513,6 @@ const scrollToEbook = () => {
 
 .top-contact strong {
   color: #FDE047;
-}
-
-.admin-entry-link {
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #FFFFFF;
-  font-weight: 700;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-}
-
-.admin-entry-link:hover {
-  background: rgba(252, 183, 40, 0.25);
-  border-color: #FDE047;
-  color: #FEF08A;
 }
 
 .main-nav {
@@ -1140,29 +1169,30 @@ const scrollToEbook = () => {
 
 @media (max-width: 768px) {
   .top-announcement {
-    font-size: 0.69rem;
-    padding: 5px 0;
+    font-size: 0.72rem;
+    padding: 6px 0;
   }
 
   .top-contact {
     display: none;
   }
 
-  .ticker-desktop {
-    display: none;
+  .ticker-marquee-box {
+    gap: 24px;
   }
 
-  .ticker-mobile {
-    display: inline-block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .marquee-group {
+    animation-duration: 20s;
+    gap: 24px;
   }
 
-  .ticker-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  @keyframes tickerScroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - 24px));
+    }
   }
 
   .app-header {
