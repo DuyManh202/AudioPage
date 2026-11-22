@@ -52,6 +52,17 @@
         <!-- Chat Header -->
         <header class="chat-header">
           <div class="chat-header-info">
+            <button
+              type="button"
+              class="mobile-back-btn"
+              title="Quay lại"
+              aria-label="Đóng cửa sổ chat"
+              @click="isOpen = false"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="back-svg">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
             <span class="avatar-wrapper">
               <span class="ai-avatar-icon">🎧</span>
               <span class="live-status-dot"></span>
@@ -540,9 +551,13 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 100;
+  z-index: 9999;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+}
+
+.mobile-back-btn {
+  display: none;
 }
 
 /* Header */
@@ -981,8 +996,8 @@ onMounted(() => {
   transform: translateY(10px) scale(0.9);
 }
 
-/* Mobile responsive */
-@media (max-width: 640px) {
+/* Mobile responsive (Dành riêng cho màn hình điện thoại) */
+@media (max-width: 768px) {
   .ai-greeting-bubble {
     display: none !important;
   }
@@ -990,16 +1005,77 @@ onMounted(() => {
   .ai-chat-launcher-wrapper {
     left: 14px;
     bottom: calc(76px + env(safe-area-inset-bottom));
+    z-index: 90;
   }
 
+  /* Cửa sổ chat toàn màn hình chuẩn App trên điện thoại */
   .ai-chat-window {
-    left: 8px;
-    right: 8px;
-    bottom: calc(76px + env(safe-area-inset-bottom));
-    width: auto;
-    max-width: none;
-    height: 75vh;
-    max-height: 520px;
+    position: fixed;
+    inset: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    z-index: 99999 !important; /* Đảm bảo đè lên trên tất cả mọi header/bottom bar */
+    box-shadow: none !important;
+  }
+
+  /* Header thanh thoát, hỗ trợ tai thỏ / dynamic island */
+  .chat-header {
+    padding: max(12px, env(safe-area-inset-top)) 14px 12px;
+    border-radius: 0;
+    background: #0b1329;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+
+  .back-svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .close-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 1.4rem;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+  }
+
+  /* Khu vực nhập tin nhắn nằm sát đáy có khoảng đệm safe-area-inset-bottom */
+  .chat-input-area {
+    padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+    background: #090e1c;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .chat-input-form {
+    padding: 5px 6px 5px 14px;
+  }
+
+  .chat-input {
+    font-size: 15px !important; /* Chống phóng to viewport trên iOS */
   }
 }
 </style>

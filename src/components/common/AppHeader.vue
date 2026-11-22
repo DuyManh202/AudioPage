@@ -29,7 +29,7 @@
           <div v-if="isSearchOpen" class="search-backdrop" @click="closeSearchDropdown"></div>
 
           <div class="search-box" :class="{ 'is-active': isSearchOpen }">
-            <span class="search-icon" aria-hidden="true">
+            <span class="search-icon" aria-hidden="true" @click="executeSearch" title="Tìm kiếm">
               <svg class="search-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <circle cx="11" cy="11" r="7" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" />
@@ -39,7 +39,7 @@
               ref="searchInputRef"
               type="text"
               v-model="searchQuery"
-              placeholder="Bạn cần tìm loa full, sub 40, vang số, đẩy công suất..."
+              placeholder="Bạn tìm gì hôm nay? (Loa, vang số, đẩy...)"
               @focus="openSearchDropdown"
               @keydown.enter="executeSearch"
               @keydown.esc="closeSearchDropdown"
@@ -678,6 +678,7 @@ const scrollToEbook = () => {
   top: calc(100% + 8px);
   left: 0;
   right: 0;
+  min-width: 520px;
   background: #FFFFFF;
   border: 1px solid #DCE4F0;
   border-radius: 18px;
@@ -1164,14 +1165,20 @@ const scrollToEbook = () => {
     text-overflow: ellipsis;
   }
 
+  .app-header {
+    background: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
   .main-nav {
-    padding: 10px 0 12px;
+    padding: 8px 0 10px;
   }
 
   .header-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 10px;
+    row-gap: 8px;
     column-gap: 8px;
   }
 
@@ -1200,37 +1207,91 @@ const scrollToEbook = () => {
     grid-row: 2;
     max-width: none;
     width: 100%;
+    position: relative;
+    z-index: 105;
   }
 
   .search-box {
     max-width: none;
-    padding: 2px 2px 2px 12px;
+    height: 42px;
+    padding: 0 10px 0 14px;
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .search-box:focus-within,
+  .search-box.is-active {
+    background: #FFFFFF;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  }
+
+  .search-icon {
+    font-size: 16px;
+    color: #64748B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+
+  .search-svg {
+    width: 18px;
+    height: 18px;
   }
 
   .search-box input {
     font-size: 14px;
-    padding: 6px 2px;
+    padding: 6px 4px;
+    background: transparent;
+    color: #0F172A;
   }
 
-  .search-btn-text {
-    display: none;
+  .search-box input::placeholder {
+    font-size: 13px;
+    color: #94A3B8;
   }
 
   .search-btn {
-    padding: 7px 11px;
-    border-radius: 999px;
+    display: none !important;
+  }
+
+  .search-btn-text {
+    display: none !important;
+  }
+
+  .search-clear-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    padding: 0;
+    margin-right: 2px;
+    background: #E2E8F0;
+    border-radius: 50%;
+    color: #64748B;
   }
 
   .search-dropdown-menu {
-    position: fixed;
-    top: 108px;
-    left: 8px;
-    right: 8px;
-    max-height: 65vh;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-height: 72vh;
+    border-radius: 16px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+    padding: 12px;
   }
 
   .trending-grid {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .header-actions {
