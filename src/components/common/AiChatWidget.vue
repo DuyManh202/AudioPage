@@ -42,13 +42,14 @@
     </div>
 
     <!-- Cửa sổ Chat Modal / Drawer -->
-    <Transition name="chat-panel">
-      <section
-        v-if="isOpen"
-        class="ai-chat-window"
-        role="dialog"
-        aria-label="Trợ lý AI Tú Audio"
-      >
+    <Teleport to="body">
+      <Transition name="chat-panel">
+        <section
+          v-if="isOpen"
+          class="ai-chat-window"
+          role="dialog"
+          aria-label="Trợ lý AI Tú Audio"
+        >
         <!-- Chat Header -->
         <header class="chat-header">
           <div class="chat-header-info">
@@ -191,11 +192,12 @@
         </footer>
       </section>
     </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { CONTACT_INFO } from '../../config/contact'
 import { apiRequest } from '../../utils/api'
 
@@ -365,12 +367,38 @@ onMounted(() => {
     }, 4000)
   }
 })
+
+const handleKeydown = (e) => {
+  if (e.key === 'Escape' && isOpen.value) {
+    isOpen.value = false
+  }
+}
+
+watch(isOpen, (val) => {
+  if (val) {
+    window.addEventListener('keydown', handleKeydown)
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      document.body.style.overflow = 'hidden'
+    }
+  } else {
+    window.removeEventListener('keydown', handleKeydown)
+    if (typeof window !== 'undefined') {
+      document.body.style.overflow = ''
+    }
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  if (typeof window !== 'undefined') {
+    document.body.style.overflow = ''
+  }
+})
 </script>
 
 <style scoped>
 .ai-chat-root {
   position: relative;
-  z-index: 95;
   font-family: var(--sans, system-ui, -apple-system, sans-serif);
 }
 
