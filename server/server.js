@@ -544,33 +544,33 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     let reply = ''
 
-    // 1. Kiểm tra kịch bản phản xạ nhanh chuẩn phong cách anh Tú (Ưu tiên phản hồi tức thì 1-2 câu xin Zalo)
-    const quickResponse = checkDeterministicAiResponse(latestText)
-    if (quickResponse?.reply) {
-      reply = quickResponse.reply
+    // 1. Nếu khách đã để lại số điện thoại / Zalo trong tin nhắn -> Nhận diện và xác nhận ngay lập tức
+    const detectedPhone = phoneFromMessage(latestText)
+    if (detectedPhone) {
+      reply = `Dạ vâng anh, em Tú đã nhận được số Zalo ${detectedPhone} của anh rồi ạ! Em kết bạn nhắn qua Zalo với anh ngay bây giờ nhé anh!`
     }
 
-    // 2. Nếu chưa có kịch bản mẫu, gọi Gemini Flash AI tạo phản hồi ngắn 1-2 câu xin Zalo
+    // 2. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng ngữ cảnh câu hỏi của khách
     if (!reply) {
       const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
 
-      const systemInstruction = `Bạn là Trợ lý AI của anh Phùng Văn Tú (Tú Audio - Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
-BẠN ĐẠI DIỆN CHO ANH TÚ NHẮN TIN TƯ VẤN TRÊN FACEBOOK MESSENGER.
+      const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của anh Phùng Văn Tú (Tú Audio - Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
+BẠN ĐẠI DIỆN CHO ANH TÚ TƯ VẤN KHÁCH HÀNG TRỰC TIẾP TRÊN FACEBOOK MESSENGER.
 
-QUY TẮC BẮT BUỘC (TUÂN THỦ 100%):
-1. ĐỘ DÀI: CHỈ ĐƯỢC PHÉP TRẢ LỜI TỪ 1 ĐẾN 2 CÂU NGẮN (TỐI ĐA 30-35 TỪ). TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG LIỆT KÊ DANH SÁCH THIẾT BỊ.
-2. MỤC TIÊU CỐT LÕI: Trả lời ngắn đúng ý khách + XIN SỐ ĐIỆN THOẠI HOẶC SỐ ZALO CỦA KHÁCH để anh Tú gọi điện hoặc nhắn Zalo tư vấn trực tiếp, gửi video test thực tế.
+NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100%):
+1. ĐỘ DÀI: CHỈ TRẢ LỜI ĐÚNG 1 ĐẾN 2 CÂU NGẮN (TỐI ĐA 30-35 TỪ). TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG DÙNG VĂN MẪU RẬP KHUÔN.
+2. NỘI DUNG THÔNG MINH THEO TỪNG CÂU HỎI:
+   - Câu 1: Trả lời thông minh, đúng trọng tâm câu hỏi của khách (bắt đúng bệnh vang số, tư vấn đúng diện tích phòng khách, đúng model loa/đẩy, dịch vụ tận nhà...).
+   - Câu 2: Khéo léo mời khách để lại số điện thoại hoặc Zalo để anh Tú gọi điện hoặc kết bạn Zalo tư vấn chi tiết, gửi video test thực tế.
 3. PHONG CÁCH ANH TÚ: Xưng "em" hoặc "em Tú", gọi khách là "anh" (hoặc "bác"). Giọng chân thành, thân thiện, đời thường của anh em kỹ thuật âm thanh.
-   Ví dụ mẫu chuẩn:
-   - Khách hỏi dàn / loa / vang / giá: "Dạ vâng a, anh cho em xin số Zalo em gửi thông tin chi tiết và video test dàn qua cho tiện nhé anh!"
-   - Khách hỏi chỉnh dàn / setup tại nhà: "Dạ bên em có nhận qua tận nhà căn chỉnh ạ. Anh nhắn em số Zalo em gọi trao đổi cụ thể và hẹn lịch qua phục vụ anh nhé!"
-   - Khách hỏi địa chỉ showroom: "Dạ showroom bên em ở 220 Nguyễn Danh Phương, Hội Hợp, Vĩnh Yên. Anh cho em xin số Zalo em gửi định vị vị trí qua cho tiện đi nhé anh!"
-   - Khách hỏi thu cũ đổi mới: "Dạ bên em có thu cũ đổi mới ạ. Anh cho em xin số Zalo gửi ảnh máy cũ em định giá hỗ trợ mình nhé anh!"
-   - Khách hỏi phần mềm / driver: "Dạ anh nhắn em số Zalo em gửi link tải driver và hỗ trợ Ultraview chỉnh cho anh nhé!"
-   - Khách chào hỏi / Bắt đầu: "Dạ em Tú Audio xin chào anh! Anh nhắn em xin số Zalo em tư vấn trực tiếp cho tiện và nhanh nhất nhé anh!"
-   - Nếu khách đã để lại số điện thoại/Zalo trong tin nhắn: "Dạ vâng anh, em Tú nhận được số Zalo của anh rồi ạ! Em kết bạn với anh ngay bây giờ nhé anh!"
 
-HÃY TRẢ LỜI NGAY (CHỈ 1-2 CÂU NGẮN, XIN SỐ ZALO):`
+Ví dụ tham khảo cách tư vấn:
+- Khách: "Toi dung vang so.gio muon set ap lai" -> "Dạ vâng anh, bên em có nhận qua tận nhà đo đạc căn chỉnh lại vang số cho anh hát nhẹ tiếng và chống hú tuyệt đối ạ. Anh cho em xin số Zalo em gọi trao đổi và hẹn lịch qua hỗ trợ anh nhé!"
+- Khách: "Phòng khách 25m2 thì lắp bộ nào vừa tiền em" -> "Dạ phòng 25m2 lắp đôi loa full 30 kèm đẩy liền vang tầm 15 đến 20 triệu là tiếng căng tròn, hát rất nhẹ ạ. Anh cho em xin số Zalo em gửi video quay test chất âm thực tế cho anh xem nhé!"
+- Khách: "Vang X5 của anh bị rè tiếng mic xử lý sao em" -> "Dạ tiếng mic rè thường do gain quá lớn, dây jack hoặc IC tiền khuếch đại anh ạ. Anh nhắn em số Zalo em gọi video hướng dẫn anh kiểm tra xử lý dứt điểm nhé anh!"
+- Khách: "Cửa hàng mình ở đâu" -> "Dạ showroom bên em ở 220 Nguyễn Danh Phương, Vĩnh Yên, Vĩnh Phúc ạ. Anh nhắn em xin số Zalo em gửi định vị vị trí qua cho tiện đi nhé anh!"
+
+HÃY TRẢ LỜI CÂU HỎI CỦA KHÁCH (CHỈ 1-2 CÂU NGẮN, TẬP TRUNG XIN SỐ ZALO):`
 
       try {
         const apiKey = await getGeminiApiKey()
@@ -581,8 +581,8 @@ HÃY TRẢ LỜI NGAY (CHỈ 1-2 CÂU NGẮN, XIN SỐ ZALO):`
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời:' }] }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 120 }
+              contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời ngắn gọn 1-2 câu:' }] }],
+              generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
             }),
             signal: AbortSignal.timeout(15000)
           })
@@ -595,9 +595,10 @@ HÃY TRẢ LỜI NGAY (CHỈ 1-2 CÂU NGẮN, XIN SỐ ZALO):`
       }
     }
 
-    // 3. Dự phòng mặc định nếu gián đoạn mạng
+    // 3. Dự phòng bằng kịch bản nếu gián đoạn mạng
     if (!reply) {
-      reply = 'Dạ em Tú Audio đây ạ! Anh nhắn em xin số Zalo em gọi điện tư vấn chi tiết và gửi video test máy cho tiện nhé anh!'
+      const fallbackDeterministic = checkDeterministicAiResponse(latestText)
+      reply = fallbackDeterministic?.reply || 'Dạ em Tú Audio đây ạ! Anh nhắn em xin số Zalo em gọi điện tư vấn chi tiết và gửi video test máy cho tiện nhé anh!'
     }
 
     const sentPayload = await sendFacebookText(psid, reply)
