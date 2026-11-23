@@ -9,6 +9,10 @@
         </p>
       </div>
       <div class="adm-head-actions">
+        <button type="button" class="adm-btn adm-btn-shield" @click="openWafModal" title="Xem danh sách IP bị Tường lửa WAF giam giữ">
+          <AdminIcon name="shield" :size="15" />
+          <span>Tường Lửa WAF ({{ blockedIps.length }})</span>
+        </button>
         <button type="button" class="adm-btn adm-btn-ghost" :disabled="loading" @click="fetchLogs">
           <AdminIcon name="sync" :size="15" :class="{ spinning: loading }" />
           <span>{{ loading ? 'Đang Tải...' : 'Làm Mới' }}</span>
@@ -85,6 +89,7 @@
             <!-- Lọc theo loại hành động -->
             <select v-model="actionFilter" class="adm-select-sm" @change="fetchLogs">
               <option value="ALL">Tất cả hành động</option>
+              <option value="SECURITY">🛡️ Bảo Mật &amp; Tường Lửa (WAF)</option>
               <option value="AUTH">Xác thực &amp; Đăng nhập</option>
               <option value="PERMISSIONS">Phân quyền nhân sự</option>
               <option value="CREATE">Tạo mới dữ liệu</option>
@@ -128,7 +133,7 @@
             <tr v-else-if="!filteredLogs.length">
               <td colspan="7" class="adm-empty">Không tìm thấy bản ghi lịch sử nào phù hợp theo tiêu chí lọc.</td>
             </tr>
-            <tr v-for="log in filteredLogs" :key="log.id" :class="{ 'row-security-event': log.action_type === 'PERMISSIONS' || log.action_type === 'DELETE' }">
+            <tr v-for="log in filteredLogs" :key="log.id" :class="{ 'row-security-event': log.action_type === 'SECURITY' || log.action_type === 'PERMISSIONS' || log.action_type === 'DELETE' }">
               <!-- Thời gian -->
               <td>
                 <div class="log-time-cell">
@@ -274,6 +279,55 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Quản Lý Tường Lửa WAF & IP Bị Khóa -->
+    <div v-if="wafModalOpen" class="adm-modal-backdrop" @click.self="wafModalOpen = false">
+      <div class="adm-modal">
+        <div class="adm-modal-head">
+          <div>
+            <h3>🛡️ Tường Lửa Ứng Dụng WAF &amp; Giám Sát Tấn Công</h3>
+            <p>Danh sách các địa chỉ IP bị khóa tự động do có hành vi dò quét, SQL Injection, XSS hoặc Brute-Force</p>
+          </div>
+          <button type="button" class="adm-modal-close" @click="wafModalOpen = false" aria-label="Đóng">
+            <AdminIcon name="x" :size="18" />
+          </button>
+        </div>
+
+        <div class="adm-modal-body">
+          <div v-if="loadingBlockedIps" class="adm-empty">Đang tải danh sách IP bị khóa...</div>
+          <div v-else-if="!blockedIps.length" class="waf-all-clear">
+            <span class="clear-icon">✅</span>
+            <h4>Hệ thống an toàn 100%!</h4>
+            <p>Hiện tại không có địa chỉ IP nào nằm trong danh sách đen của Tường lửa WAF.</p>
+          </div>
+          <div v-else class="blocked-ips-list">
+            <div v-for="item in blockedIps" :key="item.ip" class="blocked-ip-card">
+              <div class="ip-main">
+                <strong class="ip-address">{{ item.ip }}</strong>
+                <span class="ip-duration">Còn khóa <strong>{{ item.remainingMinutes }} phút</strong></span>
+                <span class="ip-strikes">Vi phạm {{ item.strikes }} lần</span>
+              </div>
+              <div class="ip-reasons">
+                <span v-for="(reason, rIdx) in item.reasons" :key="rIdx" class="reason-pill">{{ reason }}</span>
+              </div>
+              <div class="ip-actions">
+                <button type="button" class="adm-btn adm-btn-sm adm-btn-ghost" @click="handleUnbanIp(item.ip)">
+                  Mở khóa (Unban)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-modal-foot">
+          <button type="button" class="adm-btn adm-btn-ghost" @click="wafModalOpen = false">Đóng</button>
+          <button type="button" class="adm-btn adm-btn-gold" @click="fetchBlockedIps">
+            <AdminIcon name="sync" :size="14" />
+            <span>Cập nhật</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -292,6 +346,45 @@ const searchQuery = ref('')
 const actionFilter = ref('ALL')
 const targetFilter = ref('ALL')
 const selectedLog = ref(null)
+
+// Quản lý WAF Blocked IPs
+const blockedIps = ref([])
+const loadingBlockedIps = ref(false)
+const wafModalOpen = ref(false)
+
+const fetchBlockedIps = async () => {
+  loadingBlockedIps.value = true
+  try {
+    const res = await apiRequest('/admin/security/blocked-ips')
+    if (res.success) {
+      blockedIps.value = res.data || []
+    }
+  } catch (err) {
+    console.warn('Lỗi tải danh sách blocked IPs:', err)
+  } finally {
+    loadingBlockedIps.value = false
+  }
+}
+
+const openWafModal = () => {
+  wafModalOpen.value = true
+  fetchBlockedIps()
+}
+
+const handleUnbanIp = async (ip) => {
+  try {
+    const res = await apiRequest('/admin/security/unban-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip })
+    })
+    if (res.success) {
+      await fetchBlockedIps()
+      await fetchLogs()
+    }
+  } catch (err) {
+    console.error('Lỗi unban IP:', err)
+  }
+}
 
 const maxPage = computed(() => Math.ceil((totalCount.value || 1) / pageSize.value) || 1)
 const paginationStart = computed(() => (page.value - 1) * pageSize.value + 1)
@@ -327,6 +420,7 @@ const changePage = (newPage) => {
 
 onMounted(() => {
   fetchLogs()
+  fetchBlockedIps()
 })
 
 const filteredLogs = computed(() => logs.value)
@@ -338,7 +432,7 @@ const todayCount = computed(() => {
 })
 
 const securityCount = computed(() => {
-  return logs.value.filter(l => l.action_type === 'AUTH' || l.action_type === 'PERMISSIONS').length
+  return logs.value.filter(l => l.action_type === 'SECURITY' || l.action_type === 'AUTH' || l.action_type === 'PERMISSIONS').length
 })
 
 const deleteCount = computed(() => {
@@ -397,7 +491,8 @@ const formatActionType = (type) => {
     AUTH: 'Xác thực',
     PERMISSIONS: 'Phân quyền',
     EXPORT: 'Xuất dữ liệu',
-    SYSTEM: 'Hệ thống'
+    SYSTEM: 'Hệ thống',
+    SECURITY: '🛡️ Bảo Mật & WAF'
   }
   return map[type] || type || 'Thao tác'
 }
@@ -410,7 +505,8 @@ const getActionTagClass = (type) => {
     AUTH: 'tag-blue',
     PERMISSIONS: 'tag-purple',
     EXPORT: 'tag-cyan',
-    SYSTEM: 'tag-gray'
+    SYSTEM: 'tag-gray',
+    SECURITY: 'tag-security'
   }
   return map[type] || 'tag-gray'
 }
@@ -425,6 +521,7 @@ const formatTargetType = (type) => {
     admin: 'Tài Khoản Nhân Sự',
     auth: 'Đăng Nhập OTP',
     security: 'Bảo Mật',
+    waf_threat: 'Tường Lửa WAF',
     system: 'Hệ Thống'
   }
   return map[type] || type || 'Chung'
@@ -695,5 +792,106 @@ const exportLogsCsv = () => {
   max-height: 200px;
   overflow-y: auto;
   font-family: monospace;
+}
+
+/* WAF Security Enhancements */
+.tag-security {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  font-weight: 800;
+}
+
+.row-security-event {
+  background: #fff8f8;
+  border-left: 3px solid #ef4444;
+}
+
+.adm-btn-shield {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.adm-btn-shield:hover {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.waf-all-clear {
+  text-align: center;
+  padding: 30px 20px;
+}
+.waf-all-clear .clear-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+.waf-all-clear h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #166534;
+  margin: 0 0 6px 0;
+}
+.waf-all-clear p {
+  color: #64748b;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.blocked-ips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.blocked-ip-card {
+  padding: 12px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ip-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ip-address {
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: #991b1b;
+}
+.ip-duration {
+  font-size: 0.75rem;
+  color: #475569;
+}
+.ip-strikes {
+  font-size: 0.72rem;
+  background: #dc2626;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.ip-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+.reason-pill {
+  font-size: 0.7rem;
+  background: #fff;
+  color: #7f1d1d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #fca5a5;
 }
 </style>

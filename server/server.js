@@ -12,6 +12,15 @@ import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnam
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
 import { catalogProducts } from './catalogProducts.js'
+import {
+  securityHeadersMiddleware,
+  createWafMiddleware,
+  globalApiRateLimit,
+  aiChatProtection,
+  getWafBlockedIps,
+  unbanWafIp,
+  getClientIp
+} from './securityWaf.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '.env') })
@@ -19,6 +28,7 @@ dotenv.config({ path: path.join(__dirname, '.env') })
 const app = express()
 // Render runs Express behind a proxy; trust its forwarded client IP for rate limiting.
 app.set('trust proxy', 1)
+app.use(securityHeadersMiddleware)
 const PORT = process.env.PORT || 5000
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET.includes('replace-with')) {
@@ -239,6 +249,12 @@ const recordAuditLog = async ({
     console.error('[recordAuditLog] Lỗi ghi nhật ký:', err.message)
   }
 }
+
+// ==============================================================================
+// KÍCH HOẠT HỆ THỐNG BẢO MẬT WAF TOÀN CỤC (ACTIVE ENTERPRISE FIREWALL)
+// ==============================================================================
+app.use('/api/', globalApiRateLimit)
+app.use(createWafMiddleware(recordAuditLog))
 
 const authorizeRoles = (...roles) => (req, res, next) => {
   if (!roles.includes(req.admin?.role)) {
@@ -847,6 +863,49 @@ const createdAtDateFilter = ({ from, to }, params) => {
 }
 
 const loginAttempts = new Map()
+const failedLoginAccounts = new Map() // username -> { count, lockedUntil }
+
+const checkAccountLock = (cleanUser) => {
+  if (!cleanUser) return null
+  const info = failedLoginAccounts.get(cleanUser)
+  if (!info) return null
+  const now = Date.now()
+  if (info.lockedUntil > now) {
+    return Math.ceil((info.lockedUntil - now) / 60000)
+  }
+  return null
+}
+
+const recordFailedLogin = async (cleanUser, reason, req) => {
+  const now = Date.now()
+  const info = failedLoginAccounts.get(cleanUser) || { count: 0, lockedUntil: 0 }
+  info.count += 1
+  const isLocked = info.count >= 5
+  if (isLocked) {
+    info.lockedUntil = now + 15 * 60 * 1000 // Khóa 15 phút
+  }
+  failedLoginAccounts.set(cleanUser, info)
+
+  const ip = getClientIp(req)
+  await recordAuditLog({
+    admin: { id: null, username: cleanUser, name: 'Khách lạ', role: 'UNKNOWN' },
+    action: isLocked ? 'SECURITY_ACCOUNT_LOCKED_BRUTEFORCE' : 'AUTH_LOGIN_FAILED',
+    actionType: 'SECURITY',
+    targetType: 'auth',
+    targetId: cleanUser,
+    summary: isLocked
+      ? `[CẢNH BÁO BẢO MẬT] Tài khoản '${cleanUser}' bị tạm khóa 15 phút do nhập sai mật khẩu 5 lần liên tiếp từ IP ${ip}.`
+      : `Đăng nhập thất bại vào tài khoản '${cleanUser}' từ IP ${ip}: ${reason}`,
+    details: { username: cleanUser, reason, ip, userAgent: req.headers['user-agent'], attemptCount: info.count },
+    req
+  }).catch(() => {})
+  return { isLocked, count: info.count }
+}
+
+const resetFailedLogin = (cleanUser) => {
+  failedLoginAccounts.delete(cleanUser)
+}
+
 const publicSubmissionAttempts = new Map()
 const publicSubmissionRateLimit = (req, res, next) => {
   const now = Date.now()
@@ -854,7 +913,7 @@ const publicSubmissionRateLimit = (req, res, next) => {
     if (attempt.expiresAt <= now) publicSubmissionAttempts.delete(ip)
   }
 
-  const key = req.ip
+  const key = getClientIp(req)
   const current = publicSubmissionAttempts.get(key)
   if (!current || current.expiresAt <= now) {
     publicSubmissionAttempts.set(key, { count: 1, expiresAt: now + 15 * 60 * 1000 })
@@ -870,7 +929,7 @@ const publicSubmissionRateLimit = (req, res, next) => {
 const loginRateLimit = (req, res, next) => {
   const now = Date.now()
   for (const [ip, attempt] of loginAttempts) if (attempt.expiresAt <= now) loginAttempts.delete(ip)
-  const key = req.ip
+  const key = getClientIp(req)
   const current = loginAttempts.get(key)
   if (!current || current.expiresAt <= now) {
     loginAttempts.set(key, { count: 1, expiresAt: now + 15 * 60 * 1000 })
@@ -1154,9 +1213,9 @@ app.post('/api/v1/orders', publicSubmissionRateLimit, async (req, res) => {
 })
 
 // ==========================================
-// 1.4 AI CHATBOT TÚ AUDIO (TỰ ĐỘNG TƯ VẤN & CRM MAP AUTO-SYNC)
+// 1.4 AI CHATBOT TÚ AUDIO (BẢO VỆ CHỐNG SPAM & TỰ ĐỘNG TƯ VẤN)
 // ==========================================
-app.post('/api/v1/ai-chat', handleAiChatRequest)
+app.post('/api/v1/ai-chat', aiChatProtection, handleAiChatRequest)
 
 // ==========================================
 // 2. ADMIN APIS (QUẢN TRỊ BẢO MẬT BẰNG JWT)
@@ -1220,7 +1279,7 @@ app.post('/api/v1/admin/auth/register', loginRateLimit, async (req, res) => {
   }
 })
 
-// Đăng nhập Admin (Kiểm tra trực tiếp từ bảng admins trên Aiven PostgreSQL, hỗ trợ OTP Email 2 bước)
+// Đăng nhập Admin (Kiểm tra trực tiếp từ bảng admins trên Aiven PostgreSQL, hỗ trợ OTP Email 2 bước & Khóa Brute-force)
 app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
   try {
     const { username, password, rememberMe } = req.body
@@ -1230,9 +1289,19 @@ app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu' })
     }
 
+    // 1. Kiểm tra tài khoản có đang bị khóa do nhập sai nhiều lần liên tiếp không
+    const lockMins = checkAccountLock(cleanUser)
+    if (lockMins) {
+      return res.status(429).json({
+        success: false,
+        message: `Tài khoản '${cleanUser}' đang bị tạm khóa an toàn do nhập sai mật khẩu 5 lần liên tiếp. Vui lòng thử lại sau ${lockMins} phút.`
+      })
+    }
+
     const result = await query('SELECT * FROM admins WHERE LOWER(username) = $1', [cleanUser])
     if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Tài khoản quản trị không tồn tại trên hệ thống.' })
+      await recordFailedLogin(cleanUser, 'Tài khoản không tồn tại', req)
+      return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác.' })
     }
 
     const admin = result.rows[0]
@@ -1251,9 +1320,19 @@ app.post('/api/v1/admin/auth/login', loginRateLimit, async (req, res) => {
     const isMatch = await bcrypt.compare(password, admin.password_hash)
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Mật khẩu không chính xác' })
+      const { isLocked, count } = await recordFailedLogin(cleanUser, 'Mật khẩu không chính xác', req)
+      const remaining = Math.max(0, 5 - count)
+      return res.status(401).json({
+        success: false,
+        message: isLocked
+          ? `Bạn đã nhập sai mật khẩu 5 lần. Tài khoản '${cleanUser}' đã bị tạm khóa 15 phút để bảo vệ an toàn.`
+          : `Mật khẩu không chính xác. Bạn còn ${remaining} lần thử trước khi tài khoản bị khóa tạm thời.`
+      })
     }
-    loginAttempts.delete(req.ip)
+
+    // Đăng nhập thành công -> Reset các bộ đếm sai
+    resetFailedLogin(cleanUser)
+    loginAttempts.delete(getClientIp(req))
 
     // Nếu tài khoản đã cài đặt Email -> Kích hoạt xác thực 2 bước qua mã OTP
     if (admin.email && admin.email.trim()) {
@@ -4726,6 +4805,45 @@ const ensureDatabaseSchema = async () => {
     console.error('⚠️ Cảnh báo kiểm tra schema khi khởi động:', err.message)
   }
 }
+
+// ==========================================
+// HỆ THỐNG QUẢN TRỊ AN NINH & TƯỜNG LỬA (WAF APIS)
+// ==========================================
+
+// Lấy danh sách IP đang bị giam cầm bởi WAF
+app.get('/api/v1/admin/security/blocked-ips', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), (req, res) => {
+  res.json({
+    success: true,
+    data: getWafBlockedIps()
+  })
+})
+
+// Mở khóa IP thủ công (Unban IP)
+app.post('/api/v1/admin/security/unban-ip', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { ip } = req.body
+    if (!ip) return res.status(400).json({ success: false, message: 'Vui lòng cung cấp địa chỉ IP cần mở khóa.' })
+    const unbanned = unbanWafIp(ip)
+    if (unbanned) {
+      await recordAuditLog({
+        admin: req.admin,
+        action: 'SECURITY_WAF_IP_UNBANNED',
+        actionType: 'SECURITY',
+        targetType: 'waf_threat',
+        targetId: ip,
+        summary: `Quản trị viên ${req.admin.name} đã mở khóa IP ${ip} khỏi danh sách đen Tường Lửa.`,
+        details: { ip },
+        req
+      })
+    }
+    res.json({
+      success: true,
+      message: unbanned ? `Đã mở khóa IP ${ip} thành công.` : `Địa chỉ IP ${ip} không nằm trong danh sách đang bị khóa.`
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
 
 // Khởi chạy máy chủ
 ensureDatabaseSchema().finally(() => {
