@@ -366,8 +366,20 @@ const getGeminiModel = async () => {
   return await getSystemSetting('gemini_model', 'gemini-3.8-flash')
 }
 
-const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
-const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+let cachedMetaPageAccessToken = process.env.META_PAGE_ACCESS_TOKEN || ''
+
+const getMetaPageAccessToken = async () => {
+  if (cachedMetaPageAccessToken) return cachedMetaPageAccessToken
+  const dbToken = await getSystemSetting('meta_page_access_token', '')
+  if (dbToken && typeof dbToken === 'string' && dbToken.startsWith('EAA')) {
+    cachedMetaPageAccessToken = dbToken
+    return cachedMetaPageAccessToken
+  }
+  return process.env.META_PAGE_ACCESS_TOKEN || ''
+}
+
+const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && (cachedMetaPageAccessToken || process.env.META_PAGE_ACCESS_TOKEN) && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && (cachedMetaPageAccessToken || process.env.META_PAGE_ACCESS_TOKEN) && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 const isFacebookAiEnabled = async () => {
   const apiKey = await getGeminiApiKey()
   if (!apiKey) return false
@@ -387,7 +399,8 @@ const isWebAiEnabled = async () => {
 const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && process.env.META_ADS_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 
 const fetchFacebookProfileName = async (psid) => {
-  const { META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  const pageToken = await getMetaPageAccessToken()
+  const { META_GRAPH_VERSION: graphVersion } = process.env
   if (!psid || !pageToken || !graphVersion) return ''
   try {
     const url = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(psid)}`)
@@ -415,7 +428,8 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
   if (fbSyncInFlight) return fbSyncInFlight
 
   fbSyncInFlight = (async () => {
-    const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    const pageToken = await getMetaPageAccessToken()
+    const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
     try {
       const fetchConversations = async (fields) => {
         const url = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(pageId)}/conversations`)
@@ -585,7 +599,8 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             if (commentQuestion) {
               const cmtAiEnabled = await isFacebookCommentAiEnabled()
               if (cmtAiEnabled) {
-                const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+                const pageToken = await getMetaPageAccessToken()
+                const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
                 const apiKey = await getGeminiApiKey()
                 const model = await getGeminiModel()
                 console.log(`[Facebook Sync Comment] Tự động phản hồi bình luận comment_id=${extractedCommentId} cho khách ${resolvedName}: "${commentQuestion}"`)
@@ -663,7 +678,8 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
  */
 const syncFacebookPageComments = async () => {
   if (!(await isFacebookCommentAiEnabled()) || !canReadFacebookPageInbox()) return
-  const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  const pageToken = await getMetaPageAccessToken()
+  const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
   try {
     const apiKey = await getGeminiApiKey()
     const model = await getGeminiModel()
@@ -961,8 +977,9 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
             isFacebookCommentAiEnabled().then(enabled => {
               if (!enabled) return
               getGeminiApiKey().then(apiKey => {
-                getGeminiModel().then(model => {
-                  const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+                getGeminiModel().then(async (model) => {
+                  const pageToken = await getMetaPageAccessToken()
+                  const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
                   handleFacebookComment({
                     commentId,
                     postId,
@@ -4727,7 +4744,8 @@ app.post('/api/v1/admin/facebook-care/:id/send', authenticateAdmin, authorizeRol
   try {
     const text = String(req.body.body || '').trim()
     if (!text || text.length > 2000) return res.status(400).json({ success: false, message: 'Tin nhắn phải có nội dung và không quá 2.000 ký tự.' })
-    const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    const pageToken = await getMetaPageAccessToken()
+    const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
     if (!pageId || !pageToken || !/^v\d+\.\d+$/.test(graphVersion || '')) return res.status(503).json({ success: false, message: 'Chưa cấu hình đầy đủ Meta Page ID, Page Access Token và Graph API version trên backend.' })
     const customerResult = await query('SELECT id, customer_name, facebook_id, phone FROM facebook_care_customers WHERE id=$1', [req.params.id])
     const customer = customerResult.rows[0]
