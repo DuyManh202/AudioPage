@@ -54,17 +54,32 @@
           <button v-if="messengerConnected" class="sync-action-btn" @click="forceSync" :disabled="syncBusy">
             {{ syncBusy ? 'Đang quét tin nhắn…' : '↻ Quét tin nhắn mới ngay' }}
           </button>
+          <!-- Nút 1: AI Chat Messenger (Tự động ngắt khi có SĐT hoặc khi có người chat) -->
           <button
             type="button"
             class="ai-toggle-btn"
             :class="{ active: aiEnabled }"
             :disabled="togglingAi"
             @click="toggleFacebookAi"
-            title="Bật/Tắt chế độ AI Gemini tự động trả lời khách khi có tin nhắn mới tới Fanpage"
+            title="Bật/Tắt AI Messenger (Tự động ngắt khi có SĐT hoặc khi có nhân viên chat)"
           >
             <span class="ai-status-dot"></span>
-            <span>AI Tự Động Trả Lời: <strong>{{ aiEnabled ? 'ĐANG BẬT' : 'ĐÃ TẮT' }}</strong></span>
+            <span>AI Messenger: <strong>{{ aiEnabled ? 'ĐANG BẬT' : 'ĐÃ TẮT' }}</strong></span>
             <small class="ai-toggle-hint">({{ aiEnabled ? 'Bấm để Tắt' : 'Bấm để Bật' }})</small>
+          </button>
+
+          <!-- Nút 2: AI Bình Luận (Cmt) Độc Lập - LUÔN LUÔN TRẢ LỜI MỌI BÌNH LUẬN & KÉO VÀO MESSENGER -->
+          <button
+            type="button"
+            class="ai-toggle-btn ai-toggle-comment"
+            :class="{ active: commentAiEnabled }"
+            :disabled="togglingCommentAi"
+            @click="toggleCommentAi"
+            title="Bật/Tắt AI Bình Luận độc lập (Luôn luôn trả lời 100% comment và gửi tin nhắn riêng kéo khách vào Messenger)"
+          >
+            <span class="ai-status-dot"></span>
+            <span>AI Bình Luận (Cmt): <strong>{{ commentAiEnabled ? 'LUÔN BẬT' : 'ĐÃ TẮT' }}</strong></span>
+            <small class="ai-toggle-hint">({{ commentAiEnabled ? 'Bấm để Tắt' : 'Bấm để Bật' }})</small>
           </button>
           <button
             v-if="messengerConnected"
@@ -833,7 +848,7 @@ import { useAdminStore } from '../../stores/adminStore'
 import { apiRequest } from '../../utils/api'
 import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
 const adminStore = useAdminStore()
-const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
+const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), commentAiEnabled = ref(true), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
 const currentTab = ref('CARE')
 const analyticsData = ref([])
 const analyticsPeriod = ref('today')
@@ -958,6 +973,7 @@ async function load({ silent = false, force = false } = {}) {
     customers.value = incomingCustomers
     messengerConnected.value = Boolean(r.connected)
     aiEnabled.value = Boolean(r.aiEnabled)
+    commentAiEnabled.value = r.commentAiEnabled !== false
     if (r.lastSyncedAt) lastSyncedAt.value = r.lastSyncedAt
     syncError.value = r.syncError || ''
     if (selected.value) {
@@ -988,6 +1004,24 @@ async function toggleFacebookAi() {
     adminStore.showNotice(e.message || 'Không thể đổi trạng thái AI', 'error')
   } finally {
     togglingAi.value = false
+  }
+}
+
+const togglingCommentAi = ref(false)
+async function toggleCommentAi() {
+  togglingCommentAi.value = true
+  try {
+    const nextState = !commentAiEnabled.value
+    await apiRequest('/admin/ai-settings', {
+      method: 'POST',
+      body: JSON.stringify({ facebookCommentAiEnabled: nextState })
+    })
+    commentAiEnabled.value = nextState
+    adminStore.showNotice(`Đã ${nextState ? 'BẬT' : 'TẮT'} AI trả lời bình luận (Comments) tự động!`, 'success')
+  } catch (e) {
+    adminStore.showNotice(e.message || 'Không thể đổi trạng thái AI bình luận', 'error')
+  } finally {
+    togglingCommentAi.value = false
   }
 }
 const clearingMenu = ref(false)
@@ -1517,6 +1551,15 @@ onBeforeUnmount(() => {
 .ai-toggle-btn.active .ai-status-dot {
   background: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+.ai-toggle-btn.ai-toggle-comment.active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+.ai-toggle-btn.ai-toggle-comment.active .ai-status-dot {
+  background: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 .ai-toggle-hint {
   font-size: 0.72rem;

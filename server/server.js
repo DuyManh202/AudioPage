@@ -374,6 +374,12 @@ const isFacebookAiEnabled = async () => {
   const enabled = await getSystemSetting('facebook_ai_enabled', true)
   return Boolean(enabled)
 }
+const isFacebookCommentAiEnabled = async () => {
+  const apiKey = await getGeminiApiKey()
+  if (!apiKey) return false
+  const enabled = await getSystemSetting('facebook_comment_ai_enabled', true)
+  return Boolean(enabled)
+}
 const isWebAiEnabled = async () => {
   const enabled = await getSystemSetting('web_ai_enabled', true)
   return Boolean(enabled)
@@ -784,25 +790,28 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
             const fromUser = val.from || {}
             const text = val.message || ''
 
-            getGeminiApiKey().then(apiKey => {
-              getGeminiModel().then(model => {
-                const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
-                handleFacebookComment({
-                  commentId,
-                  postId,
-                  parentId,
-                  userId: fromUser.id,
-                  userName: fromUser.name || 'Khách Facebook',
-                  message: text,
-                  pageId,
-                  pageToken,
-                  graphVersion: graphVersion || 'v19.0',
-                  apiKey,
-                  model
-                }).catch(err => {
-                  console.error('[Comment Webhook Error]:', err.message)
+            isFacebookCommentAiEnabled().then(enabled => {
+              if (!enabled) return
+              getGeminiApiKey().then(apiKey => {
+                getGeminiModel().then(model => {
+                  const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+                  handleFacebookComment({
+                    commentId,
+                    postId,
+                    parentId,
+                    userId: fromUser.id,
+                    userName: fromUser.name || 'Khách Facebook',
+                    message: text,
+                    pageId,
+                    pageToken,
+                    graphVersion: graphVersion || 'v19.0',
+                    apiKey,
+                    model
+                  }).catch(err => {
+                    console.error('[Comment Webhook Error]:', err.message)
+                  })
                 })
-              })
+              }).catch(() => {})
             }).catch(() => {})
           }
         }
@@ -3759,6 +3768,7 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
       data: result.rows.map(mapFbCare),
       connected,
       aiEnabled: await isFacebookAiEnabled(),
+      commentAiEnabled: await isFacebookCommentAiEnabled(),
       lastSyncedAt: fbLastSyncedAt,
       syncError: fbLastSyncError || ''
     })
@@ -4609,9 +4619,10 @@ app.get('/api/v1/ai-chat/status', async (req, res) => {
 
 app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
-    const [webAi, fbAi, apiKey, model] = await Promise.all([
+    const [webAi, fbAi, fbCommentAi, apiKey, model] = await Promise.all([
       isWebAiEnabled(),
       isFacebookAiEnabled(),
+      isFacebookCommentAiEnabled(),
       getGeminiApiKey(),
       getGeminiModel()
     ])
@@ -4623,6 +4634,7 @@ app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_AD
       data: {
         webAiEnabled: webAi,
         facebookAiEnabled: fbAi,
+        facebookCommentAiEnabled: fbCommentAi,
         geminiConfigured: Boolean(apiKey),
         hasKey: Boolean(apiKey),
         maskedKey,
@@ -4636,12 +4648,15 @@ app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_AD
 
 app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const { webAiEnabled, facebookAiEnabled, apiKey, model } = req.body
+    const { webAiEnabled, facebookAiEnabled, facebookCommentAiEnabled, apiKey, model } = req.body
     if (typeof webAiEnabled === 'boolean') {
       await setSystemSetting('web_ai_enabled', webAiEnabled)
     }
     if (typeof facebookAiEnabled === 'boolean') {
       await setSystemSetting('facebook_ai_enabled', facebookAiEnabled)
+    }
+    if (typeof facebookCommentAiEnabled === 'boolean') {
+      await setSystemSetting('facebook_comment_ai_enabled', facebookCommentAiEnabled)
     }
     if (typeof apiKey === 'string' && apiKey.trim()) {
       await setSystemSetting('gemini_api_key', apiKey.trim())
@@ -4649,9 +4664,10 @@ app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_A
     if (typeof model === 'string' && model.trim()) {
       await setSystemSetting('gemini_model', model.trim())
     }
-    const [newWeb, newFb, currentKey, currentModel] = await Promise.all([
+    const [newWeb, newFb, newFbComment, currentKey, currentModel] = await Promise.all([
       isWebAiEnabled(),
       isFacebookAiEnabled(),
+      isFacebookCommentAiEnabled(),
       getGeminiApiKey(),
       getGeminiModel()
     ])
@@ -4664,6 +4680,7 @@ app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_A
       data: {
         webAiEnabled: newWeb,
         facebookAiEnabled: newFb,
+        facebookCommentAiEnabled: newFbComment,
         geminiConfigured: Boolean(currentKey),
         hasKey: Boolean(currentKey),
         maskedKey,
