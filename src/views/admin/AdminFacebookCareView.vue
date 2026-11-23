@@ -66,6 +66,16 @@
             <span>AI Tự Động Trả Lời: <strong>{{ aiEnabled ? 'ĐANG BẬT' : 'ĐÃ TẮT' }}</strong></span>
             <small class="ai-toggle-hint">({{ aiEnabled ? 'Bấm để Tắt' : 'Bấm để Bật' }})</small>
           </button>
+          <button
+            v-if="messengerConnected"
+            type="button"
+            class="sync-action-btn"
+            @click="clearMessengerMenu"
+            :disabled="clearingMenu"
+            title="Xóa menu điều hướng cũ hoặc quảng cáo thương hiệu của AhaChat khỏi Messenger của Page"
+          >
+            {{ clearingMenu ? 'Đang gỡ…' : '🗑 Gỡ Menu AhaChat' }}
+          </button>
         </div>
       </div>
 
@@ -897,6 +907,19 @@ async function toggleFacebookAi() {
     adminStore.showNotice(e.message || 'Không thể đổi trạng thái AI', 'error')
   } finally {
     togglingAi.value = false
+  }
+}
+const clearingMenu = ref(false)
+async function clearMessengerMenu() {
+  if (!confirm('Bạn có chắc chắn muốn gỡ sạch menu điều hướng cũ (quảng cáo của AhaChat) khỏi Messenger của Fanpage?')) return
+  clearingMenu.value = true
+  try {
+    const res = await apiRequest('/admin/facebook-care/clear-menu', { method: 'POST' })
+    adminStore.showNotice(res.message || 'Đã gỡ bỏ sạch menu AhaChat thành công!', 'success')
+  } catch (e) {
+    adminStore.showNotice(e.message || 'Không thể gỡ menu Messenger', 'error')
+  } finally {
+    clearingMenu.value = false
   }
 }
 async function loadAds() { adsBusy.value = true; adsError.value = ''; try { const r = await apiRequest('/admin/facebook-ads'); ads.value = r.data || []; adsConfigured.value = Boolean(r.configured) } catch (e) { adsError.value = e.message; adsConfigured.value = e.status !== 503 } finally { adsBusy.value = false } }

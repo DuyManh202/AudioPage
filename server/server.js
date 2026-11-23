@@ -3329,6 +3329,30 @@ app.get('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SU
 })
 
 // Tải hình ảnh / tệp đính kèm tươi từ Meta Graph API theo messageId khi xem chi tiết
+app.post('/api/v1/admin/facebook-care/clear-menu', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    if (!pageToken || !graphVersion) return res.status(503).json({ success: false, message: 'Chưa cấu hình Meta Page Access Token trên máy chủ.' })
+    const url = `https://graph.facebook.com/${graphVersion}/me/messenger_profile`
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${pageToken}`
+      },
+      body: JSON.stringify({ fields: ['persistent_menu'] })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return res.status(502).json({ success: false, message: payload.error?.message || 'Meta báo lỗi khi gỡ menu.' })
+    }
+    return res.json({ success: true, message: 'Đã gỡ bỏ sạch menu quảng cáo của AhaChat khỏi Fanpage!' })
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// Tải hình ảnh / tệp đính kèm tươi từ Meta Graph API theo messageId khi xem chi tiết
 app.get('/api/v1/admin/facebook-care/message-media/:platformMessageId', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const { platformMessageId } = req.params
