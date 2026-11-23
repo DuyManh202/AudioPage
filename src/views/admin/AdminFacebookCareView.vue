@@ -805,8 +805,41 @@ const draft = reactive(blank()), edit = reactive({})
 let careTimer = null, adsTimer = null
 let knownCustomerIds = null
 const labelFor = value => statusOptions.find(x => x.key === value)?.label || value
-const displayDate = value => value ? new Date(value).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : ''
-const displayTime = value => value ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''
+const parseUtcDate = (value) => {
+  if (!value) return null
+  if (value instanceof Date) return value
+  let str = String(value).trim()
+  if (!str) return null
+  // Nếu chuỗi datetime không có múi giờ từ PostgreSQL (không kết thúc bằng Z hoặc offset +07:00/-05:00)
+  // thì mặc định chuẩn hóa thêm 'Z' để Date hiểu đúng mốc giờ UTC và quy đổi chính xác sang giờ Việt Nam (UTC+7)
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+    str = str.replace(' ', 'T') + 'Z'
+  }
+  const d = new Date(str)
+  return isNaN(d.getTime()) ? null : d
+}
+const displayDate = value => {
+  const d = parseUtcDate(value)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(d)
+}
+const displayTime = value => {
+  const d = parseUtcDate(value)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(d)
+}
 const formatNumber = value => new Intl.NumberFormat('vi-VN').format(value || 0)
 const formatMoney = value => `${new Intl.NumberFormat('vi-VN').format(value || 0)} đ`
 const knownAds = computed(() => {

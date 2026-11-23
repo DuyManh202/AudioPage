@@ -1610,7 +1610,29 @@ const distanceBetween = (from, to) => {
 
 const safeImage = value => /^(https?:\/\/|data:image\/)/i.test(String(value || '')) ? value : ''
 const googleMapsUrl = customer => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${customer.lat},${customer.lng}`)}`
-const formatVisitTime = value => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+const parseUtcDate = (value) => {
+  if (!value) return null
+  if (value instanceof Date) return value
+  let str = String(value).trim()
+  if (!str) return null
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+    str = str.replace(' ', 'T') + 'Z'
+  }
+  const d = new Date(str)
+  return isNaN(d.getTime()) ? null : d
+}
+const formatVisitTime = value => {
+  const d = parseUtcDate(value)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(d)
+}
 const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
 
 const popupContent = customer => {
@@ -2069,7 +2091,16 @@ const formatMoney = val => new Intl.NumberFormat('vi-VN', { style: 'currency', c
 const formatTime = val => {
   if (!val) return ''
   try {
-    return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val))
+    const d = parseUtcDate(val)
+    if (!d) return ''
+    return new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(d)
   } catch {
     return String(val)
   }

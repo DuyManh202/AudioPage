@@ -2838,6 +2838,15 @@ app.delete('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_
   }
 })
 
+const formatUtcIso = (val) => {
+  if (!val) return ''
+  const str = String(val).trim()
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+    return str.replace(' ', 'T') + 'Z'
+  }
+  return new Date(val).toISOString()
+}
+
 // Facebook Page care CRM: stores customers and a staff-maintained conversation log.
 const mapFbCare = row => ({
   id: row.id, customerName: row.customer_name, facebookId: row.facebook_id || '', phone: row.phone || '',
@@ -2847,7 +2856,11 @@ const mapFbCare = row => ({
   sourceType: row.source_type || '', sourceAdId: row.source_ad_id || '', sourceAdName: row.source_ad_name || '',
   sourceCampaignId: row.source_campaign_id || '', sourceCampaignName: row.source_campaign_name || '',
   notes: row.notes || '', lastMessage: row.last_message || '', updatedAt: row.updated_at,
-  createdAt: row.created_at, messages: row.messages || []
+  createdAt: row.created_at, 
+  messages: (row.messages || []).map(m => ({
+    ...m,
+    createdAt: m.createdAt ? formatUtcIso(m.createdAt) : ''
+  }))
 })
 
 app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
@@ -4310,6 +4323,9 @@ const ensureDatabaseSchema = async () => {
     await query("ALTER TABLE facebook_care_messages ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'")
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_platform_message_id ON facebook_care_messages(platform_message_id)')
     await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_care_facebook_id ON facebook_care_customers(facebook_id) WHERE facebook_id IS NOT NULL')
+    await query("ALTER TABLE facebook_care_messages ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'").catch(() => {})
+    await query("ALTER TABLE facebook_care_customers ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'").catch(() => {})
+    await query("ALTER TABLE facebook_care_customers ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'").catch(() => {})
     await query(`CREATE TABLE IF NOT EXISTS customer_map_visits (
       record_type VARCHAR(20) NOT NULL CHECK (record_type IN ('FACEBOOK','LEAD')),
       record_id VARCHAR(50) NOT NULL,
