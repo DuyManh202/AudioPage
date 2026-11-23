@@ -208,6 +208,39 @@ const authenticateAdmin = async (req, res, next) => {
 }
 
 /**
+ * Phân tích User-Agent để xác định thiết bị và trình duyệt
+ */
+const parseUserAgent = (uaString = '') => {
+  const ua = String(uaString || '').toLowerCase()
+  let deviceType = 'Desktop'
+  if (/mobile|android|iphone|ipod/.test(ua)) {
+    deviceType = 'Điện thoại'
+  } else if (/ipad|tablet/.test(ua)) {
+    deviceType = 'Máy tính bảng'
+  } else {
+    deviceType = 'Máy tính (PC/Laptop)'
+  }
+
+  let browser = 'Trình duyệt Web'
+  if (/edg\//.test(ua)) browser = 'Microsoft Edge'
+  else if (/chrome\//.test(ua)) browser = 'Google Chrome'
+  else if (/safari\//.test(ua) && !/chrome/.test(ua)) browser = 'Apple Safari'
+  else if (/firefox\//.test(ua)) browser = 'Mozilla Firefox'
+
+  let os = ''
+  if (/windows/.test(ua)) os = 'Windows'
+  else if (/macintosh|mac os/.test(ua)) os = 'macOS'
+  else if (/iphone|ipad/.test(ua)) os = 'iOS'
+  else if (/android/.test(ua)) os = 'Android'
+  else if (/linux/.test(ua)) os = 'Linux'
+
+  return {
+    deviceType,
+    browser: os ? `${browser} (${os})` : browser
+  }
+}
+
+/**
  * Ghi nhật ký lịch sử thao tác hệ thống (Audit Trail)
  */
 const recordAuditLog = async ({
@@ -221,11 +254,24 @@ const recordAuditLog = async ({
   req = null
 }) => {
   try {
-    const ip = req ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() : null
+    const ip = req ? getClientIp(req) : null
     const adminId = admin?.id || null
     const adminUsername = admin?.username || 'system'
     const adminName = admin?.name || admin?.full_name || 'Hệ thống'
     const adminRole = admin?.role || 'SYSTEM'
+
+    const enrichedDetails = { ...details }
+    if (req) {
+      const ua = req.headers['user-agent'] || ''
+      const uaInfo = parseUserAgent(ua)
+      enrichedDetails._client = {
+        device: uaInfo.deviceType,
+        browser: uaInfo.browser,
+        method: req.method,
+        path: req.originalUrl || req.url,
+        ip
+      }
+    }
 
     await query(
       `INSERT INTO admin_audit_logs (id, admin_id, admin_username, admin_name, admin_role, action, action_type, target_type, target_id, summary, details, ip_address)
@@ -241,7 +287,7 @@ const recordAuditLog = async ({
         targetType,
         targetId ? String(targetId) : null,
         summary,
-        JSON.stringify(details || {}),
+        JSON.stringify(enrichedDetails || {}),
         ip
       ]
     )
@@ -1832,14 +1878,25 @@ app.delete('/api/v1/admin/users/:id', authenticateAdmin, authorizeRoles('SUPER_A
   }
 })
 
-// Lấy danh sách lịch sử thao tác hệ thống (Audit Logs)
+// Lấy danh sách lịch sử thao tác hệ thống chuyên sâu (Audit Logs)
 app.get('/api/v1/admin/audit-logs', authenticateAdmin, async (req, res) => {
   try {
     if (req.admin.role !== 'SUPER_ADMIN' && !req.admin.permissions?.includes('*') && !req.admin.permissions?.includes('logs.view')) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền xem nhật ký thao tác hệ thống.' })
     }
 
-    const { page = 1, limit = 25, q = '', actionType = 'ALL', targetType = 'ALL' } = req.query
+    const {
+      page = 1,
+      limit = 25,
+      q = '',
+      actionType = 'ALL',
+      targetType = 'ALL',
+      adminUser = 'ALL',
+      targetId = '',
+      fromDate = '',
+      toDate = ''
+    } = req.query
+
     const parsedPage = Math.max(1, parseInt(page, 10))
     const take = Math.min(100, Math.max(1, parseInt(limit, 10)))
     const offset = (parsedPage - 1) * take
@@ -1849,7 +1906,15 @@ app.get('/api/v1/admin/audit-logs', authenticateAdmin, async (req, res) => {
 
     if (q && q.trim()) {
       params.push(`%${q.trim().toLowerCase()}%`)
-      conditions.push(`(LOWER(admin_username) LIKE $${params.length} OR LOWER(admin_name) LIKE $${params.length} OR LOWER(summary) LIKE $${params.length} OR LOWER(ip_address) LIKE $${params.length} OR target_id LIKE $${params.length})`)
+      conditions.push(`(
+        LOWER(admin_username) LIKE $${params.length} OR 
+        LOWER(admin_name) LIKE $${params.length} OR 
+        LOWER(summary) LIKE $${params.length} OR 
+        LOWER(ip_address) LIKE $${params.length} OR 
+        LOWER(target_id) LIKE $${params.length} OR
+        LOWER(action) LIKE $${params.length} OR
+        details::text ILIKE $${params.length}
+      )`)
     }
 
     if (actionType && actionType !== 'ALL') {
@@ -1862,10 +1927,38 @@ app.get('/api/v1/admin/audit-logs', authenticateAdmin, async (req, res) => {
       conditions.push(`target_type = $${params.length}`)
     }
 
+    if (adminUser && adminUser !== 'ALL') {
+      params.push(adminUser.toLowerCase())
+      conditions.push(`LOWER(admin_username) = $${params.length}`)
+    }
+
+    if (targetId && targetId.trim()) {
+      params.push(targetId.trim())
+      conditions.push(`target_id = $${params.length}`)
+    }
+
+    if (fromDate) {
+      params.push(fromDate)
+      conditions.push(`created_at >= $${params.length}::date`)
+    }
+
+    if (toDate) {
+      params.push(toDate)
+      conditions.push(`created_at < ($${params.length}::date + INTERVAL '1 day')`)
+    }
+
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const countRes = await query(`SELECT COUNT(*)::int AS count FROM admin_audit_logs ${whereClause}`, params)
     const total = countRes.rows[0].count
+
+    // Danh sách nhân viên để phục vụ bộ lọc
+    const adminUsersRes = await query(`
+      SELECT DISTINCT admin_username, admin_name 
+      FROM admin_audit_logs 
+      WHERE admin_username IS NOT NULL 
+      ORDER BY admin_name ASC
+    `)
 
     params.push(take, offset)
     const dataRes = await query(
@@ -1882,45 +1975,13 @@ app.get('/api/v1/admin/audit-logs', authenticateAdmin, async (req, res) => {
       data: dataRes.rows,
       total,
       page: parsedPage,
-      limit: take
+      limit: take,
+      adminUsers: adminUsersRes.rows
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
 })
-
-/**
- * Phân tích User-Agent để xác định thiết bị và trình duyệt
- */
-const parseUserAgent = (uaString = '') => {
-  const ua = String(uaString || '').toLowerCase()
-  let deviceType = 'Desktop'
-  if (/mobile|android|iphone|ipod/.test(ua)) {
-    deviceType = 'Điện thoại'
-  } else if (/ipad|tablet/.test(ua)) {
-    deviceType = 'Máy tính bảng'
-  } else {
-    deviceType = 'Máy tính (PC/Laptop)'
-  }
-
-  let browser = 'Trình duyệt Web'
-  if (/edg\//.test(ua)) browser = 'Microsoft Edge'
-  else if (/chrome\//.test(ua)) browser = 'Google Chrome'
-  else if (/safari\//.test(ua) && !/chrome/.test(ua)) browser = 'Apple Safari'
-  else if (/firefox\//.test(ua)) browser = 'Mozilla Firefox'
-
-  let os = ''
-  if (/windows/.test(ua)) os = 'Windows'
-  else if (/macintosh|mac os/.test(ua)) os = 'macOS'
-  else if (/iphone|ipad/.test(ua)) os = 'iOS'
-  else if (/android/.test(ua)) os = 'Android'
-  else if (/linux/.test(ua)) os = 'Linux'
-
-  return {
-    deviceType,
-    browser: os ? `${browser} (${os})` : browser
-  }
-}
 
 const ipLocationCache = new Map()
 
@@ -2371,6 +2432,28 @@ app.patch('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_AD
       }
     }
 
+    // Ghi nhật ký biến động chi tiết (Visual Diff / Changes)
+    const changes = {}
+    if (name !== undefined && name !== existingLead?.name) changes['Họ tên khách'] = { before: existingLead?.name || '—', after: name }
+    if (phone !== undefined && phone !== existingLead?.phone) changes['Số điện thoại'] = { before: existingLead?.phone || '—', after: phone }
+    if (status !== undefined && status !== existingLead?.status) changes['Trạng thái tư vấn'] = { before: existingLead?.status || 'MOI', after: status }
+    if (dealValue !== undefined && Number(dealValue) !== Number(existingLead?.deal_value || 0)) changes['Giá trị chốt'] = { before: Number(existingLead?.deal_value || 0), after: Number(dealValue) }
+    if (appointmentDate !== undefined && appointmentDate !== existingLead?.appointment_date) changes['Lịch hẹn thử dàn'] = { before: existingLead?.appointment_date || 'Chưa đặt', after: appointmentDate || 'Đã hủy' }
+    if (address !== undefined && address !== existingLead?.address) changes['Địa chỉ lắp đặt'] = { before: existingLead?.address || '—', after: address }
+
+    if (Object.keys(changes).length > 0) {
+      await recordAuditLog({
+        admin: req.admin,
+        action: 'LEAD_UPDATE',
+        actionType: 'UPDATE',
+        targetType: 'lead',
+        targetId: id,
+        summary: `Cập nhật thông tin khách tư vấn "${updatedLead.name}": đổi ${Object.keys(changes).join(', ')}.`,
+        details: { changes, leadId: id, leadName: updatedLead.name, leadPhone: updatedLead.phone },
+        req
+      })
+    }
+
     res.json({ success: true, data: mapLeadRow(updatedLead), syncedOrders })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -2381,7 +2464,19 @@ app.patch('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_AD
 app.delete('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params
+    const existingResult = await query('SELECT name, phone, address FROM leads WHERE id=$1', [id])
+    const lead = existingResult.rows[0]
     await query('DELETE FROM leads WHERE id = $1', [id])
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'LEAD_DELETE',
+      actionType: 'DELETE',
+      targetType: 'lead',
+      targetId: id,
+      summary: `Đã xóa vĩnh viễn hồ sơ khách tư vấn "${lead?.name || id}" (SĐT: ${lead?.phone || '—'}).`,
+      details: { leadId: id, name: lead?.name, phone: lead?.phone },
+      req
+    })
     res.json({ success: true, message: 'Đã xóa yêu cầu' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -2948,6 +3043,10 @@ app.patch('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPE
     const { estimatedPrice, status } = req.body
     if (estimatedPrice !== undefined && !validMoney(estimatedPrice)) return res.status(400).json({ success: false, message: 'Giá thẩm định không hợp lệ.' })
     if (status !== undefined && !['CHO_DINH_GIA', 'DA_DUYET', 'DA_THU_HOI', 'HUY'].includes(status)) return res.status(400).json({ success: false, message: 'Trạng thái thu cũ không hợp lệ.' })
+
+    const prevTrade = await query('SELECT customer_name, customer_phone, old_device_name, estimated_price, status FROM trade_ins WHERE id = $1', [id])
+    const oldTrade = prevTrade.rows[0]
+
     const sql = `
       UPDATE trade_ins
       SET
@@ -2960,6 +3059,24 @@ app.patch('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPE
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu thu cũ' })
     }
+
+    const changes = {}
+    if (status && oldTrade && status !== oldTrade.status) changes['Trạng thái'] = { before: oldTrade.status, after: status }
+    if (estimatedPrice !== undefined && oldTrade && Number(estimatedPrice) !== Number(oldTrade.estimated_price || 0)) changes['Giá thẩm định'] = { before: Number(oldTrade.estimated_price || 0), after: Number(estimatedPrice) }
+
+    if (Object.keys(changes).length > 0) {
+      await recordAuditLog({
+        admin: req.admin,
+        action: 'TRADE_IN_UPDATE',
+        actionType: 'UPDATE',
+        targetType: 'tradein',
+        targetId: id,
+        summary: `Cập nhật hồ sơ thu cũ "${oldTrade?.old_device_name || id}": ${Object.keys(changes).join(', ')}.`,
+        details: { changes, tradeId: id, customerName: oldTrade?.customer_name },
+        req
+      })
+    }
+
     res.json({ success: true, data: result.rows[0] })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -2968,7 +3085,20 @@ app.patch('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPE
 
 app.delete('/api/v1/admin/trade-ins/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    await query('DELETE FROM trade_ins WHERE id = $1', [req.params.id])
+    const { id } = req.params
+    const prevTrade = await query('SELECT customer_name, old_device_name FROM trade_ins WHERE id = $1', [id])
+    const oldTrade = prevTrade.rows[0]
+    await query('DELETE FROM trade_ins WHERE id = $1', [id])
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'TRADE_IN_DELETE',
+      actionType: 'DELETE',
+      targetType: 'tradein',
+      targetId: id,
+      summary: `Đã xóa yêu cầu thu cũ đổi mới "${oldTrade?.old_device_name || id}" của khách "${oldTrade?.customer_name || 'Khách'}".`,
+      details: { tradeId: id, oldTrade },
+      req
+    })
     res.json({ success: true, message: 'Đã xóa yêu cầu' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -3007,10 +3137,32 @@ app.patch('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_A
     const { id } = req.params
     const { status } = req.body
     if (!['MOI', 'DA_XAC_NHAN', 'DANG_GIAO', 'HOAN_THANH', 'HUY'].includes(status)) return res.status(400).json({ success: false, message: 'Trạng thái đơn hàng không hợp lệ.' })
+    const prevOrder = await query('SELECT customer_name, customer_phone, status, total_amount FROM orders WHERE id = $1', [id])
+    const oldOrder = prevOrder.rows[0]
     const result = await query(
-      'UPDATE orders SET status = COALESCE($1, status) WHERE id = $2 RETURNING *',
+      'UPDATE orders SET status = COALESCE($1, status), updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
       [status ?? null, id]
     )
+    if (oldOrder && status && status !== oldOrder.status) {
+      await recordAuditLog({
+        admin: req.admin,
+        action: 'ORDER_STATUS_UPDATE',
+        actionType: 'UPDATE',
+        targetType: 'order',
+        targetId: id,
+        summary: `Cập nhật trạng thái đơn hàng #${id} (${oldOrder.customer_name}): từ "${oldOrder.status}" sang "${status}".`,
+        details: {
+          changes: {
+            'Trạng thái đơn hàng': { before: oldOrder.status, after: status }
+          },
+          orderId: id,
+          customerName: oldOrder.customer_name,
+          phone: oldOrder.customer_phone,
+          totalAmount: Number(oldOrder.total_amount)
+        },
+        req
+      })
+    }
     res.json({ success: true, data: result.rows[0] })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -3019,7 +3171,20 @@ app.patch('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_A
 
 app.delete('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    await query('DELETE FROM orders WHERE id = $1', [req.params.id])
+    const { id } = req.params
+    const prevOrder = await query('SELECT customer_name, customer_phone, total_amount FROM orders WHERE id = $1', [id])
+    const oldOrder = prevOrder.rows[0]
+    await query('DELETE FROM orders WHERE id = $1', [id])
+    await recordAuditLog({
+      admin: req.admin,
+      action: 'ORDER_DELETE',
+      actionType: 'DELETE',
+      targetType: 'order',
+      targetId: id,
+      summary: `Đã xóa đơn hàng #${id} của khách "${oldOrder?.customer_name || 'Khách'}" (Giá trị: ${Number(oldOrder?.total_amount || 0).toLocaleString('vi-VN')}đ).`,
+      details: { orderId: id, oldOrder },
+      req
+    })
     res.json({ success: true, message: 'Đã xóa đơn hàng' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
