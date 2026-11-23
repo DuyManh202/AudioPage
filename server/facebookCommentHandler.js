@@ -123,6 +123,7 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
     // 4. GỬI TIN NHẮN RIÊNG VÀO MESSENGER (Private Reply)
     const privateResult = await sendPrivateReply({
       commentId,
+      userId,
       pageId,
       pageToken,
       graphVersion,
@@ -164,27 +165,42 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
 /**
  * Gửi tin nhắn riêng (Private Reply) từ bình luận vào Messenger của khách
  */
-export const sendPrivateReply = async ({ commentId, pageId, pageToken, graphVersion, text }) => {
+export const sendPrivateReply = async ({ commentId, userId = null, pageId, pageToken, graphVersion, text }) => {
   try {
     const url = `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(pageId)}/messages`
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${pageToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        recipient: { comment_id: commentId },
+        recipient: commentId ? { comment_id: commentId } : { id: userId },
         message: { text }
       }),
       signal: AbortSignal.timeout(10000)
     })
-    const data = await res.json().catch(() => ({}))
+    let data = await res.json().catch(() => ({}))
+    if (!res.ok && userId) {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pageToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipient: { id: userId },
+          message: { text }
+        }),
+        signal: AbortSignal.timeout(10000)
+      })
+      data = await res.json().catch(() => ({}))
+    }
     if (!res.ok) {
       console.warn('[FB Private Reply API Error]:', data.error?.message || res.statusText)
       return { success: false, error: data.error?.message }
     }
-    return { success: true, messageId: data.message_id }
+    return { success: true, messageId: data.message_id || data.id }
   } catch (err) {
     return { success: false, error: err.message }
   }
@@ -206,7 +222,10 @@ export const sendPublicCommentReply = async ({ commentId, pageToken, graphVersio
       signal: AbortSignal.timeout(10000)
     })
     const data = await res.json().catch(() => ({}))
-    return { success: res.ok, id: data.id }
+    if (!res.ok) {
+      console.warn(`[sendPublicCommentReply Failed] commentId=${commentId}:`, data.error?.message || res.status)
+    }
+    return { success: res.ok, id: data.id, error: data.error?.message }
   } catch (err) {
     return { success: false, error: err.message }
   }

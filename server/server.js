@@ -487,6 +487,12 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
           .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
 
         const latestMsg = normalizedMessages[normalizedMessages.length - 1] || null
+        // Lấy tin nhắn thực chất nhất (bỏ qua thông báo hệ thống Facebook tạo đoạn chat từ bình luận)
+        const realMsgs = normalizedMessages.filter(m =>
+          !m.body?.startsWith('Facebook tạo đoạn chat') &&
+          !m.body?.includes('Facebook tạo đoạn chat này vì')
+        )
+        const displayLatestMsg = realMsgs[realMsgs.length - 1] || latestMsg
         const inboundMessages = normalizedMessages.filter(message => message.direction === 'IN')
         const inferredAddress = inboundMessages.slice().reverse().map(message => addressFromMessage(message.body)).find(Boolean)
         const inferredProvince = inboundMessages.slice().reverse().map(message => findProvince(message.body, { requireContext: true })).find(Boolean)
@@ -513,7 +519,7 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
             updated_at = GREATEST(facebook_care_customers.updated_at, EXCLUDED.updated_at)
           RETURNING id,customer_name,phone,address`, [
-          `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, latestMsg?.body || null,
+          `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, displayLatestMsg?.body || latestMsg?.body || null,
           inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, inferredAddress || null, convUpdatedIso
         ])
         const syncedCustomer = customerRes.rows[0]
@@ -542,6 +548,53 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             RETURNING id`,
             [randomUUID(), customerId, msg.body, msg.direction, msg.createdBy, msg.platformMessageId, msg.createdAt, JSON.stringify(msg.attachments || [])])
           if (inserted.rows[0]) syncedMessages += 1
+        }
+
+        // Tự động phản hồi bình luận nếu hội thoại được tạo từ bình luận bài viết Facebook
+        const referralMsg = normalizedMessages.find(m => m.body && (m.body.includes('Facebook tạo đoạn chat này vì') || m.body.includes('comment_id=')))
+        let extractedCommentId = null
+        if (referralMsg) {
+          const match = referralMsg.body.match(/comment_id=(\d+)/)
+          if (match) extractedCommentId = match[1]
+        }
+        if (extractedCommentId) {
+          const checkReplied = await query('SELECT comment_id FROM facebook_comment_replies WHERE comment_id=$1', [extractedCommentId]).catch(() => ({ rows: [] }))
+          if (checkReplied.rows.length === 0) {
+            const cleanInbounds = normalizedMessages.filter(m =>
+              m.direction === 'IN' &&
+              !m.body.includes('Facebook tạo đoạn chat này vì') &&
+              !m.body.includes('đã trả lời tin nhắn chào mừng tự động')
+            )
+            const commentQuestion = cleanInbounds[cleanInbounds.length - 1]?.body || ''
+            if (commentQuestion) {
+              const cmtAiEnabled = await isFacebookCommentAiEnabled()
+              if (cmtAiEnabled) {
+                const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+                const apiKey = await getGeminiApiKey()
+                const model = await getGeminiModel()
+                console.log(`[Facebook Sync Comment] Tự động phản hồi bình luận comment_id=${extractedCommentId} cho khách ${resolvedName}: "${commentQuestion}"`)
+                handleFacebookComment({
+                  commentId: extractedCommentId,
+                  postId: null,
+                  parentId: null,
+                  userId: psid,
+                  userName: resolvedName,
+                  message: commentQuestion,
+                  pageId,
+                  pageToken,
+                  graphVersion,
+                  apiKey,
+                  model
+                }).then(async (cmtRes) => {
+                  await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text)
+                    VALUES ($1, $2, $3, $4, $5) ON CONFLICT (comment_id) DO NOTHING`,
+                    [extractedCommentId, customerId, resolvedName, commentQuestion, cmtRes?.publicReplyText || 'Đã phản hồi bình luận']).catch(() => {})
+                }).catch(err => {
+                  console.warn('[Facebook Sync Comment Error]:', err.message)
+                })
+              }
+            }
+          }
         }
 
         // Tự động kích hoạt AI phản hồi nếu tin nhắn mới nhất trong hội thoại là khách gửi và chưa có ai trả lời
@@ -641,31 +694,44 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       console.log(`[Facebook AI] Khách ${customerId} đã được gán cho nhân sự (${customer.assigned_to}) -> AI dừng tư vấn.`)
       return
     }
-    if (['CHO_PHAN_HOI', 'DANG_TU_VAN', 'HOAN_THANH', 'HUY'].includes(customer.status)) {
+    if (['DANG_TU_VAN', 'HOAN_THANH', 'HUY'].includes(customer.status)) {
       console.log(`[Facebook AI] Khách ${customerId} đang có trạng thái ${customer.status} -> AI dừng tư vấn.`)
       return
     }
 
-    // 3. DỪNG NẾU NGƯỜI THẬT (anh Tú hoặc nhân viên trang) VỪA TRẢ LỜI TRONG VÒNG 24 GIỜ QUA (Đang trong phiên tư vấn trực tiếp)
-    if (humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
-      const lastHumanMsg = humanCheckResult.rows[0]
-      const humanAgeHours = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60 * 60)
-      if (humanAgeHours >= 0 && humanAgeHours < 24) {
-        const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
-        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trong 24h qua (${humanAgeHours.toFixed(1)}h) -> AI dừng không can thiệp.`)
-        return
-      }
-    }
-
     const msgs = historyResult.rows.reverse()
-    const latestInbound = msgs.filter(m => m.direction === 'IN').slice(-1)[0]
+
+    // Lọc bỏ các thông báo hệ thống Facebook (VD: "Facebook tạo đoạn chat này vì...") để lấy đúng nội dung câu hỏi thật của khách
+    const realInbounds = msgs.filter(m =>
+      m.direction === 'IN' &&
+      !m.body?.startsWith('Facebook tạo đoạn chat') &&
+      !m.body?.includes('Facebook tạo đoạn chat này vì') &&
+      !m.body?.includes('đã trả lời tin nhắn chào mừng tự động')
+    )
+    const latestInbound = realInbounds.slice(-1)[0] || msgs.filter(m => m.direction === 'IN').slice(-1)[0]
     const latestMsg = msgs[msgs.length - 1]
 
     // Nếu tin nhắn mới nhất trong hội thoại đã là OUT (Tú Audio hoặc AI đã trả lời) -> Dừng, không gửi lặp
     if (!latestMsg || latestMsg.direction !== 'IN') return
 
     const latestText = latestInbound?.body || ''
-    if (!latestText || latestText.includes('đã trả lời tin nhắn chào mừng tự động')) return
+    if (!latestText || latestText.includes('đã trả lời tin nhắn chào mừng tự động') || latestText.startsWith('Facebook tạo đoạn chat')) return
+
+    const isCommentReferral = msgs.some(m => m.body?.includes('Facebook tạo đoạn chat này vì') || m.body?.includes('comment_id='))
+
+    // 3. KIỂM TRA NHÂN SỰ THẬT TƯ VẤN:
+    // - Nếu là tin nhắn tạo từ bình luận (Comment Referral): LUÔN LUÔN TRẢ LỜI ĐỘC LẬP 100%, không bị chặn bởi nhân sự.
+    // - Nếu là chat thông thường: Chỉ dừng nếu người thật vừa chat trong vòng 5 phút (đang trực tiếp gõ phím) hoặc khách chưa gửi câu hỏi nào mới sau tin của nhân viên.
+    if (!isCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
+      const lastHumanMsg = humanCheckResult.rows[0]
+      const humanAgeMinutes = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60)
+      const inboundAfterHuman = latestInbound?.created_at && new Date(latestInbound.created_at).getTime() > new Date(lastHumanMsg.created_at).getTime()
+      if (humanAgeMinutes >= 0 && (humanAgeMinutes < 5 || !inboundAfterHuman)) {
+        const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
+        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp -> AI nhường quyền.`)
+        return
+      }
+    }
 
     // Kiểm tra thời gian 24h của chính sách Meta Messenger
     if (latestInbound.created_at) {
@@ -4826,6 +4892,14 @@ const ensureDatabaseSchema = async () => {
     await query("ALTER TABLE facebook_care_messages ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'").catch(() => {})
     await query("ALTER TABLE facebook_care_customers ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'").catch(() => {})
     await query("ALTER TABLE facebook_care_customers ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'").catch(() => {})
+    await query(`CREATE TABLE IF NOT EXISTS facebook_comment_replies (
+      comment_id VARCHAR(100) PRIMARY KEY,
+      customer_id VARCHAR(100),
+      user_name VARCHAR(255),
+      comment_text TEXT,
+      public_reply_text TEXT,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    )`)
     await query(`CREATE TABLE IF NOT EXISTS customer_map_visits (
       record_type VARCHAR(20) NOT NULL CHECK (record_type IN ('FACEBOOK','LEAD')),
       record_id VARCHAR(50) NOT NULL,
