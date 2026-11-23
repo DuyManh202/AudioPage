@@ -114,6 +114,11 @@ Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Faceboo
 Tên khách: "${userName}"
 Bình luận: "${cleanMsg}"
 
+NGUYÊN TẮC BẮT BUỘC VỀ PHẠM VI SẢN PHẨM & DỊCH VỤ CỦA TÚ AUDIO (TUÂN THỦ 100%):
+- TÚ AUDIO CHUYÊN SALE DÀN KARAOKE GIA ĐÌNH & THIẾT BỊ PHÒNG HÁT CAO CẤP (Loa Full chuyên nghiệp, Vang số cao cấp, Cục đẩy công suất, Loa Subwoofer, Micro không dây).
+- TUYỆT ĐỐI CẤM: KHÔNG nhận căn chỉnh, KHÔNG nhận sửa chữa, KHÔNG bán loa kéo / loa kẹo kéo di động. TUYỆT ĐỐI KHÔNG BAO GIỜ tự bịa ra là có "công thức căn chỉnh loa kéo" hay "chỉ vặn nút loa kéo".
+- NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối và giải thích rõ bên em chuyên dàn karaoke gia đình và thiết bị phòng hát. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối, xin số Zalo để tư vấn.
+
 ${hasExistingChat ? 
 `QUY TẮC CỐT LÕI (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
 KHÁCH HÀNG NÀY ĐÃ TỪNG NHẮN TIN RIÊNG (INBOX) VỚI TÚ AUDIO TRONG MESSENGER RỒI.
@@ -123,8 +128,8 @@ Trả lời bình luận công khai dưới bài viết cực kỳ thông minh, 
 :
 `QUY TẮC: Khách hàng này CHƯA TỪNG NHẮN TIN INBOX VỚI TRANG.
 Nhiệm vụ: Lôi kéo và chuyển hướng khách vào hộp thư Messenger một cách cực kỳ khéo léo:
-1. Câu 1: Bắt đúng bệnh hoặc trả lời đúng trọng tâm câu hỏi của khách.
-2. Câu 2: Đưa ra mồi nhử/lợi ích hấp dẫn (bảng giá, clip test, hẹn lịch qua tận nơi).
+1. Câu 1: Bắt đúng bệnh hoặc trả lời đúng trọng tâm câu hỏi của khách (nhớ từ chối loa kéo nếu khách hỏi loa kéo).
+2. Câu 2: Đưa ra mồi nhử/lợi ích hấp dẫn (bảng giá dàn karaoke gia đình, clip test, hẹn lịch qua tận nơi).
 3. Câu 3: Khéo léo mời khách cho số Zalo để anh Tú gọi video tư vấn.
 
 YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
@@ -317,6 +322,12 @@ function generateSalesResponse({ customerName = 'bác', commentText = '', hasExi
 
   // NẾU KHÁCH ĐÃ TỪNG INBOX: TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG (privateReply: null), CHỈ TRẢ LỜI CÔNG KHAI
   if (hasExistingChat) {
+    if (norm.includes('loa keo') || norm.includes('lo keo')) {
+      return {
+        privateReply: null,
+        publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát, không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
+      }
+    }
     if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
       return {
         privateReply: null,
@@ -342,6 +353,14 @@ function generateSalesResponse({ customerName = 'bác', commentText = '', hasExi
   }
 
   // NẾU KHÁCH MỚI TINH (CHƯA TỪNG INBOX): Gửi tin nhắn riêng kéo khách vào Messenger + Trả lời công khai
+  // 0. Khách hỏi về loa kéo / sửa chỉnh loa kéo (Tú Audio chuyên dàn karaoke gia đình, TUYỆT ĐỐI không làm loa kéo)
+  if (norm.includes('loa keo') || norm.includes('lo keo')) {
+    return {
+      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em chuyên cung cấp các bộ dàn karaoke gia đình và thiết bị phòng hát chuyên nghiệp, bên em không làm dịch vụ chỉnh loa kéo anh ạ. Loa kéo mạch công suất nhỏ hát rất dễ bị bí tiếng và mệt, nếu anh muốn nâng cấp sang dàn karaoke phòng khách hát nhẹ và chống hú tuyệt đối, anh nhắn em xin số Zalo em tư vấn cho anh nhé!`,
+      publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát cao cấp, bên em không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
+    }
+  }
+
   // 1. Khách hỏi sửa amply rè / hú rít
   if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
     return {

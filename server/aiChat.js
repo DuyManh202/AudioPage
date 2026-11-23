@@ -87,6 +87,17 @@ export const checkDeterministicAiResponse = (message) => {
     }
   }
 
+  // 3.1 Khách hỏi về Loa kéo / Chỉnh loa kéo / Sửa loa kéo (Tú Audio chuyên dàn karaoke gia đình, TUYỆT ĐỐI không làm loa kéo)
+  if (
+    norm.includes('loa keo') || norm.includes('lo keo') || norm.includes('keo di dong') ||
+    norm.includes('loa keo keo') || norm.includes('chinh loa keo')
+  ) {
+    return {
+      type: 'NO_PORTABLE_SPEAKER',
+      reply: 'Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát cao cấp, bên em không nhận chỉnh loa kéo anh ạ. Nếu anh muốn nâng cấp sang dàn karaoke chuẩn để hát nhẹ, tiếng bay bổng và chống hú tuyệt đối, anh nhắn em xin số Zalo em tư vấn cấu hình phù hợp phòng nhà mình nhé anh!'
+    }
+  }
+
   // 4. Khách hỏi dịch vụ Căn chỉnh / Setup tận nhà / Chi phí đi lại
   if (
     norm.includes('setup') || norm.includes('can chinh') || norm.includes('chinh giup') ||
