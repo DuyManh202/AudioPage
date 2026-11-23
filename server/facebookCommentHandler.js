@@ -30,7 +30,32 @@ export const handleFacebookComment = async ({
     const cleanMsg = String(message || '').trim()
     if (!cleanMsg) return { skipped: true, reason: 'empty_message' }
 
-    // 2. Kiểm tra xem bình luận có chứa Số Điện Thoại không
+    // 2. Kiểm tra xem khách hàng này ĐÃ TỪNG NHẮN TIN INBOX TRONG MESSENGER chưa
+    let hasExistingChat = false
+    try {
+      if (userId) {
+        const outCheck = await query(
+          `SELECT m.id FROM facebook_care_customers c 
+           JOIN facebook_care_messages m ON m.customer_id = c.id 
+           WHERE c.facebook_id = $1 AND m.direction = 'OUT' LIMIT 1`,
+          [String(userId)]
+        )
+        if (outCheck.rows.length > 0) hasExistingChat = true
+      }
+      if (!hasExistingChat && userName && userName !== 'Khách Facebook') {
+        const outCheckName = await query(
+          `SELECT m.id FROM facebook_care_customers c 
+           JOIN facebook_care_messages m ON m.customer_id = c.id 
+           WHERE LOWER(c.customer_name) = LOWER($1) AND m.direction = 'OUT' LIMIT 1`,
+          [userName.trim()]
+        )
+        if (outCheckName.rows.length > 0) hasExistingChat = true
+      }
+    } catch (checkErr) {
+      console.warn('[Check Existing Chat Error]:', checkErr.message)
+    }
+
+    // 3. Kiểm tra xem bình luận có chứa Số Điện Thoại không
     const detectedPhone = phoneFromMessage(cleanMsg)
     const inferredAddress = addressFromMessage(cleanMsg)
     const inferredProvince = findProvince(cleanMsg, { requireContext: false })
@@ -56,21 +81,26 @@ export const handleFacebookComment = async ({
         source: 'FACEBOOK_COMMENT_PHONE'
       })
 
-      // Gửi tin nhắn riêng vào Messenger xác nhận
-      const privateText = `Dạ em Tú Audio xin chào anh ${userName} ạ! Em đã nhận được số điện thoại ${detectedPhone} của anh rồi ạ. Em sẽ kết bạn Zalo và gọi điện tư vấn trực tiếp cho anh ngay bây giờ nhé anh!`
-      await sendPrivateReply({ commentId, pageId, pageToken, graphVersion, text: privateText }).catch(console.warn)
+      // Chỉ gửi tin nhắn riêng nếu khách CHƯA TỪNG IB
+      if (!hasExistingChat) {
+        const privateText = `Dạ em Tú Audio xin chào anh ${userName} ạ! Em đã nhận được số điện thoại ${detectedPhone} của anh rồi ạ. Em sẽ kết bạn Zalo và gọi điện tư vấn trực tiếp cho anh ngay bây giờ nhé anh!`
+        await sendPrivateReply({ commentId, userId, pageId, pageToken, graphVersion, text: privateText }).catch(console.warn)
+      }
 
       // Trả lời công khai dưới comment
-      const publicText = `Dạ em Tú đã nhận được thông tin và nhắn riêng qua Messenger cho anh rồi ạ, anh kiểm tra tin nhắn giúp em nhé!`
+      const publicText = hasExistingChat
+        ? `Dạ em Tú đã nhận được số điện thoại của anh rồi ạ, em sẽ kết bạn Zalo và gọi điện tư vấn trực tiếp cho anh ngay nhé anh!`
+        : `Dạ em Tú đã nhận được thông tin và nhắn riêng qua Messenger cho anh rồi ạ, anh kiểm tra tin nhắn giúp em nhé!`
       await sendPublicCommentReply({ commentId, pageToken, graphVersion, text: publicText }).catch(console.warn)
 
-      return { success: true, action: 'PHONE_CAPTURED_AND_HIDDEN', phone: detectedPhone }
+      return { success: true, action: 'PHONE_CAPTURED_AND_HIDDEN', phone: detectedPhone, hasExistingChat }
     }
 
-    // 3. Nếu KHÔNG có SĐT: Sử dụng kỹ năng Sale chuyên nghiệp để lôi kéo khách vào Messenger
+    // 4. Nếu KHÔNG có SĐT: Tạo câu trả lời thông minh
     const salesMessages = generateSalesResponse({
       customerName: userName,
-      commentText: cleanMsg
+      commentText: cleanMsg,
+      hasExistingChat
     })
 
     let privateReplyText = salesMessages.privateReply
@@ -84,16 +114,25 @@ Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Faceboo
 Tên khách: "${userName}"
 Bình luận: "${cleanMsg}"
 
-NHIỆM VỤ CỦA BẠN: Lôi kéo và chuyển hướng khách vào hộp thư Messenger một cách cực kỳ khéo léo, tự nhiên, cuốn hút theo phong cách người bán hàng có tâm và có tầm:
-1. Câu 1: Bắt đúng bệnh hoặc trả lời đúng trọng tâm câu hỏi của khách (thể hiện chuyên môn sâu sắc về vang số, amply, loa rè, diện tích phòng, nhận làm tận nhà...).
-2. Câu 2: Đưa ra mồi nhử/lợi ích hấp dẫn (hướng dẫn xử lý tận gốc, gửi bảng giá cấu hình dàn ưu đãi, gửi clip test âm thanh, tặng phần mềm hoặc hẹn lịch qua tận nơi).
-3. Câu 3: Kêu gọi hành động: Khéo léo mời khách cho số Zalo để anh Tú gọi video khám bệnh dàn máy hoặc trao đổi chi tiết.
+${hasExistingChat ? 
+`QUY TẮC CỐT LÕI (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
+KHÁCH HÀNG NÀY ĐÃ TỪNG NHẮN TIN RIÊNG (INBOX) VỚI TÚ AUDIO TRONG MESSENGER RỒI.
+TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG NÀO VÀO MESSENGER NỮA (KHÔNG ĐƯỢC IB).
+BẠN CHỈ CẦN XUẤT RA DUY NHẤT 1 PHẦN LÀ [PUBLIC_REPLY]:
+Trả lời bình luận công khai dưới bài viết cực kỳ thông minh, đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại 220 Nguyễn Danh Phương, Vĩnh Yên/nhận làm tận nhà các tỉnh), thân thiện xưng "em" gọi "anh" (hoặc "bác"), đồng thời nhắc anh nhắn tiếp vào đoạn chat Messenger cũ mà hai bên đang trao đổi.`
+:
+`QUY TẮC: Khách hàng này CHƯA TỪNG NHẮN TIN INBOX VỚI TRANG.
+Nhiệm vụ: Lôi kéo và chuyển hướng khách vào hộp thư Messenger một cách cực kỳ khéo léo:
+1. Câu 1: Bắt đúng bệnh hoặc trả lời đúng trọng tâm câu hỏi của khách.
+2. Câu 2: Đưa ra mồi nhử/lợi ích hấp dẫn (bảng giá, clip test, hẹn lịch qua tận nơi).
+3. Câu 3: Khéo léo mời khách cho số Zalo để anh Tú gọi video tư vấn.
 
 YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
 [PRIVATE_REPLY]
-(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài 3-4 câu thân thiện, xưng "em" hoặc "em Tú", gọi khách là "anh" hoặc "bác")
+(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài 3-4 câu thân thiện)
 [PUBLIC_REPLY]
-(Nội dung trả lời công khai ngắn gọn 1 câu dưới bình luận để thông báo và kích thích khách mở Messenger xem, ví dụ: "Dạ em Tú đã nhắn tin chi tiết giải pháp qua Messenger cho anh rồi ạ, anh mở hộp thư xem giúp em nhé!")`
+(Nội dung trả lời công khai ngắn gọn 1 câu dưới bình luận để thông báo và kích thích khách mở Messenger xem)`
+}`
 
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const aiRes = await fetch(geminiUrl, {
@@ -108,29 +147,39 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
 
         const aiData = await aiRes.json().catch(() => ({}))
         const rawAiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-        if (rawAiText && rawAiText.includes('[PRIVATE_REPLY]')) {
-          const parts = rawAiText.split('[PUBLIC_REPLY]')
-          const privPart = parts[0].replace('[PRIVATE_REPLY]', '').trim()
-          const pubPart = parts[1] ? parts[1].trim() : ''
-          if (privPart) privateReplyText = privPart
-          if (pubPart) publicReplyText = pubPart
+        if (rawAiText) {
+          if (hasExistingChat) {
+            privateReplyText = null
+            publicReplyText = rawAiText.replace('[PUBLIC_REPLY]', '').replace('[PRIVATE_REPLY]', '').trim()
+          } else if (rawAiText.includes('[PRIVATE_REPLY]')) {
+            const parts = rawAiText.split('[PUBLIC_REPLY]')
+            const privPart = parts[0].replace('[PRIVATE_REPLY]', '').trim()
+            const pubPart = parts[1] ? parts[1].trim() : ''
+            if (privPart) privateReplyText = privPart
+            if (pubPart) publicReplyText = pubPart
+          }
         }
       } catch (aiErr) {
         console.warn('[AI Comment Gen Warning]:', aiErr.message)
       }
     }
 
-    // 4. GỬI TIN NHẮN RIÊNG VÀO MESSENGER (Private Reply)
-    const privateResult = await sendPrivateReply({
-      commentId,
-      userId,
-      pageId,
-      pageToken,
-      graphVersion,
-      text: privateReplyText
-    })
+    // 5. GỬI TIN NHẮN RIÊNG VÀO MESSENGER (CHỈ GỬI KHI KHÁCH CHƯA TỪNG INBOX)
+    let privateResult = null
+    if (!hasExistingChat && privateReplyText) {
+      privateResult = await sendPrivateReply({
+        commentId,
+        userId,
+        pageId,
+        pageToken,
+        graphVersion,
+        text: privateReplyText
+      })
+    } else {
+      console.log(`[FB Comment] Khách ${userName} (userId: ${userId}) ĐÃ TỪNG IB TRƯỚC ĐÂY -> Bỏ qua tin nhắn riêng (không ib), chỉ trả lời bình luận công khai.`)
+    }
 
-    // 5. TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (Public Reply)
+    // 6. TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (Luôn luôn thực hiện 100%)
     await sendPublicCommentReply({
       commentId,
       pageToken,
@@ -138,7 +187,7 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
       text: publicReplyText
     })
 
-    // 6. Ghi nhận vào CRM để nhân viên biết khách này đến từ bình luận
+    // 7. Ghi nhận vào CRM để nhân viên biết khách này đến từ bình luận
     const tempCustomerId = `FB-CMT-${userId || randomUUID().slice(0, 8)}`
     await saveCustomerToCrm({
       customerId: tempCustomerId,
@@ -153,6 +202,7 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
     return {
       success: true,
       action: 'SALES_PULL_COMPLETED',
+      hasExistingChat,
       privateSent: Boolean(privateResult?.success),
       publicReplyText
     }
@@ -255,13 +305,40 @@ export const hideFacebookComment = async ({ commentId, pageToken, graphVersion }
 /**
  * Kịch bản bán hàng thực chiến kéo khách vào Messenger (Sales Pull Fallback)
  */
-function generateSalesResponse({ customerName = 'bác', commentText = '' }) {
+function generateSalesResponse({ customerName = 'bác', commentText = '', hasExistingChat = false }) {
   const norm = commentText
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd').replace(/Đ/g, 'D')
     .toLowerCase()
 
+  // NẾU KHÁCH ĐÃ TỪNG INBOX: TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG (privateReply: null), CHỈ TRẢ LỜI CÔNG KHAI
+  if (hasExistingChat) {
+    if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
+      return {
+        privateReply: null,
+        publicReply: `Dạ em Tú chào anh ${customerName} ạ! Bệnh này do rò mass hoặc tụ nguồn tiền khuếch đại. Em với anh đang nhắn tin trong Messenger rồi, anh mở hộp thư xem hướng dẫn chi tiết nhé anh!`
+      }
+    }
+    if (norm.includes('nam dinh') || norm.includes('ha noi') || norm.includes('phu tho') || norm.includes('o dau') || norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('ve nha')) {
+      return {
+        privateReply: null,
+        publicReply: `Dạ showroom Tú Audio ở 220 đường Nguyễn Danh Phương, Vĩnh Yên và bên em CÓ nhận làm tại nhà anh nhé! Em với anh đang nhắn tin trong Messenger rồi, anh kiểm tra hộp thư giúp em nhé!`
+      }
+    }
+    if (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('karaoke') || norm.includes('bo') || norm.includes('dan')) {
+      return {
+        privateReply: null,
+        publicReply: `Dạ dàn karaoke gia đình bên em đang có gói từ 19tr đến 29tr bảo hành tận nhà. Em với anh đang trao đổi trong Messenger rồi, anh mở hộp thư xem chi tiết nhé anh!`
+      }
+    }
+    return {
+      privateReply: null,
+      publicReply: `Dạ em Tú chào anh ${customerName} ạ! Em vừa đọc bình luận của anh, em với anh đang nhắn tin trong Messenger rồi, anh mở hộp thư trao đổi tiếp cho tiện nhé anh!`
+    }
+  }
+
+  // NẾU KHÁCH MỚI TINH (CHƯA TỪNG INBOX): Gửi tin nhắn riêng kéo khách vào Messenger + Trả lời công khai
   // 1. Khách hỏi sửa amply rè / hú rít
   if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
     return {

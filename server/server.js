@@ -719,6 +719,15 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     const isCommentReferral = msgs.some(m => m.body?.includes('Facebook tạo đoạn chat này vì') || m.body?.includes('comment_id='))
 
+    // NGUYÊN TẮC ANH TÚ: Khách nào ĐÃ TỪNG INBOX rồi thì KHÔNG ĐƯỢC gửi thêm tin nhắn riêng tự động từ bình luận nữa
+    if (isCommentReferral) {
+      const hadPreviousOutMsg = msgs.some(m => m.direction === 'OUT')
+      if (hadPreviousOutMsg) {
+        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã từng inbox trước đây -> Không gửi thêm tin nhắn riêng từ bình luận.`)
+        return
+      }
+    }
+
     // 3. KIỂM TRA NHÂN SỰ THẬT TƯ VẤN:
     // - Nếu là tin nhắn tạo từ bình luận (Comment Referral): LUÔN LUÔN TRẢ LỜI ĐỘC LẬP 100%, không bị chặn bởi nhân sự.
     // - Nếu là chat thông thường: Chỉ dừng nếu người thật vừa chat trong vòng 5 phút (đang trực tiếp gõ phím) hoặc khách chưa gửi câu hỏi nào mới sau tin của nhân viên.
