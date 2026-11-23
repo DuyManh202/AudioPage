@@ -524,7 +524,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
   try {
     const [customerResult, humanCheckResult, historyResult, productsResult, combosResult] = await Promise.all([
       query('SELECT customer_name, phone, interest, notes, status, assigned_to FROM facebook_care_customers WHERE id=$1', [customerId]),
-      query("SELECT id, created_by FROM facebook_care_messages WHERE customer_id=$1 AND direction='OUT' AND (created_by IS NULL OR created_by NOT LIKE '%AI%') LIMIT 1", [customerId]),
+      query("SELECT id, created_by, created_at FROM facebook_care_messages WHERE customer_id=$1 AND direction='OUT' AND (created_by IS NULL OR created_by NOT LIKE '%AI%') ORDER BY created_at DESC LIMIT 1", [customerId]),
       query('SELECT direction, body, created_by, created_at FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 20', [customerId]),
       query('SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24'),
       query('SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC')
@@ -548,11 +548,15 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       return
     }
 
-    // 3. DỪNG VĨNH VIỄN NẾU ĐÃ CÓ NGƯỜI THẬT (anh Tú hoặc nhân viên trang) TỪNG TRẢ LỜI KHÁCH
-    if (humanCheckResult.rows.length > 0) {
-      const humanStaffName = humanCheckResult.rows[0].created_by || 'Nhân sự Tú Audio'
-      console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã có người thật (${humanStaffName}) trả lời -> AI dừng vĩnh viễn không can thiệp.`)
-      return
+    // 3. DỪNG NẾU NGƯỜI THẬT (anh Tú hoặc nhân viên trang) VỪA TRẢ LỜI TRONG VÒNG 24 GIỜ QUA (Đang trong phiên tư vấn trực tiếp)
+    if (humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
+      const lastHumanMsg = humanCheckResult.rows[0]
+      const humanAgeHours = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60 * 60)
+      if (humanAgeHours >= 0 && humanAgeHours < 24) {
+        const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
+        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trong 24h qua (${humanAgeHours.toFixed(1)}h) -> AI dừng không can thiệp.`)
+        return
+      }
     }
 
     const msgs = historyResult.rows.reverse()
