@@ -25,12 +25,32 @@ if (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET.includes('replace-with')
   throw new Error('JWT_SECRET phải được cấu hình và có ít nhất 32 ký tự.')
 }
 
-const phoneFromMessage = (value) => {
-  const match = String(value || '').match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/)
-  if (!match) return null
-  const digits = match[0].replace(/\D/g, '')
+const isValidViMobilePhone = (phone) => {
+  if (!phone) return false
+  const digits = String(phone).replace(/\D/g, '')
   const normalized = digits.startsWith('84') ? `0${digits.slice(2)}` : digits
-  return /^0\d{9,10}$/.test(normalized) ? normalized : null
+  return /^0[35789]\d{8}$/.test(normalized) || /^02\d{9}$/.test(normalized)
+}
+
+const phoneFromMessage = (value) => {
+  if (!value) return null
+  const text = String(value)
+  // Bỏ qua tin nhắn hệ thống giới thiệu bài viết / bình luận của Facebook và URL
+  if (text.includes('facebook.com') || text.includes('story.php') || text.includes('comment_id') || text.includes('Facebook tạo đoạn chat')) {
+    return null
+  }
+  // Bắt số điện thoại di động Việt Nam (10 chữ số bắt đầu bằng 03, 05, 07, 08, 09 hoặc +84)
+  // Đảm bảo đứng độc lập, không bị lẫn trong chuỗi ID dài (như 100037075765648)
+  const matches = text.match(/(?<!\d)(?:(?:\+?84|0)[35789])(?:[\s().-]*\d){8}(?!\d)/g)
+  if (!matches) return null
+  for (const m of matches) {
+    const digits = m.replace(/\D/g, '')
+    const normalized = digits.startsWith('84') ? `0${digits.slice(2)}` : digits
+    if (/^0[35789]\d{8}$/.test(normalized)) {
+      return normalized
+    }
+  }
+  return null
 }
 
 const addressFromMessage = value => {
@@ -2114,25 +2134,35 @@ app.get('/api/v1/admin/dashboard/stats', authenticateAdmin, authorizeRoles('SUPE
 })
 
 // Tự động đồng bộ khách hàng Facebook đã có số điện thoại sang bảng Khách Tư Vấn & Thử Dàn (Leads)
+const cleanCustomerNote = (msg) => {
+  if (!msg) return ''
+  const str = String(msg).trim()
+  if (str.startsWith('Facebook tạo đoạn chat') || str.includes('facebook.com/story.php')) return ''
+  return str.replace(/\[Nguồn:\s*AUTO_MATCHED\]\s*·?\s*/gi, '').trim()
+}
+
 const syncFbCustomersToLeads = async () => {
   try {
     const fbCustomers = await query(`
       SELECT id, customer_name, facebook_id, phone, address, province, interest, status, notes, last_message, source_ad_name, source_type, created_at, updated_at
       FROM facebook_care_customers
-      WHERE phone IS NOT NULL AND LENGTH(TRIM(phone)) >= 9
+      WHERE phone IS NOT NULL AND (phone ~ '^0[35789][0-9]{8}$' OR phone ~ '^0[2][0-9]{9}$')
     `)
     for (const c of fbCustomers.rows) {
-      const cleanP = phoneFromMessage(c.phone) || c.phone.trim()
-      if (!cleanP || cleanP.length < 9) continue
+      const cleanP = phoneFromMessage(c.phone) || c.phone.trim().replace(/\D/g, '')
+      if (!isValidViMobilePhone(cleanP)) continue
 
       const leadId = `FB-${c.id.replace(/^FB-/, '')}`.slice(0, 50)
       const leadAddress = (c.address || c.province || '').trim()
-      const leadInterest = c.interest || c.source_ad_name || 'Tư vấn âm thanh qua Facebook'
+      const cleanAd = (c.source_ad_name || '').trim()
+      const cleanLastMsg = cleanCustomerNote(c.last_message)
+      const cleanNotes = cleanCustomerNote(c.notes)
+
+      const leadInterest = c.interest || cleanAd || 'Tư vấn âm thanh qua Facebook'
       const leadNote = [
-        c.source_type ? `[Nguồn: ${c.source_type}]` : '[Nguồn: Facebook]',
-        c.source_ad_name ? `QC: ${c.source_ad_name}` : '',
-        c.last_message ? `Tin nhắn: ${c.last_message}` : '',
-        c.notes || ''
+        cleanAd ? `QC: ${cleanAd}` : '',
+        cleanLastMsg ? `Tin nhắn: ${cleanLastMsg}` : '',
+        cleanNotes
       ].filter(Boolean).join(' · ')
 
       const leadStatus = c.status === 'DA_CHOT' ? 'DA_CHOT' : (c.status === 'DA_HUY' ? 'HUY' : (c.status === 'DANG_TU_VAN' ? 'DA_GOI' : 'MOI'))
@@ -2163,14 +2193,14 @@ const syncFbCustomersToLeads = async () => {
   }
 }
 
-// Lấy danh sách khách hàng (Leads)
+// Lấy danh sách khách hàng (Leads) - Chỉ trả về đúng số điện thoại hợp lệ
 app.get('/api/v1/admin/leads', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     await syncFbCustomersToLeads()
     const { status, keyword } = req.query
     const dateRange = parseDateRange(req, res)
     if (!dateRange) return
-    let sql = 'SELECT * FROM leads WHERE 1=1'
+    let sql = "SELECT * FROM leads WHERE (phone ~ '^0[35789][0-9]{8}$' OR phone ~ '^0[2][0-9]{9}$')"
     const params = []
 
     sql += createdAtDateFilter(dateRange, params)

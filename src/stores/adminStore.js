@@ -85,6 +85,13 @@ const loadCombos = () => {
 
 let noticeTimer = null
 
+export const isValidViMobilePhone = (phone) => {
+  if (!phone) return false
+  const p = String(phone).replace(/\D/g, '')
+  const norm = p.startsWith('84') ? `0${p.slice(2)}` : p
+  return /^0[35789]\d{8}$/.test(norm) || /^02\d{9}$/.test(norm)
+}
+
 export const useAdminStore = defineStore('admin', {
   state: () => ({
     products: loadProducts(),
@@ -116,13 +123,15 @@ export const useAdminStore = defineStore('admin', {
     newOrdersCount: (state) => state.orders.filter(o => o.status === 'MOI').length,
     completedOrdersCount: (state) => state.orders.filter(o => o.status === 'HOAN_THANH').length,
 
-    totalLeadsCount: (state) => state.leads.length,
-    newLeadsCount: (state) => state.leads.filter(l => l.status === 'MOI').length,
-    trialScheduledCount: (state) => state.leads.filter(l => l.status === 'HEN_THU_TAI_NHA').length,
-    closedDealsCount: (state) => state.leads.filter(l => l.status === 'DA_CHOT').length,
+    validLeads: (state) => state.leads.filter(l => isValidViMobilePhone(l.phone)),
+    totalLeadsCount: (state) => state.leads.filter(l => isValidViMobilePhone(l.phone)).length,
+    newLeadsCount: (state) => state.leads.filter(l => isValidViMobilePhone(l.phone) && l.status === 'MOI').length,
+    trialScheduledCount: (state) => state.leads.filter(l => isValidViMobilePhone(l.phone) && l.status === 'HEN_THU_TAI_NHA').length,
+    closedDealsCount: (state) => state.leads.filter(l => isValidViMobilePhone(l.phone) && l.status === 'DA_CHOT').length,
 
     filteredLeads: (state) => {
       return state.leads.filter(lead => {
+        if (!isValidViMobilePhone(lead.phone)) return false
         const matchesStatus = state.leadFilterStatus === 'ALL' || lead.status === state.leadFilterStatus
         const kw = state.leadSearchKeyword.toLowerCase()
         const matchesSearch = !kw ||
@@ -217,7 +226,7 @@ export const useAdminStore = defineStore('admin', {
         const orderRes = responseFor('orders')
 
         if (leadsRes?.success && Array.isArray(leadsRes.data)) {
-          this.leads = leadsRes.data
+          this.leads = leadsRes.data.filter(l => isValidViMobilePhone(l.phone))
           this._persistLeads()
         }
         if (prodRes?.success && Array.isArray(prodRes.data) && prodRes.data.length > 0) {
