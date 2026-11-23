@@ -358,15 +358,23 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
           .map(m => {
             const fromPage = String(m.from?.id || '') === String(pageId)
             const rawAttachments = Array.isArray(m.attachments?.data) ? m.attachments.data : []
+            const isSticker = Boolean(m.sticker) || rawAttachments.some(att => att.type === 'sticker' || Boolean(att.payload?.sticker_id) || String(att.name || '').toLowerCase().includes('like'))
             const attachments = rawAttachments.map(att => {
               const url = att.image_data?.url || att.file_url || att.video_data?.url || ''
               const previewUrl = att.image_data?.preview_url || url
-              const type = att.image_data ? 'image' : (att.video_data ? 'video' : (att.mime_type?.startsWith('image/') ? 'image' : 'file'))
+              const type = isSticker ? 'sticker' : (att.image_data ? 'image' : (att.video_data ? 'video' : (att.mime_type?.startsWith('image/') ? 'image' : 'file')))
               return { url, previewUrl, type, name: att.name || '' }
             }).filter(a => Boolean(a.url))
 
             const hasMedia = attachments.length > 0 || Boolean(m.sticker)
-            const text = String(m.message || '').trim() || (hasMedia ? (fromPage ? '[Trang gửi hình ảnh / tệp đính kèm]' : '[Khách gửi hình ảnh / tệp đính kèm]') : '')
+            let text = String(m.message || '').trim()
+            if (!text && hasMedia) {
+              if (isSticker) {
+                text = fromPage ? '[Trang gửi icon / nhãn dán 👍]' : '[Khách gửi icon / nhãn dán 👍]'
+              } else {
+                text = fromPage ? '[Trang gửi hình ảnh / tệp đính kèm]' : '[Khách gửi hình ảnh / tệp đính kèm]'
+              }
+            }
             const createdAt = m.created_time && !Number.isNaN(Date.parse(m.created_time)) ? new Date(m.created_time).toISOString() : new Date().toISOString()
             return {
               platformMessageId: m.id ? String(m.id) : null,
@@ -514,14 +522,34 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
   fbAutoReplyInFlight.add(customerId)
   try {
-    const [customerResult, historyResult, productsResult, combosResult] = await Promise.all([
-      query('SELECT customer_name, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
-      query('SELECT direction, body, created_at FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 12', [customerId]),
+    const [customerResult, humanCheckResult, historyResult, productsResult, combosResult] = await Promise.all([
+      query('SELECT customer_name, phone, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
+      query("SELECT id, created_by FROM facebook_care_messages WHERE customer_id=$1 AND direction='OUT' AND (created_by IS NULL OR created_by NOT LIKE '%AI%') LIMIT 1", [customerId]),
+      query('SELECT direction, body, created_by, created_at FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 20', [customerId]),
       query('SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24'),
       query('SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC')
     ])
     const customer = customerResult.rows[0]
-    if (!customer || customer.status === 'CHO_PHAN_HOI') return
+    if (!customer) return
+
+    // 1. DỪNG NẾU KHÁCH ĐÃ CÓ SỐ ĐIỆN THOẠI (Chỉ tư vấn đến khi có SĐT là chuyển giao)
+    if (customer.phone && String(customer.phone).trim().length >= 9) {
+      console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã có SĐT (${customer.phone}) -> Dừng AI để chuyển giao nhân sự/anh Tú chăm sóc trực tiếp.`)
+      return
+    }
+
+    // 2. DỪNG NẾU KHÁCH ĐANG Ở CÁC TRẠNG THÁI ĐÃ CÓ NGƯỜI PHỤ TRÁCH HOẶC ĐANG XỬ LÝ
+    if (['CHO_PHAN_HOI', 'DANG_TU_VAN', 'HOAN_THANH', 'HUY'].includes(customer.status)) {
+      console.log(`[Facebook AI] Khách ${customerId} đang có trạng thái ${customer.status} -> AI dừng tư vấn.`)
+      return
+    }
+
+    // 3. DỪNG VĨNH VIỄN NẾU ĐÃ CÓ NGƯỜI THẬT (anh Tú hoặc nhân viên trang) TỪNG TRẢ LỜI KHÁCH
+    if (humanCheckResult.rows.length > 0) {
+      const humanStaffName = humanCheckResult.rows[0].created_by || 'Nhân sự Tú Audio'
+      console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã có người thật (${humanStaffName}) trả lời -> AI dừng vĩnh viễn không can thiệp.`)
+      return
+    }
 
     const msgs = historyResult.rows.reverse()
     const latestInbound = msgs.filter(m => m.direction === 'IN').slice(-1)[0]
@@ -544,13 +572,23 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     let reply = ''
 
-    // 1. Nếu khách đã để lại số điện thoại / Zalo trong tin nhắn -> Nhận diện và xác nhận ngay lập tức
+    // 1. Nếu khách vừa để lại số điện thoại / Zalo trong tin nhắn -> Xác nhận ngay 1 lần, lưu vào DB và dừng AI cho các tin nhắn sau
     const detectedPhone = phoneFromMessage(latestText)
     if (detectedPhone) {
       reply = `Dạ vâng anh, em Tú đã nhận được số Zalo ${detectedPhone} của anh rồi ạ! Em kết bạn nhắn qua Zalo với anh ngay bây giờ nhé anh!`
+      await query("UPDATE facebook_care_customers SET phone=$1, status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2", [detectedPhone, customerId])
+        .catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
     }
 
-    // 2. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng ngữ cảnh câu hỏi của khách
+    // 2. Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline...) để phản hồi chính xác 100%, không bị ảo giác
+    if (!reply) {
+      const fastDeterministic = checkDeterministicAiResponse(latestText)
+      if (fastDeterministic && ['PHONE_CAPTURED', 'ICON_STICKER', 'GREETING', 'HOTLINE'].includes(fastDeterministic.type)) {
+        reply = fastDeterministic.reply
+      }
+    }
+
+    // 3. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng ngữ cảnh câu hỏi của khách
     if (!reply) {
       const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
 
@@ -563,8 +601,12 @@ NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100%):
    - Câu 1: Trả lời thông minh, đúng trọng tâm câu hỏi của khách (bắt đúng bệnh vang số, tư vấn đúng diện tích phòng khách, đúng model loa/đẩy, dịch vụ tận nhà...).
    - Câu 2: Khéo léo mời khách để lại số điện thoại hoặc Zalo để anh Tú gọi điện hoặc kết bạn Zalo tư vấn chi tiết, gửi video test thực tế.
 3. PHONG CÁCH ANH TÚ: Xưng "em" hoặc "em Tú", gọi khách là "anh" (hoặc "bác"). Giọng chân thành, thân thiện, đời thường của anh em kỹ thuật âm thanh.
+4. QUY TẮC BẮT BUỘC VỀ ICON & HÌNH ẢNH (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI, CẤM ĐOÁN MÒ):
+   - Nếu khách gửi ICON, NHÃN DÁN, NÚT LIKE (ví dụ: "[Khách gửi icon / nhãn dán 👍]" hoặc "👍"): Coi như lời chào hỏi thân thiện. Chào anh và xin số Zalo: "Dạ em Tú Audio xin chào anh ạ! Anh nhắn em xin số Zalo em tư vấn cấu hình dàn hoặc vang số trực tiếp cho nhanh và tiện nhất nhé anh!" - TUYỆT ĐỐI CẤM BẢO LÀ "NHẬN ĐƯỢC ẢNH BỘ DÀN".
+   - Nếu khách gửi HÌNH ẢNH THẬT ("[Khách gửi hình ảnh / tệp đính kèm]"): Trả lời "Dạ em Tú đã nhận được hình ảnh của anh rồi ạ! Anh cho em xin số Zalo em gọi điện trao đổi tư vấn trực tiếp cho tiện nhé anh!" - TUYỆT ĐỐI KHÔNG TỰ ĐOÁN ĐÂY LÀ ẢNH BỘ DÀN HAY THIẾT BỊ NÀO KHI CHƯA RÕ NỘI DUNG.
 
 Ví dụ tham khảo cách tư vấn:
+- Khách gửi 👍 hoặc icon: "Dạ em Tú Audio xin chào anh ạ! Anh nhắn em xin số Zalo em tư vấn cấu hình dàn hoặc vang số trực tiếp cho nhanh và tiện nhất nhé anh!"
 - Khách: "Toi dung vang so.gio muon set ap lai" -> "Dạ vâng anh, bên em có nhận qua tận nhà đo đạc căn chỉnh lại vang số cho anh hát nhẹ tiếng và chống hú tuyệt đối ạ. Anh cho em xin số Zalo em gọi trao đổi và hẹn lịch qua hỗ trợ anh nhé!"
 - Khách: "Phòng khách 25m2 thì lắp bộ nào vừa tiền em" -> "Dạ phòng 25m2 lắp đôi loa full 30 kèm đẩy liền vang tầm 15 đến 20 triệu là tiếng căng tròn, hát rất nhẹ ạ. Anh cho em xin số Zalo em gửi video quay test chất âm thực tế cho anh xem nhé!"
 - Khách: "Vang X5 của anh bị rè tiếng mic xử lý sao em" -> "Dạ tiếng mic rè thường do gain quá lớn, dây jack hoặc IC tiền khuếch đại anh ạ. Anh nhắn em số Zalo em gọi video hướng dẫn anh kiểm tra xử lý dứt điểm nhé anh!"
@@ -632,14 +674,45 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
   try {
     for (const entry of req.body.entry || []) {
       for (const event of entry.messaging || []) {
-        const psid = event.sender?.id
+        const isEcho = Boolean(event.message?.is_echo)
+        const psid = isEcho ? event.recipient?.id : event.sender?.id
+        if (!psid) continue
+
+        // Nếu là tin nhắn phản hồi từ Page (do anh Tú hoặc nhân viên trả lời từ điện thoại / Meta Business Suite):
+        if (isEcho) {
+          const echoMid = event.message?.mid
+          const echoText = event.message?.text || (event.message?.attachments?.length ? '[Trang gửi hình ảnh / tệp đính kèm]' : '')
+          if (echoMid && echoText) {
+            const custRes = await query('SELECT id FROM facebook_care_customers WHERE facebook_id=$1', [String(psid)])
+            if (custRes.rows[0]) {
+              const custId = custRes.rows[0].id
+              await query(
+                `INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id)
+                 VALUES ($1, $2, $3, 'OUT', 'Nhân viên Page', $4)
+                 ON CONFLICT (platform_message_id) DO NOTHING`,
+                [randomUUID(), custId, echoText, echoMid]
+              ).catch(() => {})
+              await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [echoText, custId]).catch(() => {})
+            }
+          }
+          continue
+        }
+
         const rawAtts = Array.isArray(event.message?.attachments) ? event.message.attachments : []
+        const isSticker = Boolean(event.message?.sticker_id) || rawAtts.some(att => att.type === 'sticker' || Boolean(att.payload?.sticker_id))
         const webhookAttachments = rawAtts.map(att => ({
           url: att.payload?.url || '',
-          type: att.type || 'image'
+          type: isSticker ? 'sticker' : (att.type || 'image')
         })).filter(a => Boolean(a.url))
-        const text = event.message?.text || event.postback?.title || (webhookAttachments.length ? '[Khách gửi hình ảnh / tệp đính kèm]' : '')
-        if (!psid || event.message?.is_echo) continue
+
+        let text = event.message?.text || event.postback?.title || ''
+        if (!text) {
+          if (isSticker) {
+            text = '[Khách gửi icon / nhãn dán 👍]'
+          } else if (webhookAttachments.length) {
+            text = '[Khách gửi hình ảnh / tệp đính kèm]'
+          }
+        }
         const referral = event.referral || event.message?.referral || event.postback?.referral || {}
         const referralAdId = referral.ad_id || referral.adId || null
         if (!text && !referralAdId && !referral.source && !referral.type) continue
@@ -685,10 +758,10 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         if (!text) continue
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
         const inserted = await query(`INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id, attachments)
-          VALUES ($1,$2,$3,'IN','Facebook Page',$4,$5::jsonb)
+          VALUES ($1,$2,$3,'IN',$4,$5,$6::jsonb)
           ON CONFLICT (platform_message_id) DO UPDATE SET
             attachments = CASE WHEN EXCLUDED.attachments IS NOT NULL AND jsonb_array_length(EXCLUDED.attachments) > 0 THEN EXCLUDED.attachments ELSE facebook_care_messages.attachments END
-          RETURNING id`, [randomUUID(), customer.rows[0].id, text, platformMessageId, JSON.stringify(webhookAttachments)])
+          RETURNING id`, [randomUUID(), customer.rows[0].id, text, resolvedName, platformMessageId, JSON.stringify(webhookAttachments)])
         if (inserted.rows[0]) {
           isFacebookAiEnabled().then(enabled => {
             if (enabled) autoReplyToFacebookCustomer(customer.rows[0].id, psid)

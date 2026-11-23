@@ -39,6 +39,19 @@ export const checkDeterministicAiResponse = (message) => {
     }
   }
 
+  // 0.1 Khách gửi icon, like, nhãn dán, sticker 👍
+  const isIconOrSticker = (
+    norm.includes('nhan dan') || norm.includes('icon') || norm.includes('sticker') ||
+    message.includes('👍') || message.includes('👏') || message.includes('❤️') ||
+    norm === 'like' || norm.includes('(y)') || norm.includes('[khach gui icon')
+  )
+  if (isIconOrSticker) {
+    return {
+      type: 'ICON_STICKER',
+      reply: 'Dạ em Tú Audio xin chào anh ạ! Anh nhắn em xin số Zalo em tư vấn cấu hình dàn hoặc vang số trực tiếp cho tiện và nhanh nhất nhé anh!'
+    }
+  }
+
   // 1. Vang số CM x16+ và PF K9
   if (
     norm.includes('cm x16') || norm.includes('cmx16') || norm.includes('x16+') || norm.includes('x16') ||
