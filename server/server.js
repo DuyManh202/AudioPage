@@ -554,11 +554,27 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
         const referralMsg = normalizedMessages.find(m => m.body && (m.body.includes('Facebook tạo đoạn chat này vì') || m.body.includes('comment_id=')))
         let extractedCommentId = null
         if (referralMsg) {
-          const match = referralMsg.body.match(/comment_id=(\d+)/)
-          if (match) extractedCommentId = match[1]
+          // 1. Thử bóc tách từ comment_gqlid (base64) -> ra composite comment ID chuẩn Meta
+          const gqlMatch = referralMsg.body.match(/comment_gqlid=([A-Za-z0-9%_-]+)/)
+          if (gqlMatch) {
+            try {
+              const decoded = Buffer.from(decodeURIComponent(gqlMatch[1]), 'base64').toString('utf-8')
+              extractedCommentId = decoded.replace(/^comment:/, '')
+            } catch {}
+          }
+          // 2. Thử bóc tách từ video url
+          if (!extractedCommentId) {
+            const videoMatch = referralMsg.body.match(/videos\/(\d+)\/.*?comment_id=(\d+)/)
+            if (videoMatch) extractedCommentId = `${videoMatch[1]}_${videoMatch[2]}`
+          }
+          // 3. Fallback lấy comment_id thông thường
+          if (!extractedCommentId) {
+            const match = referralMsg.body.match(/comment_id=(\d+)/)
+            if (match) extractedCommentId = match[1]
+          }
         }
         if (extractedCommentId) {
-          const checkReplied = await query('SELECT comment_id FROM facebook_comment_replies WHERE comment_id=$1', [extractedCommentId]).catch(() => ({ rows: [] }))
+          const checkReplied = await query('SELECT comment_id FROM facebook_comment_replies WHERE comment_id=$1 AND status=\'SUCCESS\'', [extractedCommentId]).catch(() => ({ rows: [] }))
           if (checkReplied.rows.length === 0) {
             const cleanInbounds = normalizedMessages.filter(m =>
               m.direction === 'IN' &&
@@ -586,9 +602,17 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
                   apiKey,
                   model
                 }).then(async (cmtRes) => {
-                  await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text)
-                    VALUES ($1, $2, $3, $4, $5) ON CONFLICT (comment_id) DO NOTHING`,
-                    [extractedCommentId, customerId, resolvedName, commentQuestion, cmtRes?.publicReplyText || 'Đã phản hồi bình luận']).catch(() => {})
+                  if (cmtRes?.success) {
+                    await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text, status, meta_reply_id)
+                      VALUES ($1, $2, $3, $4, $5, 'SUCCESS', $6)
+                      ON CONFLICT (comment_id) DO UPDATE SET status='SUCCESS', public_reply_text=EXCLUDED.public_reply_text, meta_reply_id=EXCLUDED.meta_reply_id`,
+                      [extractedCommentId, customerId, resolvedName, commentQuestion, cmtRes?.publicReplyText || '', cmtRes?.replyId || null]).catch(() => {})
+                  } else {
+                    await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text, status, error)
+                      VALUES ($1, $2, $3, $4, $5, 'FAILED', $6)
+                      ON CONFLICT (comment_id) DO UPDATE SET status='FAILED', error=EXCLUDED.error`,
+                      [extractedCommentId, customerId, resolvedName, commentQuestion, cmtRes?.publicReplyText || '', cmtRes?.error || 'Lỗi API Meta']).catch(() => {})
+                  }
                 }).catch(err => {
                   console.warn('[Facebook Sync Comment Error]:', err.message)
                 })
@@ -616,6 +640,10 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
       fbLastSyncMs = Date.now()
       fbLastSyncedAt = new Date(fbLastSyncMs).toISOString()
       fbLastSyncError = ''
+
+      // Quét và tự động trả lời tất cả bình luận trên các bài viết Fanpage
+      syncFacebookPageComments().catch(() => {})
+
       return { synced: true, syncedCustomers, syncedMessages, lastSyncedAt: fbLastSyncedAt, error: '' }
     } catch (err) {
       fbLastSyncMs = Date.now()
@@ -628,6 +656,67 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
   })()
 
   return fbSyncInFlight
+}
+
+/**
+ * Quét toàn bộ bài viết mới nhất trên Fanpage và tự động trả lời bình luận công khai
+ */
+const syncFacebookPageComments = async () => {
+  if (!(await isFacebookCommentAiEnabled()) || !canReadFacebookPageInbox()) return
+  const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  try {
+    const apiKey = await getGeminiApiKey()
+    const model = await getGeminiModel()
+
+    // Quét bình luận trên các bài viết Feed của Fanpage
+    const feedUrl = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(pageId)}/feed`)
+    feedUrl.searchParams.set('fields', 'id,comments.limit(30){id,from,message,created_time,parent}')
+    feedUrl.searchParams.set('limit', '10')
+    const feedRes = await fetch(feedUrl, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(15000) })
+    const feedData = await feedRes.json().catch(() => ({}))
+
+    const allPosts = Array.isArray(feedData.data) ? feedData.data : []
+
+    for (const post of allPosts) {
+      const comments = Array.isArray(post.comments?.data) ? post.comments.data : []
+      for (const c of comments) {
+        if (!c.id || !c.message || !c.from?.id) continue
+        if (String(c.from.id) === String(pageId)) continue // Bỏ qua bình luận của chính Trang
+
+        const already = await query('SELECT comment_id FROM facebook_comment_replies WHERE comment_id=$1 AND status=\'SUCCESS\'', [c.id]).catch(() => ({ rows: [] }))
+        if (already.rows.length > 0) continue
+
+        console.log(`[Page Comment Sync] Đang tự động trả lời bình luận c.id=${c.id} từ ${c.from.name}: "${c.message}"`)
+        const cmtRes = await handleFacebookComment({
+          commentId: c.id,
+          postId: post.id,
+          parentId: c.parent?.id || null,
+          userId: c.from.id,
+          userName: c.from.name || 'Khách Facebook',
+          message: c.message,
+          pageId,
+          pageToken,
+          graphVersion,
+          apiKey,
+          model
+        })
+
+        if (cmtRes?.success) {
+          await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text, status, meta_reply_id)
+            VALUES ($1, $2, $3, $4, $5, 'SUCCESS', $6)
+            ON CONFLICT (comment_id) DO UPDATE SET status='SUCCESS', public_reply_text=EXCLUDED.public_reply_text, meta_reply_id=EXCLUDED.meta_reply_id`,
+            [c.id, `FB-CMT-${c.from.id}`, c.from.name, c.message, cmtRes.publicReplyText || '', cmtRes.replyId || null]).catch(() => {})
+        } else {
+          await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text, status, error)
+            VALUES ($1, $2, $3, $4, $5, 'FAILED', $6)
+            ON CONFLICT (comment_id) DO UPDATE SET status='FAILED', error=EXCLUDED.error`,
+            [c.id, `FB-CMT-${c.from.id}`, c.from.name, c.message, cmtRes?.publicReplyText || '', cmtRes?.error || 'Lỗi API Meta']).catch(() => {})
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[syncFacebookPageComments Error]:', err.message)
+  }
 }
 
 const fetchMetaAdDetails = async (adId) => {

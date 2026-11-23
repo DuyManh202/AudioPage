@@ -180,7 +180,7 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
     }
 
     // 6. TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (Luôn luôn thực hiện 100%)
-    await sendPublicCommentReply({
+    const publicResult = await sendPublicCommentReply({
       commentId,
       pageToken,
       graphVersion,
@@ -200,7 +200,9 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
     })
 
     return {
-      success: true,
+      success: Boolean(publicResult?.success),
+      replyId: publicResult?.id || null,
+      error: publicResult?.error || null,
       action: 'SALES_PULL_COMPLETED',
       hasExistingChat,
       privateSent: Boolean(privateResult?.success),
@@ -274,8 +276,9 @@ export const sendPublicCommentReply = async ({ commentId, pageToken, graphVersio
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       console.warn(`[sendPublicCommentReply Failed] commentId=${commentId}:`, data.error?.message || res.status)
+      return { success: false, error: data.error?.message || `HTTP ${res.status}` }
     }
-    return { success: res.ok, id: data.id, error: data.error?.message }
+    return { success: true, id: data.id }
   } catch (err) {
     return { success: false, error: err.message }
   }
