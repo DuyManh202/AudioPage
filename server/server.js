@@ -10,6 +10,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
+import { handleFacebookComment } from './facebookCommentHandler.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
 import { catalogProducts } from './catalogProducts.js'
 import {
@@ -772,6 +773,42 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
   if (req.body?.object !== 'page') return res.sendStatus(404)
   try {
     for (const entry of req.body.entry || []) {
+      // 1. Tự động xử lý bình luận trên bài viết (Facebook Comments & Feed) -> Lôi kéo vào Messenger
+      for (const change of entry.changes || []) {
+        if (change.field === 'feed') {
+          const val = change.value || {}
+          if (val.item === 'comment' && (val.verb === 'add' || val.verb === 'edit')) {
+            const commentId = val.comment_id
+            const postId = val.post_id
+            const parentId = val.parent_id || null
+            const fromUser = val.from || {}
+            const text = val.message || ''
+
+            getGeminiApiKey().then(apiKey => {
+              getGeminiModel().then(model => {
+                const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+                handleFacebookComment({
+                  commentId,
+                  postId,
+                  parentId,
+                  userId: fromUser.id,
+                  userName: fromUser.name || 'Khách Facebook',
+                  message: text,
+                  pageId,
+                  pageToken,
+                  graphVersion: graphVersion || 'v19.0',
+                  apiKey,
+                  model
+                }).catch(err => {
+                  console.error('[Comment Webhook Error]:', err.message)
+                })
+              })
+            }).catch(() => {})
+          }
+        }
+      }
+
+      // 2. Xử lý các tin nhắn Messenger (Facebook Messaging)
       for (const event of entry.messaging || []) {
         const isEcho = Boolean(event.message?.is_echo)
         const psid = isEcho ? event.recipient?.id : event.sender?.id
