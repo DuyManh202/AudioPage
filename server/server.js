@@ -91,6 +91,15 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '10mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer) } }))
 
+const formatUtcIso = (val) => {
+  if (!val) return ''
+  const str = String(val).trim()
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+    return str.replace(' ', 'T') + 'Z'
+  }
+  return new Date(val).toISOString()
+}
+
 // Helper map Product row to Frontend format
 const mapProductRow = (row) => ({
   id: row.id,
@@ -119,14 +128,14 @@ const mapProductRow = (row) => ({
 // Helper map Lead row to Frontend format
 const mapLeadRow = (row) => ({
   id: row.id,
-  createdAt: row.created_at ? new Date(row.created_at).toISOString().slice(0, 16).replace('T', ' ') : '',
+  createdAt: row.created_at ? formatUtcIso(row.created_at) : '',
   name: row.name,
   phone: row.phone,
-  address: row.address,
-  interest: row.interest,
+  address: row.address || '',
+  interest: row.interest || 'Tư vấn âm thanh',
   roomInfo: row.room_info || '',
   status: row.status,
-  appointmentDate: row.appointment_date ? new Date(row.appointment_date).toISOString().slice(0, 16) : '',
+  appointmentDate: row.appointment_date ? formatUtcIso(row.appointment_date) : '',
   deposit: Number(row.deposit || 0),
   dealValue: Number(row.deal_value || 0),
   note: row.notes || ''
@@ -2104,9 +2113,60 @@ app.get('/api/v1/admin/dashboard/stats', authenticateAdmin, authorizeRoles('SUPE
   }
 })
 
+// Tự động đồng bộ khách hàng Facebook đã có số điện thoại sang bảng Khách Tư Vấn & Thử Dàn (Leads)
+const syncFbCustomersToLeads = async () => {
+  try {
+    const fbCustomers = await query(`
+      SELECT id, customer_name, facebook_id, phone, address, province, interest, status, notes, last_message, source_ad_name, source_type, created_at, updated_at
+      FROM facebook_care_customers
+      WHERE phone IS NOT NULL AND LENGTH(TRIM(phone)) >= 9
+    `)
+    for (const c of fbCustomers.rows) {
+      const cleanP = phoneFromMessage(c.phone) || c.phone.trim()
+      if (!cleanP || cleanP.length < 9) continue
+
+      const leadId = `FB-${c.id.replace(/^FB-/, '')}`.slice(0, 50)
+      const leadAddress = (c.address || c.province || '').trim()
+      const leadInterest = c.interest || c.source_ad_name || 'Tư vấn âm thanh qua Facebook'
+      const leadNote = [
+        c.source_type ? `[Nguồn: ${c.source_type}]` : '[Nguồn: Facebook]',
+        c.source_ad_name ? `QC: ${c.source_ad_name}` : '',
+        c.last_message ? `Tin nhắn: ${c.last_message}` : '',
+        c.notes || ''
+      ].filter(Boolean).join(' · ')
+
+      const leadStatus = c.status === 'DA_CHOT' ? 'DA_CHOT' : (c.status === 'DA_HUY' ? 'HUY' : (c.status === 'DANG_TU_VAN' ? 'DA_GOI' : 'MOI'))
+
+      await query(`
+        INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, '', $6, 0, $7, COALESCE($8, CURRENT_TIMESTAMP), COALESCE($9, CURRENT_TIMESTAMP))
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          phone = EXCLUDED.phone,
+          address = CASE WHEN leads.address IS NULL OR leads.address = '' THEN EXCLUDED.address ELSE leads.address END,
+          notes = CASE WHEN leads.notes IS NULL OR leads.notes = '' THEN EXCLUDED.notes ELSE leads.notes END,
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        leadId,
+        c.customer_name || 'Khách Facebook ' + cleanP.slice(-4),
+        cleanP,
+        leadAddress,
+        leadInterest,
+        leadStatus,
+        leadNote,
+        c.created_at || new Date(),
+        c.updated_at || new Date()
+      ]).catch(() => {})
+    }
+  } catch (err) {
+    console.warn('[syncFbCustomersToLeads warning]:', err.message)
+  }
+}
+
 // Lấy danh sách khách hàng (Leads)
 app.get('/api/v1/admin/leads', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
+    await syncFbCustomersToLeads()
     const { status, keyword } = req.query
     const dateRange = parseDateRange(req, res)
     if (!dateRange) return
@@ -2187,6 +2247,21 @@ app.patch('/api/v1/admin/leads/:id', authenticateAdmin, authorizeRoles('SUPER_AD
       previousPhone: phoneChanged ? existingLead?.phone : null,
       address: addressChanged ? updatedLead.address : null
     }) : 0
+
+    if (updatedLead.phone) {
+      const fbStatusMap = {
+        'MOI': 'MOI',
+        'DA_GOI': 'DANG_TU_VAN',
+        'HEN_THU_TAI_NHA': 'DANG_TU_VAN',
+        'DA_CHOT': 'DA_CHOT',
+        'HUY': 'DA_HUY'
+      }
+      const mappedFbStatus = status ? fbStatusMap[status] : null
+      if (mappedFbStatus) {
+        await query("UPDATE facebook_care_customers SET status=$1, updated_at=CURRENT_TIMESTAMP WHERE phone=$2 OR id=$3", [mappedFbStatus, updatedLead.phone, id.replace(/^FB-/, '')]).catch(() => {})
+      }
+    }
+
     res.json({ success: true, data: mapLeadRow(updatedLead), syncedOrders })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -2841,15 +2916,6 @@ app.delete('/api/v1/admin/orders/:id', authenticateAdmin, authorizeRoles('SUPER_
     res.status(500).json({ success: false, message: err.message })
   }
 })
-
-const formatUtcIso = (val) => {
-  if (!val) return ''
-  const str = String(val).trim()
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
-    return str.replace(' ', 'T') + 'Z'
-  }
-  return new Date(val).toISOString()
-}
 
 // Facebook Page care CRM: stores customers and a staff-maintained conversation log.
 const mapFbCare = row => ({

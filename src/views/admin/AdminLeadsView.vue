@@ -128,8 +128,16 @@
           <tbody>
             <tr v-for="lead in visibleLeads" :key="lead.id">
               <td>
-                <strong class="code-text" :title="lead.id">{{ shortCode(lead.id) }}</strong>
-                <span class="sub-line">{{ lead.createdAt }}</span>
+                <div class="code-and-source">
+                  <strong class="code-text" :title="lead.id">{{ shortCode(lead.id) }}</strong>
+                  <span v-if="lead.id.startsWith('FB-') || (lead.note && lead.note.includes('Facebook'))" class="source-chip fb">
+                    💬 Facebook
+                  </span>
+                  <span v-else class="source-chip web">
+                    🌐 Website
+                  </span>
+                </div>
+                <span class="sub-line">{{ formatLeadDate(lead.createdAt) }}</span>
               </td>
 
               <td>
@@ -336,6 +344,31 @@ const filterOptions = computed(() => [
 ])
 
 const cleanPhone = (phone) => (phone ? String(phone).replace(/[^0-9]/g, '') : '')
+
+const parseUtcDate = (value) => {
+  if (!value) return null
+  if (value instanceof Date) return value
+  let str = String(value).trim()
+  if (!str) return null
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+    str = str.replace(' ', 'T') + 'Z'
+  }
+  const d = new Date(str)
+  return isNaN(d.getTime()) ? null : d
+}
+
+const formatLeadDate = (val) => {
+  const d = parseUtcDate(val)
+  if (!d) return val || '—'
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(d)
+}
 
 const shortCode = (id) => {
   const s = String(id || '')
@@ -549,5 +582,34 @@ const submitLeadForm = async () => {
   justify-content: flex-end;
   gap: 6px;
   white-space: nowrap;
+}
+
+.code-and-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+
+.source-chip.fb {
+  background: #e7f3ff;
+  color: #1877f2;
+  border: 1px solid #cce4ff;
+}
+
+.source-chip.web {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
 }
 </style>
