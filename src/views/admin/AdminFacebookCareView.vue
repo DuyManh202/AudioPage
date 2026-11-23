@@ -452,19 +452,24 @@
           </div>
         </div>
 
-        <!-- Thẻ 4: Doanh Thu & ROAS -->
-        <div class="cockpit-card card-roas">
-          <div class="card-glow glow-purple"></div>
+        <!-- Thẻ 4: Doanh Thu & ROAS HOẶC Khách Nét & SĐT khi chưa có đơn -->
+        <div class="cockpit-card card-roas" :class="{ 'card-phone-focus': analyticsSummary.totalClosed === 0 }">
+          <div class="card-glow" :class="analyticsSummary.totalClosed > 0 ? 'glow-purple' : 'glow-gold'"></div>
           <div class="card-head">
             <div class="card-title-wrap">
-              <span class="card-icon">🚀</span>
-              <span class="card-title">DOANH THU & HOÀN VỐN (ROAS)</span>
+              <span class="card-icon">{{ analyticsSummary.totalClosed > 0 ? '🚀' : '📱' }}</span>
+              <span class="card-title">{{ analyticsSummary.totalClosed > 0 ? 'DOANH THU & HOÀN VỐN (ROAS)' : 'KHÁCH NÉT & TỶ LỆ RA SĐT' }}</span>
             </div>
-            <span class="roas-top-badge">{{ analyticsSummary.avgRoas }}x ROAS</span>
+            <span v-if="analyticsSummary.totalClosed > 0" class="roas-top-badge">{{ analyticsSummary.avgRoas }}x ROAS</span>
+            <span v-else class="rate-badge">{{ analyticsSummary.avgPhoneRate || 0 }}% Ra SĐT</span>
           </div>
-          <div class="card-main-val text-neon-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</div>
+          <div v-if="analyticsSummary.totalClosed > 0" class="card-main-val text-neon-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</div>
+          <div v-else class="card-main-val text-neon-gold">
+            {{ analyticsSummary.totalPhoneCustomers || 0 }} <span class="val-sub">số điện thoại</span>
+          </div>
           <div class="card-foot">
-            <span>Đã chốt: <strong class="text-green">{{ analyticsSummary.totalClosed }} đơn</strong> (Tỷ lệ: {{ analyticsSummary.overallCr }}%)</span>
+            <span v-if="analyticsSummary.totalClosed > 0">Đã chốt: <strong class="text-green">{{ analyticsSummary.totalClosed }} đơn</strong> (Tỷ lệ: {{ analyticsSummary.overallCr }}%)</span>
+            <span v-else>Giá / 1 SĐT: <strong class="text-amber">{{ (analyticsSummary.avgCpp || 0) > 0 ? formatMoney(analyticsSummary.avgCpp) : '—' }}</strong> (Tỷ lệ: {{ analyticsSummary.avgPhoneRate || 0 }}%)</span>
           </div>
         </div>
       </div>
@@ -479,23 +484,30 @@
           </div>
           <div class="hud-info">
             <div class="hud-tag">AI CHẨN ĐOÁN & RA QUYẾT ĐỊNH · CHU MINH HẠNH METHOD</div>
-            <h3 class="hud-title">Bắt Mạch Chiến Dịch Quảng Cáo & Đề Xuất Tối Ưu Tức Thì</h3>
+            <h3 class="hud-title">Bắt Mạch Chiến Dịch Quảng Cáo &amp; Đề Xuất Tối Ưu Tức Thì</h3>
             <p class="hud-desc">
-              Phân tích chéo giữa <strong>Độ hút Content (CTR)</strong>, <strong>Độ bão hòa tệp (Tần suất)</strong>, 
-              <strong>Chi phí tiếp cận (CPM)</strong> và <strong>Tỷ lệ chốt đơn</strong> để quyết định: Tắt camp đốt tiền, sửa 3s đầu video hay Vít ngân sách.
+              Đo lường phễu chuyển đổi 5 tầng: <strong>Độ hút Content (CTR)</strong> → <strong>Giá tiếp cận (CPM)</strong> → 
+              <strong>Giá tin nhắn (CPL)</strong> → <strong>Khách nét có Số Điện Thoại (CPP)</strong> → <strong>Chốt đơn</strong>.
+              Đặc biệt chuẩn xác để bắt bệnh quảng cáo ngay cả khi chưa có đơn hàng!
             </p>
           </div>
         </div>
         <div class="hud-right">
           <div class="quick-status-pills">
+            <span v-if="(analyticsSummary.totalPhoneCustomers || 0) > 0" class="status-pill pill-success">
+              📞 Thu được {{ analyticsSummary.totalPhoneCustomers }} SĐT chất lượng ({{ analyticsSummary.avgPhoneRate }}% khách)
+            </span>
             <span v-if="(analyticsSummary.avgCtr || 0) >= 2" class="status-pill pill-success">
               ✓ Content 3s đầu rất tốt (CTR {{ analyticsSummary.avgCtr }}%)
             </span>
             <span v-if="(analyticsSummary.avgCpm || 0) <= 70000 && (analyticsSummary.avgCpm || 0) > 0" class="status-pill pill-success">
               ✓ Giá thầu CPM rẻ ({{ formatMoney(analyticsSummary.avgCpm) }})
             </span>
-            <span v-if="analyticsSummary.totalLeads > 0 && analyticsSummary.totalClosed === 0" class="status-pill pill-warning">
-              ⚠️ Tập trung tối ưu kịch bản chốt sale
+            <span v-if="analyticsSummary.totalLeads > 10 && (analyticsSummary.totalPhoneCustomers || 0) === 0" class="status-pill pill-warning">
+              ⚠️ Cảnh báo: {{ analyticsSummary.totalLeads }} khách nhưng 0 SĐT (Bệnh mess ảo)
+            </span>
+            <span v-else-if="analyticsSummary.totalLeads > 0 && analyticsSummary.totalClosed === 0" class="status-pill pill-warning">
+              ⚡ Ưu tiên gọi tư vấn ngay cho các khách đã để lại SĐT
             </span>
           </div>
           <div class="hud-actions-row">
@@ -596,7 +608,7 @@
           </div>
         </div>
 
-        <!-- Thanh phân loại phụ: Bộ lọc trạng thái hoạt động / tạm dừng -->
+        <!-- Thanh phân loại phụ: Bộ lọc trạng thái hoạt động / tạm dừng & Chế độ phân tích -->
         <div class="table-sub-bar">
           <div class="status-btn-group">
             <button
@@ -624,6 +636,28 @@
               ⏸️ Đã tạm dừng ({{ pausedAdsCount }})
             </button>
           </div>
+
+          <!-- Bộ chuyển chế độ: Phễu SĐT (khi chưa có đơn) vs Doanh thu ROAS -->
+          <div class="view-mode-group">
+            <span class="mode-lbl">Chế độ phân tích:</span>
+            <button
+              type="button"
+              :class="['mode-btn', { active: effectiveAnalyticsMode === 'PHONE' }]"
+              @click="userAnalyticsMode = 'PHONE'"
+              title="Đo lường độ hiệu quả theo Số Điện Thoại & Khách Tiềm Năng (Chuẩn xác khi chưa chốt đơn)"
+            >
+              🎯 Phễu Khách Nét &amp; SĐT
+            </button>
+            <button
+              type="button"
+              :class="['mode-btn', { active: effectiveAnalyticsMode === 'REVENUE' }]"
+              @click="userAnalyticsMode = 'REVENUE'"
+              title="Đo lường độ hiệu quả theo Doanh Thu &amp; Đơn Hàng Thực Tế (ROAS)"
+            >
+              💰 Doanh Thu &amp; ROAS
+            </button>
+          </div>
+
           <div class="table-stats-hint">
             <span>Hiển thị <strong>{{ filteredAnalyticsData.length }}</strong> / {{ analyticsData.length }} chiến dịch</span>
           </div>
@@ -633,12 +667,12 @@
           <table class="analytics-table futuristic-table">
             <thead>
               <tr>
-                <th>Chiến Dịch & Trạng Thái</th>
-                <th>Chi Phí & Giá / Tin</th>
+                <th>Chiến Dịch &amp; Trạng Thái</th>
+                <th>Chi Phí &amp; Giá / Tin</th>
                 <th>Chỉ Số Content (CTR · CPM)</th>
-                <th>Tin Nhắn & Khách CRM</th>
-                <th>Đơn Chốt & Doanh Thu</th>
-                <th>Bắt Bệnh & Quyết Định (Chu Minh Hạnh)</th>
+                <th>Tin Nhắn &amp; Khách CRM</th>
+                <th>{{ effectiveAnalyticsMode === 'PHONE' ? 'Khách Nét SĐT & Giá / SĐT (CPP)' : 'Đơn Chốt & Doanh Thu' }}</th>
+                <th>Bắt Bệnh &amp; Quyết Định (Chu Minh Hạnh)</th>
                 <th class="text-right">Thao Tác</th>
               </tr>
             </thead>
@@ -697,8 +731,24 @@
                   </div>
                 </td>
 
-                <!-- Cột 5: Đơn Chốt & Doanh Thu -->
-                <td class="col-revenue">
+                <!-- Cột 5: Đơn Chốt & Doanh Thu HOẶC Khách Nét SĐT & CPP -->
+                <td class="col-revenue" v-if="effectiveAnalyticsMode === 'PHONE'">
+                  <div class="phone-metric-cell">
+                    <div class="phone-count-row">
+                      <span class="font-bold text-amber">📞 {{ item.phoneCustomers || 0 }} SĐT</span>
+                      <span class="badge-rate-pill" :class="(item.phoneRate || 0) >= 25 ? 'rate-high' : ((item.phoneRate || 0) >= 15 ? 'rate-mid' : 'rate-low')">
+                        {{ item.phoneRate || 0 }}% SĐT
+                      </span>
+                    </div>
+                    <div class="cpp-sub-row">
+                      <span>Giá/SĐT: <strong class="text-neon-gold">{{ item.cpp > 0 ? formatMoney(item.cpp) : (item.phoneCustomers > 0 ? 'Miễn phí' : '—') }}</strong></span>
+                    </div>
+                    <div class="quality-score-bar" :title="'Điểm tiềm năng: ' + (item.qualityScore || 50) + '/100'">
+                      <div class="score-progress" :style="{ width: (item.qualityScore || 50) + '%' }" :class="getScoreClass(item.qualityScore)"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="col-revenue" v-else>
                   <div class="rev-cell">
                     <div class="orders-row">
                       <span class="font-bold text-green">{{ item.closedCustomers }} đơn</span>
@@ -718,6 +768,9 @@
                     <div class="action-badge-row">
                       <span :class="['action-badge', `action-${(item.diagnosis?.action || 'HOLD').toLowerCase()}`]">
                         {{ item.diagnosis?.actionLabel || item.gradeLabel }}
+                      </span>
+                      <span class="quality-badge" :class="getScoreBadgeClass(item.qualityScore)">
+                        ⭐ {{ item.qualityScore || 50 }}/100 đ
                       </span>
                     </div>
                     <strong class="disease-title">{{ item.diagnosis?.disease || item.gradeLabel }}</strong>
@@ -794,16 +847,44 @@ const filteredAnalyticsData = computed(() => {
   if (analyticsStatusFilter.value === 'PAUSED') return analyticsData.value.filter(a => !a.isMetaActive)
   return analyticsData.value
 })
+
+const userAnalyticsMode = ref('AUTO') // 'AUTO' | 'PHONE' | 'REVENUE'
+const effectiveAnalyticsMode = computed(() => {
+  if (userAnalyticsMode.value === 'PHONE') return 'PHONE'
+  if (userAnalyticsMode.value === 'REVENUE') return 'REVENUE'
+  return (analyticsSummary.value.totalClosed || 0) > 0 ? 'REVENUE' : 'PHONE'
+})
+
+const getScoreClass = (score = 50) => {
+  if (score >= 80) return 'score-win'
+  if (score >= 65) return 'score-good'
+  if (score >= 45) return 'score-mid'
+  return 'score-bad'
+}
+
+const getScoreBadgeClass = (score = 50) => {
+  if (score >= 80) return 'badge-score-win'
+  if (score >= 65) return 'badge-score-good'
+  if (score >= 45) return 'badge-score-mid'
+  return 'badge-score-bad'
+}
+
 const analyticsSummary = ref({
   totalSpend: 0,
   totalLeads: 0,
+  totalPhoneCustomers: 0,
+  avgPhoneRate: 0,
+  avgCpp: 0,
   totalClosed: 0,
   totalRevenue: 0,
   avgCpl: 0,
   avgRoas: 0,
   overallCr: 0,
   totalCampaigns: 0,
-  periodLabel: 'Toàn thời gian (Trọn đời)'
+  periodLabel: 'Toàn thời gian (Trọn đời)',
+  avgCtr: 0,
+  avgCpm: 0,
+  avgFrequency: 1
 })
 const analyticsBusy = ref(false)
 const analyticsError = ref('')
@@ -2741,6 +2822,115 @@ onBeforeUnmount(() => {
   color: var(--ios-secondary);
   font-weight: 700;
 }
+
+/* CHẾ ĐỘ PHÂN TÍCH: PHỄU SĐT VS DOANH THU */
+.view-mode-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ios-fill);
+  border-radius: 12px;
+  padding: 2px 4px;
+  gap: 4px;
+}
+.mode-lbl {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--ios-secondary);
+  padding: 0 4px;
+}
+.mode-btn {
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #636366;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.mode-btn:hover {
+  color: var(--ios-label);
+}
+.mode-btn.active {
+  background: #ffffff;
+  color: var(--ios-blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-weight: 750;
+}
+
+.phone-metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.phone-count-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge-rate-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.rate-high {
+  background: #dcfce7;
+  color: #15803d;
+}
+.rate-mid {
+  background: #fef3c7;
+  color: #b45309;
+}
+.rate-low {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.cpp-sub-row {
+  font-size: 0.72rem;
+  color: var(--ios-secondary);
+}
+.quality-score-bar {
+  width: 100%;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.score-progress {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.score-win { background: #10b981; }
+.score-good { background: #3b82f6; }
+.score-mid { background: #f59e0b; }
+.score-bad { background: #ef4444; }
+
+.quality-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.badge-score-win { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.badge-score-good { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.badge-score-mid { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.badge-score-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+.glow-gold {
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
+}
+.card-phone-focus {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
 .table-stats-hint {
   font-size: 0.74rem;
   color: var(--ios-secondary);

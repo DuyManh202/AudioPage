@@ -3361,6 +3361,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         c.source_campaign_id,
         c.source_campaign_name,
         COUNT(DISTINCT c.id) as total_customers,
+        COUNT(DISTINCT CASE WHEN c.phone IS NOT NULL AND c.phone <> '' THEN c.id END) as phone_customers,
         COUNT(DISTINCT CASE WHEN c.status = 'DA_CHOT' THEN c.id END) as closed_customers,
         COUNT(DISTINCT CASE WHEN c.status = 'DANG_TU_VAN' THEN c.id END) as consulting_customers,
         COUNT(DISTINCT CASE WHEN c.status = 'MOI' THEN c.id END) as new_customers,
@@ -3380,6 +3381,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
     dbStats.rows.forEach(row => {
       dbMap.set(row.source_ad_id, {
         totalCustomers: Number(row.total_customers || 0),
+        phoneCustomers: Number(row.phone_customers || 0),
         closedCustomers: Number(row.closed_customers || 0),
         consultingCustomers: Number(row.consulting_customers || 0),
         newCustomers: Number(row.new_customers || 0),
@@ -3395,6 +3397,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       processedAdIds.add(ad.id)
       const stat = dbMap.get(ad.id) || {
         totalCustomers: 0,
+        phoneCustomers: 0,
         closedCustomers: 0,
         consultingCustomers: 0,
         newCustomers: 0,
@@ -3407,7 +3410,10 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         : (stat.closedCustomers * 25000000)
 
       const effectiveCustomers = Math.max(stat.totalCustomers || 0, ad.metaMessages || 0)
+      const phoneCustomers = Number(stat.phoneCustomers || 0)
+      const phoneRate = effectiveCustomers > 0 ? Number(((phoneCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
       const cpl = ad.metaCpl > 0 ? ad.metaCpl : (ad.spend > 0 && effectiveCustomers > 0 ? Math.round(ad.spend / effectiveCustomers) : 0)
+      const cpp = ad.spend > 0 && phoneCustomers > 0 ? Math.round(ad.spend / phoneCustomers) : 0
       const cpa = ad.spend > 0 && stat.closedCustomers > 0 ? Math.round(ad.spend / stat.closedCustomers) : 0
       const conversionRate = effectiveCustomers > 0 ? Number(((stat.closedCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
       const roas = ad.spend > 0 && effectiveRevenue > 0 ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
@@ -3421,8 +3427,35 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       const ctr = impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0
       const cpc = clicks > 0 ? Math.round(spend / clicks) : 0
       const frequency = reach > 0 ? Number((impressions / reach).toFixed(2)) : 1
+      const clickToMessRate = clicks > 0 && effectiveCustomers > 0 ? Number(((effectiveCustomers / clicks) * 100).toFixed(1)) : 0
+
+      // Tính điểm chất lượng phễu khách hàng (Quality Lead Score: 0 - 100) khi chưa có đơn
+      let qualityScore = 50
+      if (phoneRate >= 30) qualityScore += 30
+      else if (phoneRate >= 20) qualityScore += 20
+      else if (phoneRate >= 10) qualityScore += 10
+      else if (effectiveCustomers >= 10 && phoneCustomers === 0) qualityScore -= 20
+
+      if (ctr >= 3.0) qualityScore += 20
+      else if (ctr >= 2.0) qualityScore += 14
+      else if (ctr >= 1.2) qualityScore += 8
+      else if (ctr > 0 && ctr < 1.0) qualityScore -= 15
+
+      if (cpl > 0 && cpl <= 35000) qualityScore += 18
+      else if (cpl > 0 && cpl <= 60000) qualityScore += 10
+      else if (cpl > 120000) qualityScore -= 12
+
+      if (cpm > 0 && cpm <= 80000) qualityScore += 10
+      else if (cpm > 140000) qualityScore -= 10
+
+      if (frequency >= 1.8) qualityScore -= 12
+      else if (frequency <= 1.4 && frequency > 0) qualityScore += 8
+
+      if (stat.closedCustomers > 0) qualityScore += Math.min(25, stat.closedCustomers * 12)
+      qualityScore = Math.max(10, Math.min(100, Math.round(qualityScore)))
 
       // Bộ chẩn đoán "Bắt bệnh quảng cáo & Ra quyết định" chuẩn phương pháp Chu Minh Hạnh
+      // ĐẶC BIỆT TỐI ƯU CHO GIAI ĐOẠN CHƯA CÓ ĐƠN (ĐO QUA SỐ ĐIỆN THOẠI & PHỄU MQL)
       let diagnosis = {
         action: 'HOLD',
         actionLabel: '👁️ Tiếp tục theo dõi',
@@ -3445,15 +3478,31 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           actionLabel: '🚀 VÍT NGÂN SÁCH (+20%)',
           badgeClass: 'badge-scale',
           disease: '🌟 Chiến Dịch Win (Siêu Lợi Nhuận)',
-          advice: `ROAS đạt ${roas}x. Áp dụng quy tắc vàng Chu Minh Hạnh: Chỉ tăng 20%-25% ngân sách mỗi 24h để tránh vỡ máy học, hoặc nhân bản nhóm sang tệp Lookalike/Sở thích mới.`
+          advice: `ROAS đạt ${roas}x, đã chốt ${stat.closedCustomers} đơn thực tế. Áp dụng quy tắc vàng Chu Minh Hạnh: Chỉ tăng 20%-25% ngân sách mỗi 24h để tránh vỡ máy học.`
         }
-      } else if (spend >= 250000 && effectiveCustomers === 0 && ctr < 1.2) {
+      } else if (phoneCustomers >= 3 && phoneRate >= 22 && (cpp <= 90000 || cpl <= 38000)) {
+        diagnosis = {
+          action: 'POTENTIAL_WIN',
+          actionLabel: '🔥 WIN TIỀM NĂNG (GIỮ & VÍT)',
+          badgeClass: 'badge-scale',
+          disease: `🌟 Tệp Khách Nét (Tỷ lệ SĐT: ${phoneRate}%)`,
+          advice: `Chưa cần đơn chốt! Chiến dịch đã thu về ${phoneCustomers} SĐT chất lượng (chiếm ${phoneRate}% tổng khách, giá chỉ ${new Intl.NumberFormat('vi-VN').format(cpp || cpl)} đ/SĐT). Đây là tệp có nhu cầu thật rất cao. Yêu cầu đội sale gọi điện thoại tư vấn trực tiếp và hẹn thử dàn ngay!`
+        }
+      } else if (effectiveCustomers >= 12 && phoneCustomers === 0 && spend >= 150000) {
+        diagnosis = {
+          action: 'OPTIMIZE_SALE',
+          actionLabel: '💬 BỆNH MESS RẺ KHÔNG RA SĐT',
+          badgeClass: 'badge-optimize',
+          disease: '⚠️ Bệnh "Mess Rác / Ham Rẻ" (Kinh Điển)',
+          advice: `Đã có ${effectiveCustomers} khách nhắn tin (CPL: ${new Intl.NumberFormat('vi-VN').format(cpl)} đ) nhưng 0 người để lại SĐT! Nguyên nhân: Khách tò mò bấm vào xin đồ miễn phí hoặc hỏi vu vơ. Cách xử lý: Đổi kịch bản chatbot/sales xin SĐT ngay tin thứ 2-3, hoặc bổ sung điều kiện bảo hành/báo giá chỉ gửi qua Zalo để lọc bớt khách rác.`
+        }
+      } else if (spend >= 200000 && effectiveCustomers === 0 && ctr < 1.2) {
         diagnosis = {
           action: 'KILL',
           actionLabel: '🛑 TẮT NGAY (Cắt Lỗ)',
           badgeClass: 'badge-kill',
           disease: '🚨 Bệnh Content Hỏng: CTR quá thấp (< 1.2%)',
-          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn, CTR chỉ ${ctr}%. Đúng bài anh Hạnh dạy: Tắt ngay lập tức, không nuôi hy vọng làm cháy ngân sách!`
+          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn hay SĐT, CTR chỉ ${ctr}%. Đúng bài anh Hạnh dạy: Tắt ngay lập tức, không nuôi hy vọng làm cháy ngân sách!`
         }
       } else if (frequency >= 1.8 && spend >= 300000) {
         diagnosis = {
@@ -3461,23 +3510,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           actionLabel: '🔄 THAY BÀI / ĐỔI TỆP',
           badgeClass: 'badge-change',
           disease: `⚠️ Bão Hòa Tệp (Tần suất ${frequency}x >= 1.8x)`,
-          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lại lần 2-3). Theo anh Hạnh: Tệp đã bắt đầu mòn, giá tin nhắn sẽ tăng vọt. Cần đổi video mới hoặc nhân nhóm đổi tệp target.`
-        }
-      } else if (effectiveCustomers >= 15 && stat.closedCustomers === 0 && spend >= 300000) {
-        diagnosis = {
-          action: 'OPTIMIZE_SALE',
-          actionLabel: '💬 BỆNH MESS RẺ KHÔNG RA ĐƠN',
-          badgeClass: 'badge-optimize',
-          disease: '⚠️ Bệnh "Mess Rẻ Không Ra Đơn" (Kinh Điển)',
-          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ được ${effectiveCustomers} khách (CPL: ${new Intl.NumberFormat('vi-VN').format(cpl)} đ) nhưng 0 đơn chốt. Nguyên nhân 1: Content hút tệp tò mò/xin miễn phí; Nguyên nhân 2: Kịch bản sale nhắn tin dông dài, chưa xin SĐT gọi tư vấn trực tiếp!`
-        }
-      } else if (ctr >= 4.0 && effectiveCustomers > 0 && cpl <= 25000) {
-        diagnosis = {
-          action: 'POTENTIAL_WIN',
-          actionLabel: '🔥 WIN TIỀM NĂNG (GIỮ CHẶT)',
-          badgeClass: 'badge-scale',
-          disease: '🌟 Content Siêu Hút (CTR kỷ lục)',
-          advice: `CTR đạt ${ctr}% (> 4%), CPL chỉ ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/tin. Mở đầu video 3s cực kỳ cuốn. Sale tập trung bốc máy gọi chốt nóng ngay. Nếu mai duy trì tốt -> Vít thêm 20% ngân sách!`
+          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lại lần 2-3). Theo anh Hạnh: Tệp đã bắt đầu mòn, giá tin nhắn và SĐT sẽ tăng vọt. Cần đổi video mới hoặc nhân nhóm đổi tệp target.`
         }
       } else if (ctr < 1.5 && spend >= 100000 && cpm <= 80000) {
         diagnosis = {
@@ -3495,13 +3528,21 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           disease: '💸 CPM Quá Cao (> 150.000 đ)',
           advice: `Chi phí 1.000 lượt hiển thị cao (${new Intl.NumberFormat('vi-VN').format(cpm)} đ) do tệp quá hẹp hoặc bị cạnh tranh giá thầu. Nên nới rộng vị trí/độ tuổi hoặc tắt bớt nhóm bị trùng lặp tệp.`
         }
+      } else if (phoneCustomers > 0 && phoneRate >= 20) {
+        diagnosis = {
+          action: 'HOLD',
+          actionLabel: '✅ KHÁCH TỐT · GỌI CHỐT NHANH',
+          badgeClass: 'badge-hold',
+          disease: `Tỷ Lệ Thu SĐT Tốt (${phoneRate}%)`,
+          advice: `Thu được ${phoneCustomers} SĐT (${phoneRate}%). Khách đang quan tâm thật. Bàn giao danh sách cho kỹ thuật hoặc sale gọi điện trong vòng 15 phút đầu.`
+        }
       } else if (effectiveCustomers > 0 && cpl <= 35000) {
         diagnosis = {
           action: 'HOLD',
-          actionLabel: '✅ GIỮ VÀ CHỐT SALE NHANH',
+          actionLabel: '✅ GIỮ VÀ LỌC LẤY SĐT',
           badgeClass: 'badge-hold',
           disease: 'Giá Tin Nhắn Rất Đẹp',
-          advice: `CPL đạt ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách (rất tốt với ngành âm thanh). Yêu cầu đội sale gọi điện trong vòng 5 phút đầu để chốt đơn.`
+          advice: `CPL đạt ${new Intl.NumberFormat('vi-VN').format(cpl)} đ/khách (rất tốt với ngành âm thanh). Yêu cầu đội sale tập trung xin SĐT gọi tư vấn trực tiếp để đẩy sang chốt đơn.`
         }
       }
 
@@ -3526,6 +3567,11 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         cpc,
         frequency,
         diagnosis,
+        qualityScore,
+        phoneCustomers,
+        phoneRate,
+        cpp,
+        clickToMessRate,
         metaMessages: ad.metaMessages || 0,
         metaCpl: ad.metaCpl || 0,
         ...stat,
@@ -3544,10 +3590,12 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
     for (const row of dbStats.rows) {
       if (!processedAdIds.has(row.source_ad_id)) {
         const totalCustomers = Number(row.total_customers || 0)
+        const phoneCustomers = Number(row.phone_customers || 0)
         const closedCustomers = Number(row.closed_customers || 0)
         const totalOrderRevenue = Number(row.total_order_revenue || 0)
         const effectiveRevenue = totalOrderRevenue > 0 ? totalOrderRevenue : (closedCustomers * 25000000)
         const conversionRate = totalCustomers > 0 ? Number(((closedCustomers / totalCustomers) * 100).toFixed(1)) : 0
+        const phoneRate = totalCustomers > 0 ? Number(((phoneCustomers / totalCustomers) * 100).toFixed(1)) : 0
 
         combinedAds.push({
           id: row.source_ad_id,
@@ -3562,6 +3610,10 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           clicks: 0,
           spend: 0,
           totalCustomers,
+          phoneCustomers,
+          phoneRate,
+          cpp: 0,
+          qualityScore: closedCustomers > 0 ? 85 : (phoneCustomers > 0 ? 70 : 50),
           closedCustomers,
           consultingCustomers: Number(row.consulting_customers || 0),
           newCustomers: Number(row.new_customers || 0),
@@ -3579,10 +3631,31 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       }
     }
 
-    combinedAds.sort((a, b) => (b.isMetaActive ? 1 : 0) - (a.isMetaActive ? 1 : 0) || b.effectiveRevenue - a.effectiveRevenue || b.closedCustomers - a.closedCustomers || b.totalCustomers - a.totalCustomers)
+    combinedAds.sort((a, b) => {
+      // 1. Ưu tiên chiến dịch đang chạy trên Meta
+      const activeDiff = (b.isMetaActive ? 1 : 0) - (a.isMetaActive ? 1 : 0)
+      if (activeDiff !== 0) return activeDiff
+
+      // 2. Nếu có đơn hàng thực tế -> ưu tiên doanh thu và đơn chốt
+      const revDiff = (b.effectiveRevenue || 0) - (a.effectiveRevenue || 0)
+      if (revDiff !== 0) return revDiff
+
+      const closedDiff = (b.closedCustomers || 0) - (a.closedCustomers || 0)
+      if (closedDiff !== 0) return closedDiff
+
+      // 3. Khi CHƯA CÓ ĐƠN HÀNG: xếp hạng theo Điểm Chất Lượng Phễu & Số điện thoại thu được!
+      const scoreDiff = (b.qualityScore || 0) - (a.qualityScore || 0)
+      if (scoreDiff !== 0) return scoreDiff
+
+      const phoneDiff = (b.phoneCustomers || 0) - (a.phoneCustomers || 0)
+      if (phoneDiff !== 0) return phoneDiff
+
+      return (b.totalCustomers || 0) - (a.totalCustomers || 0)
+    })
 
     const totalSpend = combinedAds.reduce((sum, a) => sum + (a.spend || 0), 0)
     const totalLeads = combinedAds.reduce((sum, a) => sum + (a.totalCustomers || 0), 0)
+    const totalPhoneCustomers = combinedAds.reduce((sum, a) => sum + (a.phoneCustomers || 0), 0)
     const totalClosed = combinedAds.reduce((sum, a) => sum + (a.closedCustomers || 0), 0)
     const totalRevenue = combinedAds.reduce((sum, a) => sum + (a.effectiveRevenue || 0), 0)
     const totalImpressions = combinedAds.reduce((sum, a) => sum + (a.impressions || 0), 0)
@@ -3590,13 +3663,15 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
     const totalReach = combinedAds.reduce((sum, a) => sum + (a.reach || 0), 0)
 
     const avgCpl = totalLeads > 0 && totalSpend > 0 ? Math.round(totalSpend / totalLeads) : 0
+    const avgCpp = totalPhoneCustomers > 0 && totalSpend > 0 ? Math.round(totalSpend / totalPhoneCustomers) : 0
+    const avgPhoneRate = totalLeads > 0 ? Number(((totalPhoneCustomers / totalLeads) * 100).toFixed(1)) : 0
     const avgRoas = totalSpend > 0 && totalRevenue > 0 ? Number((totalRevenue / totalSpend).toFixed(2)) : 0
     const overallCr = totalLeads > 0 ? Number(((totalClosed / totalLeads) * 100).toFixed(1)) : 0
     const avgCtr = totalImpressions > 0 ? Number(((totalClicks / totalImpressions) * 100).toFixed(2)) : 0
     const avgCpm = totalImpressions > 0 ? Math.round((totalSpend / totalImpressions) * 1000) : 0
     const avgFrequency = totalReach > 0 ? Number((totalImpressions / totalReach).toFixed(2)) : 1
     const killCount = combinedAds.filter(a => a.diagnosis?.action === 'KILL').length
-    const scaleCount = combinedAds.filter(a => a.diagnosis?.action === 'SCALE').length
+    const scaleCount = combinedAds.filter(a => a.diagnosis?.action === 'SCALE' || a.diagnosis?.action === 'POTENTIAL_WIN').length
     const optimizeSaleCount = combinedAds.filter(a => a.diagnosis?.action === 'OPTIMIZE_SALE').length
 
     res.json({
@@ -3604,6 +3679,9 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       summary: {
         totalSpend,
         totalLeads,
+        totalPhoneCustomers,
+        avgPhoneRate,
+        avgCpp,
         totalClosed,
         totalRevenue,
         avgCpl,
