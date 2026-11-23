@@ -523,7 +523,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
   fbAutoReplyInFlight.add(customerId)
   try {
     const [customerResult, humanCheckResult, historyResult, productsResult, combosResult] = await Promise.all([
-      query('SELECT customer_name, phone, interest, notes, status FROM facebook_care_customers WHERE id=$1', [customerId]),
+      query('SELECT customer_name, phone, interest, notes, status, assigned_to FROM facebook_care_customers WHERE id=$1', [customerId]),
       query("SELECT id, created_by FROM facebook_care_messages WHERE customer_id=$1 AND direction='OUT' AND (created_by IS NULL OR created_by NOT LIKE '%AI%') LIMIT 1", [customerId]),
       query('SELECT direction, body, created_by, created_at FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 20', [customerId]),
       query('SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24'),
@@ -538,7 +538,11 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       return
     }
 
-    // 2. DỪNG NẾU KHÁCH ĐANG Ở CÁC TRẠNG THÁI ĐÃ CÓ NGƯỜI PHỤ TRÁCH HOẶC ĐANG XỬ LÝ
+    // 2. DỪNG NẾU KHÁCH ĐÃ CÓ NHÂN SỰ PHỤ TRÁCH HOẶC ĐANG Ở CÁC TRẠNG THÁI ĐÃ TIẾP QUẢN
+    if (customer.assigned_to && customer.assigned_to.trim()) {
+      console.log(`[Facebook AI] Khách ${customerId} đã được gán cho nhân sự (${customer.assigned_to}) -> AI dừng tư vấn.`)
+      return
+    }
     if (['CHO_PHAN_HOI', 'DANG_TU_VAN', 'HOAN_THANH', 'HUY'].includes(customer.status)) {
       console.log(`[Facebook AI] Khách ${customerId} đang có trạng thái ${customer.status} -> AI dừng tư vấn.`)
       return
