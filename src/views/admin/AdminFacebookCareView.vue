@@ -5,7 +5,7 @@
          ===================================================================== -->
     <div v-if="isMobile && currentTab === 'CARE'" class="ms-mobile-container">
       <!-- 1. GIAO DIỆN HỘP THƯ / DANH SÁCH ĐOẠN CHAT (Khi chưa mở hội thoại) -->
-      <div v-if="!mobileChatActive" class="ms-inbox-view">
+      <div v-show="!mobileChatActive" class="ms-inbox-view">
         <!-- Messenger Top Bar -->
         <header class="ms-top-bar">
           <div class="ms-top-left">
@@ -201,282 +201,291 @@
         </div>
       </div>
 
-      <!-- 2. GIAO DIỆN KHUNG CHAT TOÀN MÀN HÌNH CHUẨN MESSENGER -->
-      <div v-else-if="mobileChatActive && selected" class="ms-active-chat-view">
-        <!-- Messenger Header Top Bar -->
-        <header class="ms-chat-header">
-          <button type="button" class="ms-back-arrow-btn" @click="closeMobileChat" aria-label="Quay lại">
-            ‹
-          </button>
-          <div class="ms-chat-header-profile" @click="showMobileCrmDrawer = true">
-            <div class="ms-chat-header-avatar" :style="{ background: getAvatarGradient(selected.customerName) }">
-              {{ getInitials(selected.customerName) }}
-              <span class="ms-header-online-dot"></span>
+      <!-- 2. GIAO DIỆN KHUNG CHAT TOÀN MÀN HÌNH CHUẨN MESSENGER (Teleport vào root body để cố định chuẩn 100dvh) -->
+      <Teleport to="body">
+        <div v-if="isMobile && currentTab === 'CARE' && mobileChatActive && selected" class="ms-active-chat-view">
+          <!-- Messenger Header Top Bar -->
+          <header class="ms-chat-header">
+            <button type="button" class="ms-back-arrow-btn" @click="closeMobileChat" aria-label="Quay lại">
+              ‹
+            </button>
+            <div class="ms-chat-header-profile" @click="showMobileCrmDrawer = true">
+              <div class="ms-chat-header-avatar" :style="{ background: getAvatarGradient(selected.customerName) }">
+                {{ getInitials(selected.customerName) }}
+                <span class="ms-header-online-dot"></span>
+              </div>
+              <div class="ms-chat-header-info">
+                <h2 class="ms-chat-header-name">{{ selected.customerName }}</h2>
+                <p class="ms-chat-header-sub">
+                  <span v-if="selected.phone">📞 {{ selected.phone }}</span>
+                  <span v-else-if="selected.interest">🎯 {{ selected.interest }}</span>
+                  <span v-else>Đang hoạt động trên {{ isCommentCustomer(selected) ? 'Bình luận' : 'Messenger' }}</span>
+                </p>
+              </div>
             </div>
-            <div class="ms-chat-header-info">
-              <h2 class="ms-chat-header-name">{{ selected.customerName }}</h2>
-              <p class="ms-chat-header-sub">
-                <span v-if="selected.phone">📞 {{ selected.phone }}</span>
-                <span v-else-if="selected.interest">🎯 {{ selected.interest }}</span>
-                <span v-else>Đang hoạt động trên {{ isCommentCustomer(selected) ? 'Bình luận' : 'Messenger' }}</span>
-              </p>
+            <div class="ms-chat-header-btns">
+              <a v-if="selected.phone" :href="'tel:' + selected.phone" class="ms-btn-call" title="Gọi điện ngay">
+                📞
+              </a>
+              <button type="button" class="ms-btn-crm-info" @click="showMobileCrmDrawer = true" title="Xem hồ sơ CRM">
+                ℹ️
+              </button>
             </div>
-          </div>
-          <div class="ms-chat-header-btns">
-            <a v-if="selected.phone" :href="'tel:' + selected.phone" class="ms-btn-call" title="Gọi điện ngay">
-              📞
+          </header>
+
+          <!-- Banner thông báo chính sách 24h & Kênh -->
+          <div v-if="messengerPolicyInfo" class="ms-chat-policy-banner" :class="{ 'is-expired': !messengerPolicyInfo.within24h }">
+            <span class="banner-icon">{{ messengerPolicyInfo.within24h ? '🟢' : '⚠️' }}</span>
+            <span class="banner-text">{{ messengerPolicyInfo.label }}</span>
+            <a
+              v-if="!messengerPolicyInfo.within24h && selected.phone"
+              :href="'https://zalo.me/' + selected.phone.replace(/\D/g, '')"
+              target="_blank"
+              rel="noopener"
+              class="btn-open-zalo"
+            >
+              💬 Mở Zalo
             </a>
-            <button type="button" class="ms-btn-crm-info" @click="showMobileCrmDrawer = true" title="Xem hồ sơ CRM">
-              ℹ️
-            </button>
           </div>
-        </header>
 
-        <!-- Banner thông báo chính sách 24h & Kênh -->
-        <div v-if="messengerPolicyInfo" class="ms-chat-policy-banner" :class="{ 'is-expired': !messengerPolicyInfo.within24h }">
-          <span class="banner-icon">{{ messengerPolicyInfo.within24h ? '🟢' : '⚠️' }}</span>
-          <span class="banner-text">{{ messengerPolicyInfo.label }}</span>
-          <a
-            v-if="!messengerPolicyInfo.within24h && selected.phone"
-            :href="'https://zalo.me/' + selected.phone.replace(/\D/g, '')"
-            target="_blank"
-            rel="noopener"
-            class="btn-open-zalo"
-          >
-            💬 Mở Zalo
-          </a>
-        </div>
-
-        <!-- Khung tin nhắn cuộn mượt mà -->
-        <div class="ms-messages-scroll" ref="chatBodyRef">
-          <div
-            v-for="m in selected.messages"
-            :key="m.id"
-            :class="['ms-msg-item', m.direction === 'OUT' ? 'msg-out' : 'msg-in', m.body && m.body.startsWith('[Bình luận Facebook]') ? 'is-comment' : '']"
-          >
-            <div class="ms-bubble-meta">
-              <template v-if="m.direction === 'OUT'">Tú Audio</template>
-              <template v-else-if="m.body && m.body.startsWith('[Bình luận Facebook]')">📝 Khách bình luận</template>
-              <template v-else-if="m.platformMessageId">💬 Khách hàng</template>
-              <template v-else>📝 Ghi chú</template>
-              · {{ formatMessengerTime(m.createdAt) }}
-            </div>
-            <div v-if="m.body && !isPureImageLabel(m.body)" class="ms-bubble-text">
-              <p>{{ m.body.replace(/^\[Bình luận Facebook\]:\s*/i, '') }}</p>
-            </div>
-            <!-- Ảnh đính kèm -->
-            <div v-if="m.attachments && m.attachments.length" class="ms-bubble-images">
-              <img
-                v-for="(att, i) in m.attachments"
-                :key="i"
-                :src="att.previewUrl || att.url"
-                class="ms-img-preview"
-                @click="openLightbox(att.url)"
-              />
-            </div>
-          </div>
-          <div v-if="!selected.messages?.length" class="ms-no-chat">
-            Chưa có ghi nhận trao đổi. Hãy gửi tin nhắn đầu tiên cho khách!
-          </div>
-        </div>
-
-        <!-- Thanh nhập tin nhắn Messenger cố định dưới cùng -->
-        <form class="ms-input-bottom-bar" @submit.prevent="addMessage">
-          <div class="ms-mode-pills">
-            <button
-              type="button"
-              :class="['mode-pill', { active: messageDirection === 'OUT' }]"
-              :disabled="!messengerPolicyInfo.within24h"
-              @click="messageDirection = 'OUT'"
+          <!-- Khung tin nhắn cuộn mượt mà -->
+          <div class="ms-messages-scroll" ref="chatBodyRef">
+            <div
+              v-for="m in selected.messages"
+              :key="m.id"
+              :class="['ms-msg-item', m.direction === 'OUT' ? 'msg-out' : 'msg-in', m.body && m.body.startsWith('[Bình luận Facebook]') ? 'is-comment' : '']"
             >
-              💬 FB
-            </button>
-            <button
-              type="button"
-              :class="['mode-pill', { active: messageDirection === 'IN' }]"
-              @click="messageDirection = 'IN'"
-            >
-              📝 Ghi chú
-            </button>
-          </div>
-          <input
-            v-model="messageBody"
-            type="text"
-            class="ms-input-text"
-            :placeholder="messageDirection === 'OUT' ? 'Nhập tin nhắn Messenger...' : 'Ghi chép nội bộ...'"
-            required
-          />
-          <button
-            type="submit"
-            class="ms-send-button"
-            :disabled="busy || (messageDirection === 'OUT' && !messengerPolicyInfo.within24h)"
-          >
-            {{ busy ? '⏳' : '➤' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- BOTTOM SHEETS / MODALS DÀNH CHO MOBILE -->
-      <!-- DRAWER 1: HỒ SƠ KHÁCH HÀNG CRM (Khi bấm ℹ️) -->
-      <Transition name="ms-sheet">
-        <div v-if="showMobileCrmDrawer && selected" class="ms-sheet-backdrop" @click="showMobileCrmDrawer = false">
-          <div class="ms-sheet-drawer" @click.stop>
-            <div class="ms-sheet-handle"></div>
-            <div class="ms-sheet-header">
-              <div>
-                <h3>Hồ Sơ Khách Hàng CRM</h3>
-                <p>{{ selected.customerName }} {{ selected.phone ? `· ${selected.phone}` : '' }}</p>
+              <div class="ms-bubble-meta">
+                <template v-if="m.direction === 'OUT'">Tú Audio</template>
+                <template v-else-if="m.body && m.body.startsWith('[Bình luận Facebook]')">📝 Khách bình luận</template>
+                <template v-else-if="m.platformMessageId">💬 Khách hàng</template>
+                <template v-else>📝 Ghi chú</template>
+                · {{ formatMessengerTime(m.createdAt) }}
               </div>
-              <button type="button" class="ms-sheet-close-btn" @click="showMobileCrmDrawer = false">✕</button>
+              <div v-if="m.body && !isPureImageLabel(m.body)" class="ms-bubble-text">
+                <p>{{ m.body.replace(/^\[Bình luận Facebook\]:\s*/i, '') }}</p>
+              </div>
+              <!-- Ảnh đính kèm -->
+              <div v-if="m.attachments && m.attachments.length" class="ms-bubble-images">
+                <img
+                  v-for="(att, i) in m.attachments"
+                  :key="i"
+                  :src="att.previewUrl || att.url"
+                  class="ms-img-preview"
+                  @click="openLightbox(att.url)"
+                />
+              </div>
             </div>
+            <div v-if="!selected.messages?.length" class="ms-no-chat">
+              Chưa có ghi nhận trao đổi. Hãy gửi tin nhắn đầu tiên cho khách!
+            </div>
+          </div>
 
-            <div class="ms-sheet-status-group">
+          <!-- Thanh nhập tin nhắn Messenger cố định vĩnh viễn dưới cùng -->
+          <form class="ms-input-bottom-bar" @submit.prevent="addMessage">
+            <div class="ms-mode-pills">
               <button
-                v-for="s in statusOptions.slice(1)"
-                :key="s.key"
                 type="button"
-                :class="['status-chip', `chip-${s.key.toLowerCase()}`, { active: edit.status === s.key }]"
-                @click="setStatusQuick(s.key)"
+                :class="['mode-pill', { active: messageDirection === 'OUT' }]"
+                :disabled="!messengerPolicyInfo.within24h"
+                @click="messageDirection = 'OUT'"
               >
-                {{ s.label }}
+                💬 FB
+              </button>
+              <button
+                type="button"
+                :class="['mode-pill', { active: messageDirection === 'IN' }]"
+                @click="messageDirection = 'IN'"
+              >
+                📝 Ghi chú
               </button>
             </div>
+            <input
+              v-model="messageBody"
+              type="text"
+              class="ms-input-text"
+              :placeholder="messageDirection === 'OUT' ? 'Nhập tin nhắn Messenger...' : 'Ghi chép nội bộ...'"
+              required
+              @focus="scrollChatToBottom(true)"
+            />
+            <button
+              type="submit"
+              class="ms-send-button"
+              :disabled="busy || (messageDirection === 'OUT' && !messengerPolicyInfo.within24h)"
+            >
+              {{ busy ? '⏳' : '➤' }}
+            </button>
+          </form>
+        </div>
+      </Teleport>
 
-            <div class="ms-sheet-form">
-              <div class="ms-form-group">
-                <label>Nhu cầu của khách</label>
-                <input v-model="edit.interest" placeholder="Ví dụ: Đầu tư phòng thu âm" @change="save" />
+      <!-- BOTTOM SHEETS / MODALS DÀNH CHO MOBILE (Teleport vào root body) -->
+      <!-- DRAWER 1: HỒ SƠ KHÁCH HÀNG CRM (Khi bấm ℹ️) -->
+      <Teleport to="body">
+        <Transition name="ms-sheet">
+          <div v-if="showMobileCrmDrawer && selected" class="ms-sheet-backdrop" @click="showMobileCrmDrawer = false">
+            <div class="ms-sheet-drawer" @click.stop>
+              <div class="ms-sheet-handle"></div>
+              <div class="ms-sheet-header">
+                <div>
+                  <h3>Hồ Sơ Khách Hàng CRM</h3>
+                  <p>{{ selected.customerName }} {{ selected.phone ? `· ${selected.phone}` : '' }}</p>
+                </div>
+                <button type="button" class="ms-sheet-close-btn" @click="showMobileCrmDrawer = false">✕</button>
               </div>
-              <div class="ms-form-group">
-                <label>Số điện thoại</label>
-                <input v-model="edit.phone" placeholder="Nhập số điện thoại khách" @change="save" />
-              </div>
-              <div class="ms-form-group">
-                <label>Địa chỉ lắp đặt</label>
-                <input v-model="edit.address" placeholder="Số nhà, đường, thôn/xóm..." @change="save" />
-              </div>
-              <div class="ms-form-group">
-                <label>Tỉnh/Thành phố</label>
-                <input v-model="edit.province" list="fb-province-options" placeholder="Chọn tỉnh/thành" @change="save" />
-              </div>
-              <div class="ms-form-group">
-                <label>Ghi chú tư vấn</label>
-                <textarea v-model="edit.notes" rows="2" placeholder="Ghi chú thêm về thiết bị, giá..." @change="save"></textarea>
-              </div>
-              <div class="ms-form-group">
-                <label>Chiến dịch quảng cáo</label>
-                <select v-model="edit.sourceAdId" @change="onSourceAdChange">
-                  <option value="">-- Chưa gắn quảng cáo --</option>
-                  <option v-for="ad in ads" :key="ad.id" :value="ad.id">{{ ad.name }}</option>
-                </select>
-              </div>
-            </div>
 
-            <div class="ms-sheet-footer">
-              <button type="button" class="btn-sheet-done" @click="showMobileCrmDrawer = false">
-                ✓ Hoàn tất &amp; Đóng
-              </button>
+              <div class="ms-sheet-status-group">
+                <button
+                  v-for="s in statusOptions.slice(1)"
+                  :key="s.key"
+                  type="button"
+                  :class="['status-chip', `chip-${s.key.toLowerCase()}`, { active: edit.status === s.key }]"
+                  @click="setStatusQuick(s.key)"
+                >
+                  {{ s.label }}
+                </button>
+              </div>
+
+              <div class="ms-sheet-form">
+                <div class="ms-form-group">
+                  <label>Nhu cầu của khách</label>
+                  <input v-model="edit.interest" placeholder="Ví dụ: Đầu tư phòng thu âm" @change="save" />
+                </div>
+                <div class="ms-form-group">
+                  <label>Số điện thoại</label>
+                  <input v-model="edit.phone" placeholder="Nhập số điện thoại khách" @change="save" />
+                </div>
+                <div class="ms-form-group">
+                  <label>Địa chỉ lắp đặt</label>
+                  <input v-model="edit.address" placeholder="Số nhà, đường, thôn/xóm..." @change="save" />
+                </div>
+                <div class="ms-form-group">
+                  <label>Tỉnh/Thành phố</label>
+                  <input v-model="edit.province" list="fb-province-options" placeholder="Chọn tỉnh/thành" @change="save" />
+                </div>
+                <div class="ms-form-group">
+                  <label>Ghi chú tư vấn</label>
+                  <textarea v-model="edit.notes" rows="2" placeholder="Ghi chú thêm về thiết bị, giá..." @change="save"></textarea>
+                </div>
+                <div class="ms-form-group">
+                  <label>Chiến dịch quảng cáo</label>
+                  <select v-model="edit.sourceAdId" @change="onSourceAdChange">
+                    <option value="">-- Chưa gắn quảng cáo --</option>
+                    <option v-for="ad in ads" :key="ad.id" :value="ad.id">{{ ad.name }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="ms-sheet-footer">
+                <button type="button" class="btn-sheet-done" @click="showMobileCrmDrawer = false">
+                  ✓ Hoàn tất &amp; Đóng
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </Transition>
+        </Transition>
+      </Teleport>
 
       <!-- DRAWER 2: CÀI ĐẶT AI TỰ ĐỘNG (Khi bấm 🤖) -->
-      <Transition name="ms-sheet">
-        <div v-if="showMobileAiModal" class="ms-sheet-backdrop" @click="showMobileAiModal = false">
-          <div class="ms-sheet-drawer" @click.stop>
-            <div class="ms-sheet-handle"></div>
-            <div class="ms-sheet-header">
-              <div>
-                <h3>Cài Đặt Trợ Lý AI Tự Động</h3>
-                <p>Quản trị AI phản hồi Messenger &amp; Bình luận Fanpage</p>
-              </div>
-              <button type="button" class="ms-sheet-close-btn" @click="showMobileAiModal = false">✕</button>
-            </div>
-
-            <div class="ms-ai-sheet-body">
-              <div class="ai-card" :class="{ enabled: aiEnabled }">
-                <div class="ai-card-content">
-                  <strong>AI Chat Messenger</strong>
-                  <p>Tự động trả lời tin nhắn Messenger. Tự ngắt khi có SĐT hoặc có nhân viên chat.</p>
+      <Teleport to="body">
+        <Transition name="ms-sheet">
+          <div v-if="showMobileAiModal" class="ms-sheet-backdrop" @click="showMobileAiModal = false">
+            <div class="ms-sheet-drawer" @click.stop>
+              <div class="ms-sheet-handle"></div>
+              <div class="ms-sheet-header">
+                <div>
+                  <h3>Cài Đặt Trợ Lý AI Tự Động</h3>
+                  <p>Quản trị AI phản hồi Messenger &amp; Bình luận Fanpage</p>
                 </div>
-                <button
-                  type="button"
-                  class="ios-switch"
-                  :class="{ on: aiEnabled }"
-                  :disabled="togglingAi"
-                  @click="toggleFacebookAi"
-                >
-                  <span class="switch-ball"></span>
-                </button>
+                <button type="button" class="ms-sheet-close-btn" @click="showMobileAiModal = false">✕</button>
               </div>
 
-              <div class="ai-card" :class="{ enabled: commentAiEnabled }">
-                <div class="ai-card-content">
-                  <strong>AI Bình Luận (Cmt) Độc Lập</strong>
-                  <p>Luôn trả lời 100% comment công khai &amp; gửi tin nhắn riêng kéo khách vào Messenger.</p>
+              <div class="ms-ai-sheet-body">
+                <div class="ai-card" :class="{ enabled: aiEnabled }">
+                  <div class="ai-card-content">
+                    <strong>AI Chat Messenger</strong>
+                    <p>Tự động trả lời tin nhắn Messenger. Tự ngắt khi có SĐT hoặc có nhân viên chat.</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="ios-switch"
+                    :class="{ on: aiEnabled }"
+                    :disabled="togglingAi"
+                    @click="toggleFacebookAi"
+                  >
+                    <span class="switch-ball"></span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  class="ios-switch"
-                  :class="{ on: commentAiEnabled }"
-                  :disabled="togglingCommentAi"
-                  @click="toggleCommentAi"
-                >
-                  <span class="switch-ball"></span>
-                </button>
-              </div>
 
-              <div class="sync-action-box">
-                <button type="button" class="btn-full-sync" :disabled="syncBusy" @click="forceSync">
-                  {{ syncBusy ? 'Đang quét tin nhắn mới…' : '↻ Quét tin nhắn Fanpage ngay' }}
-                </button>
+                <div class="ai-card" :class="{ enabled: commentAiEnabled }">
+                  <div class="ai-card-content">
+                    <strong>AI Bình Luận (Cmt) Độc Lập</strong>
+                    <p>Luôn trả lời 100% comment công khai &amp; gửi tin nhắn riêng kéo khách vào Messenger.</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="ios-switch"
+                    :class="{ on: commentAiEnabled }"
+                    :disabled="togglingCommentAi"
+                    @click="toggleCommentAi"
+                  >
+                    <span class="switch-ball"></span>
+                  </button>
+                </div>
+
+                <div class="sync-action-box">
+                  <button type="button" class="btn-full-sync" :disabled="syncBusy" @click="forceSync">
+                    {{ syncBusy ? 'Đang quét tin nhắn mới…' : '↻ Quét tin nhắn Fanpage ngay' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Transition>
+        </Transition>
+      </Teleport>
 
       <!-- DRAWER 3: LỌC QUẢNG CÁO (Khi bấm ⚙️ Lọc QC) -->
-      <Transition name="ms-sheet">
-        <div v-if="showMobileFilterModal" class="ms-sheet-backdrop" @click="showMobileFilterModal = false">
-          <div class="ms-sheet-drawer" @click.stop>
-            <div class="ms-sheet-handle"></div>
-            <div class="ms-sheet-header">
-              <div>
-                <h3>Lọc Theo Nguồn Quảng Cáo</h3>
-                <p>Phân loại khách theo chiến dịch Meta Ads</p>
+      <Teleport to="body">
+        <Transition name="ms-sheet">
+          <div v-if="showMobileFilterModal" class="ms-sheet-backdrop" @click="showMobileFilterModal = false">
+            <div class="ms-sheet-drawer" @click.stop>
+              <div class="ms-sheet-handle"></div>
+              <div class="ms-sheet-header">
+                <div>
+                  <h3>Lọc Theo Nguồn Quảng Cáo</h3>
+                  <p>Phân loại khách theo chiến dịch Meta Ads</p>
+                </div>
+                <button type="button" class="ms-sheet-close-btn" @click="showMobileFilterModal = false">✕</button>
               </div>
-              <button type="button" class="ms-sheet-close-btn" @click="showMobileFilterModal = false">✕</button>
-            </div>
-            <div class="ms-filter-sheet-body">
-              <select v-model="adFilter" class="sheet-ad-select">
-                <option value="ALL">Tất cả nguồn quảng cáo</option>
-                <option value="NONE">Chưa xác định quảng cáo</option>
-                <option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} ({{ ad.count }})</option>
-              </select>
-              <div class="sheet-action-btns">
-                <button
-                  type="button"
-                  class="btn-match"
-                  :disabled="autoMatchingBusy || resetMatchingBusy"
-                  @click="autoMatchAds"
-                >
-                  {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn tự động' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn-unmatch"
-                  :disabled="autoMatchingBusy || resetMatchingBusy"
-                  @click="resetMatchedAds"
-                >
-                  {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp' }}
-                </button>
+              <div class="ms-filter-sheet-body">
+                <select v-model="adFilter" class="sheet-ad-select">
+                  <option value="ALL">Tất cả nguồn quảng cáo</option>
+                  <option value="NONE">Chưa xác định quảng cáo</option>
+                  <option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} ({{ ad.count }})</option>
+                </select>
+                <div class="sheet-action-btns">
+                  <button
+                    type="button"
+                    class="btn-match"
+                    :disabled="autoMatchingBusy || resetMatchingBusy"
+                    @click="autoMatchAds"
+                  >
+                    {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn tự động' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-unmatch"
+                    :disabled="autoMatchingBusy || resetMatchingBusy"
+                    @click="resetMatchedAds"
+                  >
+                    {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Transition>
+        </Transition>
+      </Teleport>
     </div>
 
     <!-- =====================================================================
@@ -1395,7 +1404,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { apiRequest } from '../../utils/api'
@@ -1471,13 +1480,56 @@ function closeMobileChat() {
   showMobileCrmDrawer.value = false
 }
 
-function scrollChatToBottom() {
-  nextTick(() => {
-    if (chatBodyRef.value) {
-      chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight
+function scrollChatToBottom(smooth = false) {
+  const doScroll = () => {
+    const el = chatBodyRef.value
+    if (!el) return
+    if (smooth && typeof el.scrollTo === 'function') {
+      el.scrollTo({ top: el.scrollHeight + 1000, behavior: 'smooth' })
+    } else {
+      el.scrollTop = el.scrollHeight + 1000
     }
+  }
+
+  nextTick(() => {
+    doScroll()
+    setTimeout(doScroll, 50)
+    setTimeout(doScroll, 150)
+    setTimeout(doScroll, 320)
   })
 }
+
+// Tự động cuộn xuống dưới cùng khi chọn khách mới hoặc mở chat
+watch(
+  () => selected.value?.id,
+  () => {
+    if (selected.value && (!isMobile.value || mobileChatActive.value)) {
+      scrollChatToBottom(false)
+    }
+  }
+)
+
+// Tự động cuộn xuống dưới cùng khi có tin nhắn mới (gửi đi hoặc nhận về)
+watch(
+  () => selected.value?.messages?.length,
+  (newLen, oldLen) => {
+    if (selected.value && (!isMobile.value || mobileChatActive.value)) {
+      scrollChatToBottom(Boolean(oldLen && newLen > oldLen))
+    }
+  }
+)
+
+// Khóa cuộn trang nền khi mở hộp chat trên mobile
+watch(mobileChatActive, (active) => {
+  if (typeof document !== 'undefined') {
+    if (active) {
+      document.body.classList.add('chat-modal-open')
+      scrollChatToBottom(false)
+    } else {
+      document.body.classList.remove('chat-modal-open')
+    }
+  }
+})
 const currentTab = ref('CARE')
 const analyticsData = ref([])
 const analyticsPeriod = ref('today')
@@ -1978,6 +2030,9 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
 })
 onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') {
+    document.body.classList.remove('chat-modal-open')
+  }
   window.removeEventListener('resize', checkIsMobile)
   if (careTimer) clearInterval(careTimer)
   if (adsTimer) clearInterval(adsTimer)
@@ -5010,14 +5065,22 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 9999;
+  width: 100vw;
+  width: 100%;
+  height: 100dvh;
+  height: 100vh;
+  z-index: 999999;
   background: #ffffff;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .ms-chat-header {
-  height: 56px;
-  padding: 0 12px;
+  height: calc(56px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: 12px;
+  padding-right: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -5145,9 +5208,12 @@ onBeforeUnmount(() => {
 
 /* Messages Scroll Area */
 .ms-messages-scroll {
-  flex: 1;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
@@ -5217,13 +5283,16 @@ onBeforeUnmount(() => {
 
 /* Bottom Chat Input Bar */
 .ms-input-bottom-bar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
   background: #ffffff;
   border-top: 1px solid #e4e6eb;
-  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 .ms-mode-pills {
   display: flex;
@@ -5286,10 +5355,15 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 100000;
+  z-index: 1000000;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+}
+
+:global(body.chat-modal-open) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
 }
 .ms-sheet-drawer {
   background: #ffffff;
