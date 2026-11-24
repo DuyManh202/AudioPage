@@ -163,12 +163,12 @@
       </div>
 
       <!-- Bảng Thông Số Kỹ Thuật Chi Tiết -->
-      <div class="specs-section">
+      <div v-if="cleanedSpecs && Object.keys(cleanedSpecs).length > 0" class="specs-section">
         <h2 class="specs-title">Bảng Thông Số Kỹ Thuật Chuẩn Âm Học</h2>
         <div class="specs-table-wrap">
           <table class="specs-table">
             <tbody>
-              <tr v-for="(val, key) in product.specs" :key="key">
+              <tr v-for="(val, key) in cleanedSpecs" :key="key">
                 <td class="spec-label">{{ key }}</td>
                 <td class="spec-value">{{ val }}</td>
               </tr>
@@ -201,6 +201,17 @@ const activeMediaTab = ref('image')
 
 const product = computed(() => {
   return productStore.getProductById(route.params.id)
+})
+
+const cleanedSpecs = computed(() => {
+  const specs = product.value?.specs || {}
+  const filtered = {}
+  const blacklist = /địa chỉ|nhân viên|kinh doanh|kỹ thuật|bảo hành|khiếu nại|liên hệ|sđt|hotline|zalo|sky city|láng hạ|mmg|công ty cổ phần/i
+  for (const [k, v] of Object.entries(specs)) {
+    if (blacklist.test(k) || blacklist.test(String(v))) continue
+    filtered[k] = v
+  }
+  return filtered
 })
 
 const currentVideoUrl = computed(() => {

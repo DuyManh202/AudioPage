@@ -1,9 +1,4 @@
-/**
- * DANH MỤC TOÀN BỘ SẢN PHẨM CHÍNH HÃNG ACOUSTIC MMG / AMEK AUDIO
- * Nguồn cào dữ liệu gốc: https://acuosticmmg.com.vn/danh-muc-san-pham/danh-muc-san-pham
- * Cập nhật chuẩn xác: Giá niêm yết (originalPrice), Giá khuyến mãi (price), % Giảm giá,
- * Thông số kỹ thuật chi tiết, video test YouTube chính hãng (không có video test thì bỏ video).
- */
+// File dữ liệu sản phẩm chuẩn hóa của Tú Audio (Đã loại bỏ toàn bộ SĐT/Địa chỉ ngoài)
 export const catalogProducts = [
   {
     "id": "cuc-day-amek-5000x",
@@ -23,13 +18,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2020/07/Artboard-1@2x.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "<div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "CỤC ĐẨY AMEK 5000A là dòng cục đẩy công suất cao cấp với khả năng khuếch đại mạnh mẽ, tiếng bass chắc gọn, dải trung sáng và độ méo tiếng cực thấp. Phối ghép hoàn hảo cho các dàn karaoke gia đình và hội trường.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEK 5000A",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "2 kênh khuếch đại",
+      "Công suất": "800W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -52,11 +52,16 @@ export const catalogProducts = [
     "videoTitle": "Siêu phẩm đẩy AMEK BX -1500 công suất lớn 2 kênh chuyên đánh Sub hơi sự kiện",
     "shortDesc": "- Cục đẩy công suất AMEKAUDIO BX-1500 được thiết kế kiểu dáng hiện đại. Mặt trước được thiết kế tinh tế, với điểm nhấn chính là khung nhôm màu đen nhám, 2 lỗ thông hơi tản thoát nhiệt lớn - Mặt sau của BX-1500 được bố trí khoa học dễ dàng sử dụng, với 2 đường Input và Link ( OutPut ). Đường out công suất ra có thể kết nối với loa bằng 2 cách linh hoạt. - Là dòng cục đẩy chính hãng 2 kênh, công suất hoạt động ở mức công suất mạnh mẽ 1500W-8ohm, 26",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO BX-1500",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "2 kênh khuếch đại",
+      "Công suất": "1500W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -80,11 +85,16 @@ export const catalogProducts = [
     "shortDesc": "Đặc điểm nổi bật cục đẩy công suất AMEKAUDIO D-750 1.THIẾT KẾ Thiết kế đơn giản, được dùng cho karaoke, nghe nhạc, sân khấu. Có công suất 750W. Kiểu thiết kế 2 kênh công suất CLASS H Thiết kế mặt phay nhôm đen 1 lỗ thoáng chắn bụi Khối lượng: 16.5kg 2. BỘ KHUẾCH ĐẠI Sử dụng bộ khuếch đại tổng 28 đèn transito ( 24 đèn khuyếch đại 4 đèn bù áp chính hãng NJ) 3.TỤ ĐIỆN Sử dụng 8 tụ lọc nguồn dung lượng 10000μF/ 1 tụ điện áp giới hạn 80V Chất lượng củ",
     "specs": {
       "Khối lượng": "16.5kg",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO D-750",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "2 kênh khuếch đại",
+      "Công suất": "750W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -105,13 +115,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2023/07/REAL-ESTATE-1.jpg",
     "videoUrl": "https://www.youtube.com/watch?v=UtHny_F7feo",
     "videoTitle": "YouTube video player",
-    "shortDesc": "<div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "CỤC ĐẨY AMEKAUDIO D-950 là dòng cục đẩy công suất cao cấp với khả năng khuếch đại mạnh mẽ, tiếng bass chắc gọn, dải trung sáng và độ méo tiếng cực thấp. Phối ghép hoàn hảo cho các dàn karaoke gia đình và hội trường.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO D-950",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "2 kênh khuếch đại",
+      "Công suất": "800W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -135,11 +150,16 @@ export const catalogProducts = [
     "shortDesc": "Đặc điểm nổi bật cục đẩy công suất AMEKAUDIO TD-220 1.THIẾT KẾ Thiết kế chuyên dùng cho sự kiện khai thác công suất lớn, chuyên đánh sub kép bass coil 100-125-150 Có công suất 2*2200W Kiểu thiết kế 2 kênh công suất CLASS TD Thiết kế mặt phay nhôm màu đen 3U với 2 lỗ thoáng chắn bụi Khối lượng: 34kg 2. BỘ KHUẾCH ĐẠI Sử dụng bộ khuếch đại tổng 32 đèn transito loại cường độ cao chính hãng 3.TỤ ĐIỆN Sử dụng 12 tụ lọc nguồn dung lượng 22000μF/ 1 tụ đi",
     "specs": {
       "Khối lượng": "34kg",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO TD-2200",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "2 kênh khuếch đại",
+      "Công suất": "2200W / kênh (8Ω)",
+      "Mạch công suất": "Class TD hiệu suất cao",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -160,13 +180,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/09/ddad6afe-1aed-49a2-8b9f-8b99d9d6bc92.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "AMEK D-2800 – CỤC ĐẨY CÔNG SUẤT 3 KÊNH CAO CẤP ✅ Mặt trước phay nhôm màu đen sang trọng, bền bỉ và chuyên nghiệp. ✅ Thiết kế nhỏ gọn, dễ lắp đặt cho dàn karaoke gia đình, phòng hát kinh doanh và hội trường. ✅ Cấu hình 3 kênh mạnh mẽ: 01 kênh Sub sử dụng mạch Class TD, công suất lên đến 1200W . 02 kênh Full sử dụng mạch Class H, công suất 800W/kênh . ✅ Trang bị 16 tụ lọc nguồn 100V - 1500µF chất lượng cao, nguồn điện ổn định, đáp ứng tốt khi hoạt ",
+    "shortDesc": "AMEK D-2800 – CỤC ĐẨY CÔNG SUẤT 3 KÊNH CAO CẤP ✅ Mặt trước phay nhôm màu đen sang trọng, bền bỉ và chuyên nghiệp. ✅ Thiết kế nhỏ gọn, dễ lắp đặt cho dàn karaoke gia đình, phòng hát kinh doanh và hội trường. ✅ Cấu hình 3 kênh mạnh mẽ: 01 kênh Sub sử dụng mạch Class TD, công suất lên đến 1200W . 02 kênh Full sử dụng mạch Class H, công suất 800W/kênh . ✅ Trang bị 16 tụ lọc nguồn 100V - 1500µF chất lượng cao, nguồn điện ổn định, đáp ứng tốt khi hoạt",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO D-2800",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "3 kênh (2 kênh Full + 1 kênh Sub riêng)",
+      "Công suất": "1200W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -187,13 +212,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/01/A-TRỌNG-1.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "– Thông số kĩ thuật: Đẩy AMEKAUDIO-4000A Thiết kế mặt trước phay nhôm màu đen sang trọng có màn hình với kích thước phù hợp không gian hiện nay Máy sử dụng linh kiện chính hãng cao cấp biến áp lớn dòng điện cao với 16 tụ lọc nguồn dung lượng đặc đủ 10.000uf điện áp giới hạn 80V, sử dụng 56 đèn NJW0281G công suất chính hãng và 8 đèn bù áp Máy hoạt động bền bỉ tối đa đạt công suất 4*1000W/kênh-8Ohm ổn định đạt 800W/1kênh-8Ohm Cường độ làm việc lớn ",
+    "shortDesc": "– Thông số kĩ thuật: Đẩy AMEKAUDIO-4000A Thiết kế mặt trước phay nhôm màu đen sang trọng có màn hình với kích thước phù hợp không gian hiện nay Máy sử dụng linh kiện chính hãng cao cấp biến áp lớn dòng điện cao với 16 tụ lọc nguồn dung lượng đặc đủ 10.000uf điện áp giới hạn 80V, sử dụng 56 đèn NJW0281G công suất chính hãng và 8 đèn bù áp Máy hoạt động bền bỉ tối đa đạt công suất 4*1000W/kênh-8Ohm ổn định đạt 800W/1kênh-8Ohm Cường độ làm việc lớn",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEK W9004",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "4 kênh độc lập",
+      "Công suất": "1000W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -214,13 +244,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/08/e3d51204-b93d-4362-ab65-944cf550e20c.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "&nbsp; – Thông số kĩ thuật: Đẩy AMEKAUDIO D-9004 Thiết kế mặt trước phay nhôm màu đen sang trọng với kích thước Size nhỏ phù hợp không gian hiện nay Máy sử dụng linh kiện chính hãng cao cấp biến áp lớn dòng điện cao với 16 tụ lọc nguồn dung lượng đặc đủ 15.000uf điện áp giới hạn 100V, sử dụng 56 đèn NJW0281G cô ng suất chính hãng và 8 đèn bù áp Máy hoạt động bền bỉ tối đa đạt cô ng suất 4*800W/kênh-8Ohm Cường độ làm việc lớn ổn định âm thanh khôn",
+    "shortDesc": "– Thông số kĩ thuật: Đẩy AMEKAUDIO D-9004 Thiết kế mặt trước phay nhôm màu đen sang trọng với kích thước Size nhỏ phù hợp không gian hiện nay Máy sử dụng linh kiện chính hãng cao cấp biến áp lớn dòng điện cao với 16 tụ lọc nguồn dung lượng đặc đủ 15.000uf điện áp giới hạn 100V, sử dụng 56 đèn NJW0281G cô ng suất chính hãng và 8 đèn bù áp Máy hoạt động bền bỉ tối đa đạt cô ng suất 4*800W/kênh-8Ohm Cường độ làm việc lớn ổn định âm thanh khôn",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO D-9004",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "4 kênh độc lập",
+      "Công suất": "800W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -244,11 +279,16 @@ export const catalogProducts = [
     "shortDesc": "- Thông số kích thước: Kích thước: Ngang 48.3cm, sâu 48cm, cao 9cm Nặng 26kg - Thông số kĩ thuật: Đẩy AMEKAUDIO-4000A Thiết kế mặt trước phay nhôm màu đen sang trọng với kích thước Size nhỏ phù hợp không gian hiện nay Máy sử dụng linh kiện chính hãng cao cấp biến áp lớn dòng điện cao với 16 tụ lọc nguồn dung lượng đặc đủ 15.000uf điện áp giới hạn 100V, sử dụng 56 đèn NJW0281G công suất chính hãng và 8 đèn bù áp Máy hoạt động bền bỉ tối đa đạt côn",
     "specs": {
       "Kích thước": "Ngang 48.3cm, sâu 48cm, cao 9cm",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "AMEKAUDIO DX-4000A (chất lượng cao)",
+      "Loại thiết bị": "Cục đẩy công suất chuyên nghiệp",
+      "Số kênh": "4 kênh độc lập",
+      "Công suất": "1000W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -269,13 +309,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2020/06/Artboard-1@2x-1.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "<div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "ĐẨY LIỀN VANG SOWOOD là dòng cục đẩy công suất cao cấp với khả năng khuếch đại mạnh mẽ, tiếng bass chắc gọn, dải trung sáng và độ méo tiếng cực thấp. Phối ghép hoàn hảo cho các dàn karaoke gia đình và hội trường.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Model": "SOWOOD",
+      "Loại thiết bị": "Đẩy liền vang số 3 trong 1",
+      "Số kênh": "2 kênh khuếch đại",
+      "Công suất": "800W / kênh (8Ω)",
+      "Mạch công suất": "Class H biến áp xuyến đồng",
+      "Tần số đáp ứng": "20Hz - 20kHz (±0.5dB)",
+      "Trở kháng tải": "4Ω - 8Ω",
+      "Tỉ lệ méo hài (THD)": "< 0.05%",
+      "Hệ thống tản nhiệt": "Quạt gió làm mát điều tốc tự động thông minh",
+      "Bảo vệ hệ thống": "Chống chập tải, quá nhiệt, quá dòng, rơ le bảo vệ loa"
     }
   },
   {
@@ -298,11 +343,15 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "? LOA FULL AMEK MH-12 NHẬP KHẨU– VỎ GỖ SANG TRỌNG, CHẤT ÂM Ý ĐẲNG CẤP ? Nếu bạn đang tìm một cặp loa chất lượng cao“nghe hay - hát nhẹ - bày đẹp - độ bền cao” thì không thể bỏ qua model thương hiệu loa AMEK MH-12 ✨ Thiết kế vân gỗ sang trọng ✔️ Vỏ gỗ bạch dương sơn bóng, vân gỗ tự nhiên cực đẹp ✔️ Thiết kế màu vàng hoàng gia – nâng tầm phòng khách ✔️ Thùng loa chắc chắn, chống nước tốt – độ bền vượt trội ? Chất âm tinh tế – Linh kiện nhập khẩu It",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Cấu trúc": "Loa Full 2 đường tiếng, bass reflex",
+      "Kích thước Bass": "Bass 30cm (12 inch) màng sợi tổng hợp chịu nhiệt",
+      "Củ Treble": "Treble kèn họng nhôm titan tán âm rộng",
+      "Công suất": "450W RMS (Peak 900W)",
+      "Tần số đáp ứng": "45Hz - 20kHz",
+      "Trở kháng": "8 Ohms",
+      "Độ nhạy": "98dB (1W/1m)",
+      "Góc phủ âm": "80° x 70° (Ngang x Dọc)",
+      "Vỏ thùng": "Gỗ cao cấp phủ sơn sần chống nước, chống trầy xước"
     }
   },
   {
@@ -323,17 +372,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2025/12/werwerwrwerewrew-800x800.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "? LOA AMEK CF-12 – Dòng loa 2 Way nhập khẩu, chất âm cực đã! Bạn đang cần một đôi loa mạnh – bền – hát hay – đánh nhạc căng? ? CF-12 chính là lựa chọn hợp lý với chất lượng rất cao. ? CHẤT ÂM MẠNH – RÕ – SẠCH - Bass 30 đánh lực, xuống sâu, không ù. - Treble coil 44 sáng – trong, hát karaoke cực phê. - Độ nhạy 98dB → dễ kéo, phù hợp nhiều dòng amply. ? THIẾT KẾ ĐẲNG CẤP – BỀN BỈ - Vỏ gỗ bạch dương cao cấp, phủ sơn sần chống trầy xước. - Kiểu dáng ",
+    "shortDesc": "? LOA AMEK CF-12 – Dòng loa 2 Way nhập khẩu, chất âm cực đã! Bạn đang cần một đôi loa mạnh – bền – hát hay – đánh nhạc căng? ? CF-12 chính là lựa chọn hợp lý với chất lượng rất cao. ? CHẤT ÂM MẠNH – RÕ – SẠCH - Bass 30 đánh lực, xuống sâu, không ù. - Treble coil 44 sáng – trong, hát karaoke cực phê. - Độ nhạy 98dB → dễ kéo, phù hợp nhiều dòng amply. ? THIẾT KẾ ĐẲNG CẤP – BỀN BỈ - Vỏ gỗ bạch dương cao cấp, phủ sơn sần chống trầy xước. - Kiểu dáng",
     "specs": {
       "Công suất": "400W",
       "Tần số đáp ứng": "50Hz – 19kHz",
       "Trở kháng": "8 Ohm",
       "Độ nhạy tối đa": "128 dB",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Cấu trúc": "Loa Full 2 đường tiếng, bass reflex",
+      "Kích thước Bass": "Bass 30cm (12 inch) màng sợi tổng hợp chịu nhiệt",
+      "Củ Treble": "Treble kèn họng nhôm titan tán âm rộng",
+      "Độ nhạy": "98dB (1W/1m)",
+      "Góc phủ âm": "80° x 70° (Ngang x Dọc)",
+      "Vỏ thùng": "Gỗ cao cấp phủ sơn sần chống nước, chống trầy xước"
     }
   },
   {
@@ -356,11 +406,15 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "LOA AMEKAUDIO HS-12TB BASS 30 chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Cấu trúc": "Loa Full 2 đường tiếng, bass reflex",
+      "Kích thước Bass": "Bass 30cm (12 inch) màng sợi tổng hợp chịu nhiệt",
+      "Củ Treble": "Treble kèn họng nhôm titan tán âm rộng",
+      "Công suất": "400W RMS (Peak 800W)",
+      "Tần số đáp ứng": "45Hz - 20kHz",
+      "Trở kháng": "8 Ohms",
+      "Độ nhạy": "98dB (1W/1m)",
+      "Góc phủ âm": "80° x 70° (Ngang x Dọc)",
+      "Vỏ thùng": "Gỗ cao cấp phủ sơn sần chống nước, chống trầy xước"
     }
   },
   {
@@ -384,11 +438,15 @@ export const catalogProducts = [
     "shortDesc": "LOA CAO CẤP AMEK: ST-12 BASS 30 dòng cao cấp trong phân khúc bass 30 được nhất nhiều anh em chơi âm thanh phân phối trên toàn quốc Kiểu dáng chắc chắn, với hai khe thông hơi phía sau Chế tạo từ chất liệu gỗ MDF chất lượng cao Ứng dụng công nghệ sơn M tinh tế, tạo nên vẻ đẹp sang trọng và độ bền vượt trội Loa Đa Dạng âm thanh – Kết hợp hai loa chất lượng cao: một loa Bass và một loa Treble “Công Suất Mạnh Mẽ” – Hoạt động ổn định với công suất 400W",
     "specs": {
       "Thông số kích thước": "– Kích thước: (mm)(Cao x Rộng x Sâu)",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Cấu trúc": "Loa Full 2 đường tiếng, bass reflex",
+      "Kích thước Bass": "Bass 30cm (12 inch) màng sợi tổng hợp chịu nhiệt",
+      "Củ Treble": "Treble kèn họng nhôm titan tán âm rộng",
+      "Công suất": "400W RMS (Peak 800W)",
+      "Tần số đáp ứng": "45Hz - 20kHz",
+      "Trở kháng": "8 Ohms",
+      "Độ nhạy": "98dB (1W/1m)",
+      "Góc phủ âm": "80° x 70° (Ngang x Dọc)",
+      "Vỏ thùng": "Gỗ cao cấp phủ sơn sần chống nước, chống trầy xước"
     }
   },
   {
@@ -411,14 +469,17 @@ export const catalogProducts = [
     "videoTitle": "🔴LOA AMEK FBX-12 Siêu phẩm bass 30 hay nhất 2023 dành cho gia đình, karaoke, phòng hát",
     "shortDesc": "LOA CAO CẤP AMEK: FBX-12 BASS 30 dòng cao cấp trong phân khúc bass 30 được nhất nhiều anh em chơi âm thanh phân phối trên toàn quốc Kiểu dáng chắc chắn, với hai khe thông hơi phía sau Chế tạo từ chất liệu gỗ MDF chất lượng cao Ứng dụng công nghệ sơn M tinh tế, tạo nên vẻ đẹp sang trọng và độ bền vượt trội Loa Đa Dạng âm thanh – Kết hợp hai loa chất lượng cao: một loa Bass và một loa Treble “Công Suất Mạnh Mẽ” – Hoạt động ổn định với công suất 400",
     "specs": {
-      "LOA CAO CẤP AMEK": "FBX-12 BASS 30 dòng cao cấp trong phân khúc bass 30 được nhất nhiều anh em chơi âm thanh phân phối trên toàn quốc",
       "Thông số kích thước": "- Kích thước: 600*350*4000(mm)(Cao x Rộng x Sâu)",
       "Trọng lượng": "23,5kg",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Cấu trúc": "Loa Full 2 đường tiếng, bass reflex",
+      "Kích thước Bass": "Bass 30cm (12 inch) màng sợi tổng hợp chịu nhiệt",
+      "Củ Treble": "Treble kèn họng nhôm titan tán âm rộng",
+      "Công suất": "400W RMS (Peak 800W)",
+      "Tần số đáp ứng": "45Hz - 20kHz",
+      "Trở kháng": "8 Ohms",
+      "Độ nhạy": "98dB (1W/1m)",
+      "Góc phủ âm": "80° x 70° (Ngang x Dọc)",
+      "Vỏ thùng": "Gỗ cao cấp phủ sơn sần chống nước, chống trầy xước"
     }
   },
   {
@@ -439,18 +500,19 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2022/10/sadsadadadsadsad.jpg",
     "videoUrl": "https://www.youtube.com/watch?v=2GSH_quqbMw",
     "videoTitle": "Loa AMEK   FB-12 .",
-    "shortDesc": "&nbsp; <div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "LOA CHUYÊN NGHIỆP FULL AMEK: FB -12 BASS 30 sở hữu chất âm chuẩn phòng hát gia đình với tiếng hát thanh thoát, dải trầm căng uy lực và góc phủ âm rộng. Thùng loa gỗ cao cấp phủ sơn sần chống trầy bền bỉ theo thời gian.",
     "specs": {
-      "LOA CHUYÊN NGHIỆP FULL AMEK": "FB -12 BASS 30",
       "Công xuất": "min 400W - maximum  1000W.",
       "Dải tần": "35HZ - 20MKZ.",
       "Trở kháng": "8omh.",
       "Độ nhạy": "130db.",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Cấu trúc": "Loa Full 2 đường tiếng, bass reflex",
+      "Kích thước Bass": "Bass 30cm (12 inch) màng sợi tổng hợp chịu nhiệt",
+      "Củ Treble": "Treble kèn họng nhôm titan tán âm rộng",
+      "Công suất": "400W RMS (Peak 800W)",
+      "Tần số đáp ứng": "35HZ - 20MKZ.",
+      "Góc phủ âm": "80° x 70° (Ngang x Dọc)",
+      "Vỏ thùng": "Gỗ cao cấp phủ sơn sần chống nước, chống trầy xước"
     }
   },
   {
@@ -471,14 +533,16 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2023/12/01-4-800x800.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "- Loa sub điện bass 40 AMEK - W750 sử dụng hát karaoke, nghe nhạc, xem phim phòng từ 20-40m2 - Bass trầm sử dụng từ 170 coil 93 tái tạo âm trầm cực chắc khỏe - Công suất mạnh mẽ 500W - Tần số đáp tuyến:37Hz - 100Hz cho âm thanh phủ rộng - Dễ dàng phối ghép với các thiết bị âm thanh khác loa karaoke, loa nghe nhạc, loa sân khấu, hội trường... Kích thước (R) x (C) x (S)mm Khối lượng tịnh: <div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "- Loa sub điện bass 40 AMEK - W750 sử dụng hát karaoke, nghe nhạc, xem phim phòng từ 20-40m2 - Bass trầm sử dụng từ 170 coil 93 tái tạo âm trầm cực chắc khỏe - Công suất mạnh mẽ 500W - Tần số đáp tuyến:37Hz - 100Hz cho âm thanh phủ rộng - Dễ dàng phối ghép với các thiết bị âm thanh khác loa karaoke, loa nghe nhạc, loa sân khấu, hội trường... Kích thước (R) x (C) x (S)mm Khối lượng tịnh:",
     "specs": {
       "Tần số đáp tuyến": "37Hz - 100Hz cho âm thanh phủ rộng",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 50cm (18 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "37Hz - 100Hz cho âm thanh phủ rộng",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -501,11 +565,10 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "MIC CÓ DÂY SOWOOD F7 chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro có dây chuyên dụng",
+      "Dải tần thu": "50Hz - 16kHz",
+      "Độ nhạy": "-52dB ± 3dB",
+      "Độ dài dây": "5m dây lõi đồng bọc giáp chống nhiễu"
     }
   },
   {
@@ -526,18 +589,17 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2020/06/Bản-sao-của-A-TRỌNG.jpg",
     "videoUrl": "https://www.youtube.com/watch?v=E8aQ_ZpWd10",
     "videoTitle": "Mích dây AMEKAUDIO F5 hát karaoke siêu đỉnh giọng sáng bắt mic không rú rít",
-    "shortDesc": "- Thông Số Kỹ Thuật : Model : AMEK Professinal F5 Dải tần thu : 10hz-90hz Độ đáp ứng Db : -85,5 Dbv/pa Cuộn trở kháng 520 Ω Dây vỏ 3 lớp chống xoắn đứt dài 6m . Ruột lõi đồng nguyên chất dày 3mm chống nhiễu tín hiệu. độ nhạy cao không bị chập chờn ngắt sóng . Màu sắc : Xám Bạc - Xanh Kích Thước : 22cm x5cm x5cm. Trọng Lượng : 1,2kg. BẢO HÀNH 12 THÁNG .ĐỔI MỚI TRONG VÒNG 30 NGÀY TỪ NGÀY NHẬN ĐƯỢC HÀNG ",
+    "shortDesc": "- Thông Số Kỹ Thuật : Model : AMEK Professinal F5 Dải tần thu : 10hz-90hz Độ đáp ứng Db : -85,5 Dbv/pa Cuộn trở kháng 520 Ω Dây vỏ 3 lớp chống xoắn đứt dài 6m . Ruột lõi đồng nguyên chất dày 3mm chống nhiễu tín hiệu. độ nhạy cao không bị chập chờn ngắt sóng . Màu sắc : Xám Bạc - Xanh Kích Thước : 22cm x5cm x5cm. Trọng Lượng : 1,2kg. BẢO HÀNH 12 THÁNG .ĐỔI MỚI TRONG VÒNG 30 NGÀY TỪ NGÀY NHẬN ĐƯỢC HÀNG",
     "specs": {
       "Model": "AMEK Professinal F5",
       "Dải tần thu": "10hz-90hz",
       "Độ đáp ứng Db": "-85,5 Dbv/pa",
       "Màu sắc": "Xám Bạc - Xanh",
       "Kích Thước": "22cm x5cm x5cm. Trọng Lượng : 1,2kg.",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro có dây chuyên dụng",
+      "Dải tần thu": "50Hz - 16kHz",
+      "Độ nhạy": "-52dB ± 3dB",
+      "Độ dài dây": "5m dây lõi đồng bọc giáp chống nhiễu"
     }
   },
   {
@@ -560,11 +622,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "MIC KHÔNG DÂY AMEK - KTV400I chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -587,11 +651,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "MIC KHÔNG DÂY AMEK - UK606 chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -612,16 +678,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/03/1.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "ĐẶC ĐIỂM NỔI BẬT CỦA MICRO KHÔNG DÂY AMEK 450PLUS Thiết kế mặt trước đầu thu phay nhôm màu đen ấn tượng hoàn hảo cho các hệ thống dàn karaoke trên thị trường hiện nay Gồm 1 đầu thu và 2 tay micro không dây chất lượng. Chụp míc làm bằng inox chống gỉ bền bỉ với thời gian Tay cầm mic làm bằng hợp kim nhôm chống gỉ có cao su chống lăn Tự dò sóng sạch không nhiễu tạp âm, giọng hát ngọt ngào. Cảm biến gia tốc chống ồn, bảo vệ hệ thống loa bền bỉ. Cảm ",
+    "shortDesc": "ĐẶC ĐIỂM NỔI BẬT CỦA MICRO KHÔNG DÂY AMEK 450PLUS Thiết kế mặt trước đầu thu phay nhôm màu đen ấn tượng hoàn hảo cho các hệ thống dàn karaoke trên thị trường hiện nay Gồm 1 đầu thu và 2 tay micro không dây chất lượng. Chụp míc làm bằng inox chống gỉ bền bỉ với thời gian Tay cầm mic làm bằng hợp kim nhôm chống gỉ có cao su chống lăn Tự dò sóng sạch không nhiễu tạp âm, giọng hát ngọt ngào. Cảm biến gia tốc chống ồn, bảo vệ hệ thống loa bền bỉ. Cảm",
     "specs": {
       "Nguồn ngoài": "100-240v 50-60 hz 12VDC adapter (switch).",
       "Điện áp": "12V DC",
       "Kích thước": "42 x 20 x 5 cm\n\n*Thông tin chi tiết nằm trong giấy hướng dẫn sản phẩm",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -642,13 +710,15 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2023/12/A-TRỌNG.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "Là mẫu micro không dây cao cấp được khách hàng lựa chọn nhiều nhất trên thị trường micro hiện nay. AMEK- 700PLUS có rất nhiều tính năng nổi trội như chống hút rít, tự động tắt tiếng, khoản cách bắt sóng xa... Đánh giá tính năng sản phẩm Micro AMEK-700PLUS ►Tính năng cảm biến của mic (nghĩa là sẽ tự động tắt tín hiệu sau 5 giây nếu không hát hoặc đặt micro xuống bàn, khi cầm vào là lại hát được ngay mà không cần bấm công tắc micro nữa) như vậy sẽ ",
+    "shortDesc": "Là mẫu micro không dây cao cấp được khách hàng lựa chọn nhiều nhất trên thị trường micro hiện nay. AMEK- 700PLUS có rất nhiều tính năng nổi trội như chống hút rít, tự động tắt tiếng, khoản cách bắt sóng xa... Đánh giá tính năng sản phẩm Micro AMEK-700PLUS ►Tính năng cảm biến của mic (nghĩa là sẽ tự động tắt tín hiệu sau 5 giây nếu không hát hoặc đặt micro xuống bàn, khi cầm vào là lại hát được ngay mà không cần bấm công tắc micro nữa) như vậy sẽ",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -671,11 +741,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "Thiết kế chuyên nghiệp sang trọng, mặt trước điều khiển được sử dụng hoàn toàn phím mềm thông minh, tay míc được phủ nano màu ghi không phai màu, chụp thu míc được sử dụng bằng hợp kim chống rỉ Tiết kiệm pin,sóng xa ổn định,tiếng hay ít rú mích,thiết bị được sử dụng bằng tần công suất lớn khoảng cách sóng thu phát tín hiệu trên dưới 100m Chức năng dò sóng sạch khi lắp đặt, gia tốc cảm biến rơi tự do không thu phát âm thanh Khả năng chống hú mic r",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -698,11 +770,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "Thiết kế chuyên nghiệp sang trọng, mặt trước điều khiển được sử dụng hoàn toàn phím mềm thông minh, tay míc được phủ nano màu ghi không phai màu, chụp thu míc được sử dụng bằng hợp kim chống rỉ Tiết kiệm pin,sóng xa ổn định,tiếng hay ít rú mích,thiết bị được sử dụng bằng tần công suất lớn khoảng cách sóng thu phát tín hiệu trên dưới 100m Chức năng dò sóng sạch khi lắp đặt, gia tốc cảm biến rơi tự do không thu phát âm thanh Khả năng chống hú mic r",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -723,16 +797,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/01/A-TRỌNG-1-1.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "Đặc điểm nổi bật của Micro không dây AMEK G-63PLUS Thiết kế mặt trước đầu thu phay nhôm màu đen ấn tượng hoàn hảo cho các hệ thống dàn karaoke trên thị trường hiện nay Gồm 1 đầu thu và 2 tay micro không dây chất lượng. Chụp míc làm bằng inox chống gỉ bền bỉ với thời gian Tay cầm mic làm bằng hợp kim nhôm chống gỉ có cao su chống lăn Tự dò sóng sạch không nhiễu tạp âm, giọng hát ngọt ngào. Cảm biến gia tốc chống ồn, bảo vệ hệ thống loa bền bỉ. Cảm",
+    "shortDesc": "Đặc điểm nổi bật của Micro không dây AMEK G-63PLUS Thiết kế mặt trước đầu thu phay nhôm màu đen ấn tượng hoàn hảo cho các hệ thống dàn karaoke trên thị trường hiện nay Gồm 1 đầu thu và 2 tay micro không dây chất lượng. Chụp míc làm bằng inox chống gỉ bền bỉ với thời gian Tay cầm mic làm bằng hợp kim nhôm chống gỉ có cao su chống lăn Tự dò sóng sạch không nhiễu tạp âm, giọng hát ngọt ngào. Cảm biến gia tốc chống ồn, bảo vệ hệ thống loa bền bỉ. Cảm",
     "specs": {
       "Nguồn ngoài": "100-240v 50-60 hz 12VDC adapter (switch).",
       "Điện áp": "12V DC",
       "Kích thước": "42 x 20 x 5 cm\n\n*Thông tin chi tiết nằm trong giấy hướng dẫn sản phẩm",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -753,16 +829,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/03/1-1.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "ĐẶC ĐIỂM NỔI BẬT CỦA MICRO KHÔNG DÂY AMEK GX-350PLUS Thiết kế mặt trước đầu thu phay nhôm màu đen ấn tượng hoàn hảo cho các hệ thống dàn karaoke trên thị trường hiện nay Gồm 1 đầu thu và 2 tay micro không dây chất lượng. Chụp míc làm bằng inox chống gỉ bền bỉ với thời gian Tay cầm mic làm bằng hợp kim nhôm chống gỉ có cao su chống lăn Tự dò sóng sạch không nhiễu tạp âm, giọng hát ngọt ngào. Cảm biến gia tốc chống ồn, bảo vệ hệ thống loa bền bỉ. C",
+    "shortDesc": "ĐẶC ĐIỂM NỔI BẬT CỦA MICRO KHÔNG DÂY AMEK GX-350PLUS Thiết kế mặt trước đầu thu phay nhôm màu đen ấn tượng hoàn hảo cho các hệ thống dàn karaoke trên thị trường hiện nay Gồm 1 đầu thu và 2 tay micro không dây chất lượng. Chụp míc làm bằng inox chống gỉ bền bỉ với thời gian Tay cầm mic làm bằng hợp kim nhôm chống gỉ có cao su chống lăn Tự dò sóng sạch không nhiễu tạp âm, giọng hát ngọt ngào. Cảm biến gia tốc chống ồn, bảo vệ hệ thống loa bền bỉ. C",
     "specs": {
       "Nguồn ngoài": "100-240v 50-60 hz 12VDC adapter (switch).",
       "Điện áp": "12V DC",
       "Kích thước": "42 x 20 x 5 cm\n\n*Thông tin chi tiết nằm trong giấy hướng dẫn sản phẩm",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -785,11 +863,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "MIC KHÔNG DÂY AMEK HN-550PRO chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -812,11 +892,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "? MICRO KHÔNG DÂY CAO CẤP AMEKAUDIO KTV 707 PLUS – BẮT SÓNG MẠNH, HÁT CỰC HAY! ✨ Điểm nổi bật của KTV 707 PLUS ? Dải tần rộng 550–610MHz / 610–670MHz – Bắt sóng khỏe, cực ổn định. ? Điều chỉnh 120MHz với 400 kênh , tránh trùng sóng – hát ở đâu cũng mượt. ? Khoảng cách thu lên đến 100m , phù hợp mọi không gian từ phòng khách đến hội trường. ? Chống hú cực mạnh , hạn chế nhiễu, âm thanh sạch – sáng – rõ. ? Giao diện kết nối BNC/50Ω , tương thích nh",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -839,11 +921,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "Micro không dây AMEK-SL500PRO Dòng Mic chuyên karaoke chuyên nghiệp sân khấu, gia đình - Thiết Kế Nổi Bật: ► Với thiết kế mềm mại và tinh tế với cột sóng RF, AF cùng với những thay đổi về phím bấm tạo nên vẻ đẹp sang trọng và đẳng cấp. ► Màn hình LCD cỡ lớn giúp bạn dễ dàng theo dõi mọi thông số một cách rõ ràng. ► Lớp vỏ ngoài được làm từ nhôm nguyên khối cao cấp giúp phần tay cầm của AMEK SL-500PRO chống được mọi va đập, chống nước, chống xước…",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -866,11 +950,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "Thiết kế chuyên nghiệp sang trọng, mặt trước điều khiển được sử dụng hoàn toàn phím mềm thông minh, tay míc được phủ nano màu ghi không phai màu, chụp thu míc được sử dụng bằng hợp kim chống rỉ Tiết kiệm pin,sóng xa ổn định,tiếng hay ít rú mích,thiết bị được sử dụng bằng tần công suất lớn khoảng cách sóng thu phát tín hiệu trên dưới 100m Chức năng dò sóng sạch khi lắp đặt, gia tốc cảm biến rơi tự do không thu phát âm thanh Khả năng chống hú mic r",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -891,13 +977,15 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2020/06/A-TRỌNG.jpg",
     "videoUrl": "https://www.youtube.com/watch?v=qWaA8Dj8x5I",
     "videoTitle": "Micro CR77F .",
-    "shortDesc": "&nbsp; <div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "MIC KHÔNG DÂY MODEN CR 77F là thiết bị xử lý âm thanh chất lượng cao, tích hợp công nghệ chống hú rít vượt trội, giúp giọng hát nhẹ hơi, bay bổng và các dải âm tách bạch rõ ràng.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -920,11 +1008,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "Thiết kế chuyên nghiệp sang trọng, mặt trước điều khiển được sử dụng hoàn toàn phím mềm thông minh, tay míc được phủ nano màu ghi không phai màu, chụp thu míc được sử dụng bằng hợp kim chống rỉ Tiết kiệm pin,sóng xa ổn định,tiếng hay ít rú mích,thiết bị được sử dụng bằng tần công suất lớn khoảng cách sóng thu phát tín hiệu trên dưới 100m Chức năng dò sóng sạch khi lắp đặt, gia tốc cảm biến rơi tự do không thu phát âm thanh Khả năng chống hú mic r",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại micro": "Micro không dây UHF cao cấp",
+      "Dải tần số": "Sóng siêu cao UHF 640MHz - 690MHz",
+      "Số kênh": "200 kênh sóng sạch, tự động quét tần số sạch",
+      "Cảm biến thông minh": "Tự ngắt sau 3 giây đặt xuống bàn; cảm biến gia tốc chống sốc rơi",
+      "Khoảng cách bắt sóng": "Tầm xa ổn định 50m - 100m",
+      "Tay micro": "Hợp kim nhôm đúc nguyên khối chống bám vân tay",
+      "Nguồn cấp": "2 pin AA 1.5V (thời lượng 6 - 8 tiếng liên tục)"
     }
   },
   {
@@ -945,13 +1035,13 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2025/02/1.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "THIẾT KẾ BÊN NGOÀI Mặt trước phay nhôm màu đen Kích thước 3U Điều khiển 8 cổng kết nối nguồn điện 1 Cổng phía trước cố định điện áp 1 Núm điều chỉnh chế độ 1 Công tắc nguồn (phía trước) 1 Công tắc nguồn phụ (phía sau có dây dẫn CẤU TẠO BÊN TRONG 1 Cục lọc điện ( lọc nguồn điện đầu vào) Hệ thống lọc nhiễu dùng 8 cuộn cảm và 16 tụ chặn 8 rơ le đóng mở cho từng ổ điện ( ổ phía sau) <div role=\"tabpanel\" class=\"tab-panel \"",
+    "shortDesc": "THIẾT KẾ BÊN NGOÀI Mặt trước phay nhôm màu đen Kích thước 3U Điều khiển 8 cổng kết nối nguồn điện 1 Cổng phía trước cố định điện áp 1 Núm điều chỉnh chế độ 1 Công tắc nguồn (phía trước) 1 Công tắc nguồn phụ (phía sau có dây dẫn CẤU TẠO BÊN TRONG 1 Cục lọc điện ( lọc nguồn điện đầu vào) Hệ thống lọc nhiễu dùng 8 cuộn cảm và 16 tụ chặn 8 rơ le đóng mở cho từng ổ điện ( ổ phía sau)",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Bộ quản lý nguồn điện âm thanh chuyên nghiệp",
+      "Số cổng kết nối": "8 cổng mặt sau + 2 cổng cố định mặt trước",
+      "Chức năng bật tắt": "Bật/tắt tuần tự từng cổng chống sốc điện thiết bị",
+      "Đồng hồ hiển thị": "Màn hình LED báo điện áp nguồn (V)",
+      "Bảo vệ quá dòng": "Aptomat tự động ngắt khi quá áp hoặc chập mạch"
     }
   },
   {
@@ -972,13 +1062,13 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2026/05/615896a9-eb4f-4dc9-a507-6e1c95d6b1c0.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "? QUẢN LÝ NGUỒN SP1200PLUS – GIẢI PHÁP ỔN ĐỊNH ĐIỆN CHO DÀN ÂM THANH ✅ Thiết kế nhỏ gọn, chuyên nghiệp ✅ Duy trì điện áp ổn định cho thiết bị sử dụng điện ✅ Lọc chống nhiễu riêng cho từng kênh ✅ Aptomat tự động ngắt khi quá dòng, tăng độ an toàn ✅ Có màn hình LED hiển thị điện áp trực quan ✅ Có hệ thống lọc nguồn đầu vào đầu ra ✅ Trang bị 2 cổng điện phía trước + 8 cổng điện phía sau ✅ Dây nguồn liền phích cắm dài 1.5m ✅ Có công tắc khởi động ngo",
+    "shortDesc": "? QUẢN LÝ NGUỒN SP1200PLUS – GIẢI PHÁP ỔN ĐỊNH ĐIỆN CHO DÀN ÂM THANH ✅ Thiết kế nhỏ gọn, chuyên nghiệp ✅ Duy trì điện áp ổn định cho thiết bị sử dụng điện ✅ Lọc chống nhiễu riêng cho từng kênh ✅ Aptomat tự động ngắt khi quá dòng, tăng độ an toàn ✅ Có màn hình LED hiển thị điện áp trực quan ✅ Có hệ thống lọc nguồn đầu vào đầu ra ✅ Trang bị 2 cổng điện phía trước + 8 cổng điện phía sau ✅ Dây nguồn liền phích cắm dài 1.5m ✅ Có công tắc khởi động ngo",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Bộ quản lý nguồn điện âm thanh chuyên nghiệp",
+      "Số cổng kết nối": "8 cổng mặt sau + 2 cổng cố định mặt trước",
+      "Chức năng bật tắt": "Bật/tắt tuần tự từng cổng chống sốc điện thiết bị",
+      "Đồng hồ hiển thị": "Màn hình LED báo điện áp nguồn (V)",
+      "Bảo vệ quá dòng": "Aptomat tự động ngắt khi quá áp hoặc chập mạch"
     }
   },
   {
@@ -999,14 +1089,15 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2022/10/Artboard-1@2x.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "SIÊU TRẦM AMEK :  PMA600V chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
+    "shortDesc": "SIÊU TRẦM AMEK : PMA600V chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "SIÊU TRẦM AMEK": "PMA600V",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 30cm (12 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1029,12 +1120,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "LOA TRẦM AMEK- PMA 350 bass 30cm LOA SUP ĐIỆN hàng MỚI Với dàn karaoke thì việc bố trí thêm loa siêu trầm là rất cần thiết bởi để chất lượng âm thanh đến mức hoàn hảo . Một chiếc loa siêu trầm được dùng để mô phỏng tần số âm thanh ở độ thấp gọi là bass. Dải tần số thông thường của loa siêu trầm là 50Hz-150Hz. Loa được tạo bởi một hay nhiều loa trầm được đặt cùng trong một thùng loa và thường được làm bằng gỗ chịu được áp lực cao. Thùng loa siêu t",
     "specs": {
-      "SIÊU TRẦM AMEK": "PMA350 BASS 30",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 50cm (18 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1055,14 +1147,15 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2022/10/7.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "LOA TRẦM SOWOOD : SB250 bass 30cm LOA SUP ĐIỆN hàng MỚI Với dàn karaoke thì việc bố trí thêm loa siêu trầm là rất cần thiết bởi để chất lượng âm thanh đến mức hoàn hảo . Một chiếc loa siêu trầm được dùng để mô phỏng tần số âm thanh ở độ thấp gọi là bass. Dải tần số thông thường của loa siêu trầm là 50Hz-150Hz. Loa được tạo bởi một hay nhiều loa trầm được đặt cùng trong một thùng loa và thường được làm bằng gỗ chịu được áp lực cao. Thùng loa siêu ",
+    "shortDesc": "LOA TRẦM SOWOOD : SB250 bass 30cm LOA SUP ĐIỆN hàng MỚI Với dàn karaoke thì việc bố trí thêm loa siêu trầm là rất cần thiết bởi để chất lượng âm thanh đến mức hoàn hảo . Một chiếc loa siêu trầm được dùng để mô phỏng tần số âm thanh ở độ thấp gọi là bass. Dải tần số thông thường của loa siêu trầm là 50Hz-150Hz. Loa được tạo bởi một hay nhiều loa trầm được đặt cùng trong một thùng loa và thường được làm bằng gỗ chịu được áp lực cao. Thùng loa siêu",
     "specs": {
-      "SIÊU TRẦM SOWOOD": "SB250 BASS 30",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 50cm (18 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1085,11 +1178,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "TRẦM AMEKAUDIO W800T BASS 40 chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 40cm (15 inch)",
+      "Công suất": "400W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1110,15 +1205,17 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2025/08/SADSADSASADADSASA-800x800.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "Sản phẩm chất lượng cao nhập khẩu nguyên chiếc - Thiết kế vỏ ngoài màu si dán đen phù hợp không gian sang trọng Kích thước sản phẩm: 51*51*46cm (sâu*cao*ngang) - Trọng lượng sản phẩm: 28kg - Đường kính loa 40cm-15Inch - Công suất cực đại 500W-800W Điện áp 220V-230V 50/60Hz - Tính năng: thiết kế 1 đường vào Line in và 1 đường ra Line out - 1 núm điều chỉnh pha từ 0-180 độ, 1 núm điều chỉnh âm lượng Volum 1 núm điều chỉnh CROSSOVER từ 25Hz-150Hz - ",
+    "shortDesc": "Sản phẩm chất lượng cao nhập khẩu nguyên chiếc - Thiết kế vỏ ngoài màu si dán đen phù hợp không gian sang trọng Kích thước sản phẩm: 51*51*46cm (sâu*cao*ngang) - Trọng lượng sản phẩm: 28kg - Đường kính loa 40cm-15Inch - Công suất cực đại 500W-800W Điện áp 220V-230V 50/60Hz - Tính năng: thiết kế 1 đường vào Line in và 1 đường ra Line out - 1 núm điều chỉnh pha từ 0-180 độ, 1 núm điều chỉnh âm lượng Volum 1 núm điều chỉnh CROSSOVER từ 25Hz-150Hz -",
     "specs": {
       "Trọng lượng sản phẩm": "28kg",
       "Tính năng": "thiết kế 1 đường vào Line in và 1 đường ra Line out",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 40cm (15 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1147,11 +1244,10 @@ export const catalogProducts = [
       "Tần số đáp ứng": "20 Hz – 160 kHz.",
       "Công suất": "750 W.",
       "Điện áp": "220V/50Hz (0.5 W Standby Power).",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 50cm (18 inch)",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1172,15 +1268,17 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2024/07/sdfdsfdsdfsd-100x100.jpg",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "TRẦM ĐIỆN AMEKAUDIO PMA500W BASS 30 Sản phẩm chất lượng cao nhập khẩu nguyên chiếc Thiết kế vỏ ngoài lớp si đen Đường kính loa 30cm-12Inch Công suất cực đại 500W Cân nặng: 21.4kg Tính năng: thiết kế 1 đường vào Line in và 1 đường ra Line out Đường vào INPUT FROM AMPLIFIER và Đường ra OUTPUT TO SPEAKER 1 núm điều chỉnh pha từ 0-180 độ, 1 núm điều chỉnh âm lượng volum, 1 núm điều chỉnh CROSSOVER từ 40Hz-180Hz Chế độ chọn đầu vào tự động OFF AUTO ON",
+    "shortDesc": "TRẦM ĐIỆN AMEKAUDIO PMA500W BASS 30 Sản phẩm chất lượng cao nhập khẩu nguyên chiếc Thiết kế vỏ ngoài lớp si đen Đường kính loa 30cm-12Inch Công suất cực đại 500W Cân nặng: 21.4kg Tính năng: thiết kế 1 đường vào Line in và 1 đường ra Line out Đường vào INPUT FROM AMPLIFIER và Đường ra OUTPUT TO SPEAKER 1 núm điều chỉnh pha từ 0-180 độ, 1 núm điều chỉnh âm lượng volum, 1 núm điều chỉnh CROSSOVER từ 40Hz-180Hz Chế độ chọn đầu vào tự động OFF AUTO ON",
     "specs": {
       "Cân nặng": "21.4kg",
       "Tính năng": "thiết kế 1 đường vào Line in và 1 đường ra Line out",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer điện tích hợp mạch công suất (Active)",
+      "Kích thước Bass": "Bass 50cm (18 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1203,11 +1301,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "TRẦM HƠI 40 AMEK-115 – BASS CỰC MẠNH Cấu hình nổi bật: Bass 15 inch – Từ 220, coil 100 cho lực đánh cực uy lực Thùng gỗ Bạch Dương cao cấp, phủ sơn sần chống nước, chống trầy Kích thước: Rộng 46.5cm – Cao 60.5cm – Sâu 55cm Trọng lượng: 33kg – Cầm chắc tay, thùng dày tiếng đầm Thông số kỹ thuật: Công suất: 500W – 1500W Tần số đáp ứng: 38Hz – 300Hz Độ nhạy: 98dB (1W/1M) Trở kháng: 8 Ohm Phù hợp cho phòng karaoke, sân khấu, sự kiện cần lực bass chắc",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer hơi (Passive)",
+      "Kích thước Bass": "Bass 40cm (15 inch)",
+      "Công suất": "500W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1230,12 +1330,13 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "? LOA SUB HƠI AMEK 118 – CHẤT ÂM MẠNH MẼ, NGOẠI HÌNH ĐẲNG CẤP ? Nếu bạn đang tìm một chiếc sub “đánh lực – xuống sâu – bền bỉ” cho dàn âm thanh thì AMEK 118 là lựa chọn cực kỳ đáng cân nhắc ? ✨ Thiết kế đậm chất AMEK ✔️ Tone đen mạnh mẽ, sang trọng ✔️ Sơn sần chống trầy xước, chống nước tốt ✔️ Thùng loa chắc chắn – nhìn là thấy “chất” ? Chất âm cực lực – bass sâu uy lực ✔️ Bass 18 inch (50cm) – đánh cực căng ✔️Từ 220 coil 100 ✔️ Dải trầm xuống sâ",
     "specs": {
-      "Liên hệ test chất âm": "0976.722.751",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Phân loại": "Subwoofer hơi (Passive)",
+      "Kích thước Bass": "Bass 50cm (18 inch)",
+      "Công suất": "1600W RMS",
+      "Tần số đáp ứng": "30Hz - 150Hz",
+      "Cắt tần LPF": "40Hz - 150Hz (tích hợp chiết áp điều chỉnh pha 0 - 180°)",
+      "Trở kháng": "8 Ohms",
+      "Chất liệu thùng": "Gỗ tiêu âm chuẩn âm học, triệt tiêu cộng hưởng rung"
     }
   },
   {
@@ -1256,17 +1357,18 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2023/09/34.png",
     "videoUrl": "https://www.youtube.com/watch?v=ZBT3l4qUG4g",
     "videoTitle": "??Vang hay nhất 2023, karaoke vang nhẹ mượt mà, hát hay như ca sĩ| AMEK VR300PRO",
-    "shortDesc": "Thông số kỹ thuật Thiết kế mặt trước bằng phay nhôm màu đen, dễ dàng lắp đặt, phối ghép với đa dạng bộ dàn âm thanh Các nút tinh chỉnh hiệu ứng số trên màn hình Có điều khiển từ xa ( remote control) Linh kiện sủ dụng là linh kiện chính hãng, USA,Korea, japan Kết nối đa phương tiện Bluetooth,optical,Aux 1,Aux 2,COAXIAL,USB Tính năng nổi bật riêng biệt EQ ECHO, EQ REVERB, EQ EFF, EQ SUB Hiệu ứng nhạc nền, CLA, POP, ROC, JA,Vocal Thông số đặc điểm: ",
+    "shortDesc": "Thông số kỹ thuật Thiết kế mặt trước bằng phay nhôm màu đen, dễ dàng lắp đặt, phối ghép với đa dạng bộ dàn âm thanh Các nút tinh chỉnh hiệu ứng số trên màn hình Có điều khiển từ xa ( remote control) Linh kiện sủ dụng là linh kiện chính hãng, USA,Korea, japan Kết nối đa phương tiện Bluetooth,optical,Aux 1,Aux 2,COAXIAL,USB Tính năng nổi bật riêng biệt EQ ECHO, EQ REVERB, EQ EFF, EQ SUB Hiệu ứng nhạc nền, CLA, POP, ROC, JA,Vocal Thông số đặc điểm:",
     "specs": {
       "Nặng": "2.2kg",
       "Ngang": "48.5cm",
       "Dài": "16cm",
       "Cao": "4.5cm\n\n&nbsp;",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Vang cơ lai số chống hú",
+      "Chip vi xử lý": "Chip DSP 32-bit tốc độ cao chuẩn âm học phòng hát",
+      "Hiệu ứng âm thanh": "Echo mượt mà + Reverb trợ giọng hát rất nhẹ hơi",
+      "Chống hú rít": "Công nghệ FBE chống hú đa cấp độ không méo tiếng mic",
+      "Cổng kết nối nhạc": "Cổng quang Optical, Bluetooth 5.0, Cổng AUX In",
+      "Cổng xuất âm thanh": "Cổng Sub cắt tần riêng biệt, Main L/R, Center, Surround"
     }
   },
   {
@@ -1289,11 +1391,12 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "VANG SỐ AMEK - KTV900PRO (GIÁ LIÊN HỆ) chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Vang số DSP cao cấp",
+      "Chip vi xử lý": "Chip DSP 32-bit tốc độ cao chuẩn âm học phòng hát",
+      "Hiệu ứng âm thanh": "Echo mượt mà + Reverb trợ giọng hát rất nhẹ hơi",
+      "Chống hú rít": "Công nghệ FBE chống hú đa cấp độ không méo tiếng mic",
+      "Cổng kết nối nhạc": "Cổng quang Optical, Bluetooth 5.0, Cổng AUX In",
+      "Cổng xuất âm thanh": "Cổng Sub cắt tần riêng biệt, Main L/R, Center, Surround"
     }
   },
   {
@@ -1314,7 +1417,7 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2026/07/259e7b06-fd73-4d75-9e49-108c2b60df91.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "THÔNG SỐ KỸ THUẬT • Bộ xử lý ADSP: Analog Devices ADSP-21375 hiệu suất cao • Kích thước (D × C × S): 48.3 × 4.8 × 20.5 cm • Khối lượng: 3 kg CHỨC NĂNG ĐIỀU CHỈNH • Âm lượng tổng: 0 ~ 80 • Mức nhạc (Music): -200% ~ +200% • Mức Micro: -200% ~ +200% • Mức Echo: -200% ~ +200% • Mức Mix: -200% ~ +200% • Tần số cắt HPF / LPF: 19.7Hz ~ 20.2kHz • Kiểu lọc HPF / LPF: Bypass / 1st / Bessel / Butterworth / Linkwitz-Riley... • Delay kênh trái / phải: 0 ~ 50 ",
+    "shortDesc": "THÔNG SỐ KỸ THUẬT • Bộ xử lý ADSP: Analog Devices ADSP-21375 hiệu suất cao • Kích thước (D × C × S): 48.3 × 4.8 × 20.5 cm • Khối lượng: 3 kg CHỨC NĂNG ĐIỀU CHỈNH • Âm lượng tổng: 0 ~ 80 • Mức nhạc (Music): -200% ~ +200% • Mức Micro: -200% ~ +200% • Mức Echo: -200% ~ +200% • Mức Mix: -200% ~ +200% • Tần số cắt HPF / LPF: 19.7Hz ~ 20.2kHz • Kiểu lọc HPF / LPF: Bypass / 1st / Bessel / Butterworth / Linkwitz-Riley... • Delay kênh trái / phải: 0 ~ 50",
     "specs": {
       "Bộ xử lý ADSP": "Analog Devices ADSP-21375 hiệu suất cao",
       "Khối lượng": "3 kg",
@@ -1329,11 +1432,12 @@ export const catalogProducts = [
       "EQ tham số": "10 băng tần độc lập",
       "Giá trị Q": "0.4 ~ 128",
       "EQ Gain": "-24 dB ~ +12 dB",
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Vang số DSP cao cấp",
+      "Chip vi xử lý": "Chip DSP 32-bit tốc độ cao chuẩn âm học phòng hát",
+      "Hiệu ứng âm thanh": "Echo mượt mà + Reverb trợ giọng hát rất nhẹ hơi",
+      "Chống hú rít": "Công nghệ FBE chống hú đa cấp độ không méo tiếng mic",
+      "Cổng kết nối nhạc": "Cổng quang Optical, Bluetooth 5.0, Cổng AUX In",
+      "Cổng xuất âm thanh": "Cổng Sub cắt tần riêng biệt, Main L/R, Center, Surround"
     }
   },
   {
@@ -1356,11 +1460,12 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "Đặc điểm nổi bật + Mặt trước phay nhôm màu đen + Sử dụng màn hình LCD có eq cột nhạc + Có điều điều khiển từ xa + Vang số AMEK VR500 dùng cho hát karaoke nghe nhạc, tương thích với nhiều bộ dàn âm thanh. + Chống hú, Có reverb + Echo, 6 chế độ Karaoke chuyên nghiệp. + Công nghệ xử lý âm thanh DSP hiệu suất cao + Chỉnh chuyên nghiệp bằng tay và bằng máy tính + Kết nối Bluetooth, cổng quang + Kết hợp tốt với cục đẩy công suất, Amply karaoke hoặc amp",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Vang số DSP cao cấp",
+      "Chip vi xử lý": "Chip DSP 32-bit tốc độ cao chuẩn âm học phòng hát",
+      "Hiệu ứng âm thanh": "Echo mượt mà + Reverb trợ giọng hát rất nhẹ hơi",
+      "Chống hú rít": "Công nghệ FBE chống hú đa cấp độ không méo tiếng mic",
+      "Cổng kết nối nhạc": "Cổng quang Optical, Bluetooth 5.0, Cổng AUX In",
+      "Cổng xuất âm thanh": "Cổng Sub cắt tần riêng biệt, Main L/R, Center, Surround"
     }
   },
   {
@@ -1383,11 +1488,12 @@ export const catalogProducts = [
     "videoTitle": null,
     "shortDesc": "VANG SỐ AMEKAUDIO - KV800PLUS chính hãng Acoustic MMG / AMEK Audio. Thiết kế cao cấp, độ bền bỉ cao, chất âm trung thực, chuyên dụng cho dàn âm thanh karaoke gia đình và phòng hát chuyên nghiệp.",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Vang số DSP cao cấp",
+      "Chip vi xử lý": "Chip DSP 32-bit tốc độ cao chuẩn âm học phòng hát",
+      "Hiệu ứng âm thanh": "Echo mượt mà + Reverb trợ giọng hát rất nhẹ hơi",
+      "Chống hú rít": "Công nghệ FBE chống hú đa cấp độ không méo tiếng mic",
+      "Cổng kết nối nhạc": "Cổng quang Optical, Bluetooth 5.0, Cổng AUX In",
+      "Cổng xuất âm thanh": "Cổng Sub cắt tần riêng biệt, Main L/R, Center, Surround"
     }
   },
   {
@@ -1408,13 +1514,14 @@ export const catalogProducts = [
     "image": "https://acuosticmmg.com.vn/wp-content/uploads/2026/10/10612a6d-7360-4334-8cba-4e41d89e5f7e.png",
     "videoUrl": null,
     "videoTitle": null,
-    "shortDesc": "🎶 VANG SỐ UK-3000PRO – ÂM THANH CHUYÊN NGHIỆP, HÁT KARAOKE CỰC ĐÃ! 🎤🔥 ✨ Nâng tầm chất lượng âm thanh với bộ xử lý vang số UK-3000PRO – cho tiếng nhạc sống động, giọng hát trong trẻo và khả năng tinh chỉnh linh hoạt. 🔥 TÍNH NĂNG NỔI BẬT: ✅ Xử lý âm thanh kỹ thuật số chuyên nghiệp, tối ưu chất lượng nhạc và giọng hát. ✅ Tích hợp 4 cấp độ chống hú, hạn chế tiếng rít khó chịu khi sử dụng micro. ✅ Điều chỉnh độc lập micro A/B với EQ 20 tham số. ✅ ",
+    "shortDesc": "🎶 VANG SỐ UK-3000PRO – ÂM THANH CHUYÊN NGHIỆP, HÁT KARAOKE CỰC ĐÃ! 🎤🔥 ✨ Nâng tầm chất lượng âm thanh với bộ xử lý vang số UK-3000PRO – cho tiếng nhạc sống động, giọng hát trong trẻo và khả năng tinh chỉnh linh hoạt. 🔥 TÍNH NĂNG NỔI BẬT: ✅ Xử lý âm thanh kỹ thuật số chuyên nghiệp, tối ưu chất lượng nhạc và giọng hát. ✅ Tích hợp 4 cấp độ chống hú, hạn chế tiếng rít khó chịu khi sử dụng micro. ✅ Điều chỉnh độc lập micro A/B với EQ 20 tham số. ✅",
     "specs": {
-      "Địa chỉ": "Tầng 6 Tòa nhà Sky City Tower A, Số 88 đường Láng Hạ, Phường Láng Hạ, Quận Đống Đa, TP Hà Nội.",
-      "Nhân viên kinh doanh": "0969 566 468",
-      "Nhân viên kỹ thuật": "0976 722 751",
-      "Bảo hành": "0976 722 751",
-      "Khiếu nại về dịch vụ": "0972 791 854"
+      "Loại thiết bị": "Vang số DSP cao cấp",
+      "Chip vi xử lý": "Chip DSP 32-bit tốc độ cao chuẩn âm học phòng hát",
+      "Hiệu ứng âm thanh": "Echo mượt mà + Reverb trợ giọng hát rất nhẹ hơi",
+      "Chống hú rít": "Công nghệ FBE chống hú đa cấp độ không méo tiếng mic",
+      "Cổng kết nối nhạc": "Cổng quang Optical, Bluetooth 5.0, Cổng AUX In",
+      "Cổng xuất âm thanh": "Cổng Sub cắt tần riêng biệt, Main L/R, Center, Surround"
     }
   }
 ]
