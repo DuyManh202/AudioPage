@@ -1,43 +1,527 @@
 <template>
-  <div class="adm-page fb-care">
-    <!-- Đầu trang Facebook Care & Phân Tích Quảng Cáo -->
-    <div class="adm-page-head">
-      <div class="fb-title-wrap">
-        <h1 class="adm-page-title">Chăm Sóc Khách & Phân Tích Ads</h1>
-        <p class="adm-page-sub">Theo sát khách hàng từ lúc nhắn tin đến khi chốt đơn, đo lường chi phí Meta Ads thực tế.</p>
+  <div class="adm-page fb-care" :class="{ 'is-mobile': isMobile, 'mobile-chat-open': isMobile && mobileChatActive }">
+    <!-- =====================================================================
+         GIAO DIỆN NATIVE CHUẨN FACEBOOK MESSENGER CHO MOBILE
+         ===================================================================== -->
+    <div v-if="isMobile && currentTab === 'CARE'" class="ms-mobile-container">
+      <!-- 1. GIAO DIỆN HỘP THƯ / DANH SÁCH ĐOẠN CHAT (Khi chưa mở hội thoại) -->
+      <div v-if="!mobileChatActive" class="ms-inbox-view">
+        <!-- Messenger Top Bar -->
+        <header class="ms-top-bar">
+          <div class="ms-top-left">
+            <div class="ms-top-title-group">
+              <span class="ms-messenger-logo">💬</span>
+              <h1 class="ms-messenger-title">Đoạn chat</h1>
+              <span class="ms-live-pulse" title="Messenger Live"></span>
+            </div>
+            <span class="ms-chats-count">{{ customers.length }} cuộc trò chuyện</span>
+          </div>
+          <div class="ms-top-actions">
+            <!-- Nút quét tin nhắn -->
+            <button
+              type="button"
+              class="ms-circle-btn"
+              :class="{ spin: syncBusy }"
+              :disabled="syncBusy"
+              @click="forceSync"
+              title="Quét tin nhắn mới từ Fanpage"
+            >
+              ↻
+            </button>
+            <!-- Nút cài đặt AI -->
+            <button
+              type="button"
+              class="ms-circle-btn ms-btn-ai"
+              :class="{ active: aiEnabled || commentAiEnabled }"
+              @click="showMobileAiModal = true"
+              title="Cài đặt AI"
+            >
+              🤖
+              <span v-if="aiEnabled && commentAiEnabled" class="ms-dot-indicator green"></span>
+              <span v-else-if="aiEnabled || commentAiEnabled" class="ms-dot-indicator amber"></span>
+            </button>
+            <!-- Nút thêm khách mới -->
+            <button
+              type="button"
+              class="ms-circle-btn"
+              @click="showCreate = !showCreate"
+              title="Thêm khách mới"
+            >
+              ＋
+            </button>
+            <!-- Nút xem phân tích ROI -->
+            <button
+              type="button"
+              class="ms-circle-btn"
+              @click="switchTab('ANALYTICS')"
+              title="Xem phân tích Ads"
+            >
+              📊
+            </button>
+          </div>
+        </header>
+
+        <!-- Chuyển đổi nhanh Đoạn chat & Phân tích Ads -->
+        <div class="ms-nav-tabs">
+          <button
+            type="button"
+            :class="['ms-nav-tab', { active: currentTab === 'CARE' }]"
+            @click="currentTab = 'CARE'"
+          >
+            💬 Đoạn chat ({{ customers.length }})
+          </button>
+          <button
+            type="button"
+            :class="['ms-nav-tab', { active: currentTab === 'ANALYTICS' }]"
+            @click="switchTab('ANALYTICS')"
+          >
+            📊 Phân tích ROI
+          </button>
+        </div>
+
+        <!-- Thanh tìm kiếm Messenger -->
+        <div class="ms-search-wrap">
+          <div class="ms-search-field">
+            <span class="ms-search-icon">🔍</span>
+            <input
+              v-model="keyword"
+              type="text"
+              class="ms-search-input"
+              placeholder="Tìm kiếm đoạn chat, SĐT, nhu cầu..."
+            />
+            <button v-if="keyword" type="button" class="ms-search-clear" @click="keyword = ''">✕</button>
+          </div>
+        </div>
+
+        <!-- Bộ lọc Kênh & Trạng thái cuộn ngang mượt mà -->
+        <div class="ms-filter-strip">
+          <button
+            type="button"
+            :class="['ms-pill-chip', { active: channelFilter === 'ALL' }]"
+            @click="channelFilter = 'ALL'"
+          >
+            🌐 Tất cả <b>{{ customers.length }}</b>
+          </button>
+          <button
+            type="button"
+            :class="['ms-pill-chip', 'chip-msg', { active: channelFilter === 'MESSENGER' }]"
+            @click="channelFilter = 'MESSENGER'"
+          >
+            💬 Tin nhắn <b>{{ messengerCustomersCount }}</b>
+          </button>
+          <button
+            type="button"
+            :class="['ms-pill-chip', 'chip-cmt', { active: channelFilter === 'COMMENT' }]"
+            @click="channelFilter = 'COMMENT'"
+          >
+            📝 Bình luận <b>{{ commentCustomersCount }}</b>
+          </button>
+          <button
+            v-for="item in statusOptions.slice(1)"
+            :key="item.key"
+            type="button"
+            :class="['ms-pill-chip', `chip-${item.key.toLowerCase()}`, { active: filter === item.key }]"
+            @click="filter = (filter === item.key ? 'ALL' : item.key)"
+          >
+            {{ item.label }} <b>{{ countForStatus(item.key) }}</b>
+          </button>
+          <button
+            type="button"
+            class="ms-pill-chip chip-ad-filter"
+            :class="{ 'has-ad': adFilter !== 'ALL' }"
+            @click="showMobileFilterModal = true"
+          >
+            ⚙️ Nguồn QC {{ adFilter !== 'ALL' ? '●' : '' }}
+          </button>
+        </div>
+
+        <!-- Form tạo khách mới trên Mobile nếu bấm ＋ -->
+        <form v-if="showCreate" class="ms-mobile-create-form" @submit.prevent="createCustomer">
+          <div class="ms-form-top">
+            <strong>Thêm Khách Mới Cần Chăm Sóc</strong>
+            <button type="button" class="ms-form-close" @click="showCreate = false">✕</button>
+          </div>
+          <div class="ms-form-body">
+            <input v-model="draft.customerName" required placeholder="Tên khách Facebook *" />
+            <input v-model="draft.phone" placeholder="Số điện thoại" />
+            <input v-model="draft.interest" placeholder="Nhu cầu (VD: Đầu tư phòng thu âm)" />
+            <input v-model="draft.address" placeholder="Địa chỉ lắp đặt" />
+            <input v-model="draft.province" list="fb-province-options" placeholder="Tỉnh/Thành phố" />
+            <textarea v-model="draft.notes" rows="2" placeholder="Ghi chú thêm..."></textarea>
+          </div>
+          <div class="ms-form-actions">
+            <button type="button" class="btn-cancel" @click="showCreate = false">Hủy</button>
+            <button type="submit" class="btn-save" :disabled="busy">{{ busy ? 'Đang lưu…' : 'Lưu hồ sơ' }}</button>
+          </div>
+        </form>
+
+        <!-- Danh sách đoạn chat Full Height Messenger -->
+        <div class="ms-chat-threads">
+          <div
+            v-for="c in visibleCustomers"
+            :key="c.id"
+            :class="['ms-thread-item', { active: selected?.id === c.id }, isCommentCustomer(c) ? 'is-cmt' : 'is-msg']"
+            @click="onCustomerClick(c)"
+          >
+            <!-- Avatar tròn có chấm online và icon kênh -->
+            <div class="ms-thread-avatar-wrap">
+              <div class="ms-thread-avatar" :style="{ background: getAvatarGradient(c.customerName) }">
+                {{ getInitials(c.customerName) }}
+              </div>
+              <span class="ms-thread-online-dot"></span>
+              <span :class="['ms-thread-channel-icon', isCommentCustomer(c) ? 'icon-cmt' : 'icon-msg']">
+                {{ isCommentCustomer(c) ? '📝' : '💬' }}
+              </span>
+            </div>
+
+            <!-- Nội dung tóm tắt đoạn chat -->
+            <div class="ms-thread-content">
+              <div class="ms-thread-head">
+                <span class="ms-thread-name">{{ c.customerName }}</span>
+                <span class="ms-thread-time">{{ formatMessengerTime(c.updatedAt || c.createdAt) }}</span>
+              </div>
+              <div class="ms-thread-snippet-line">
+                <span class="ms-thread-snippet" :class="{ 'is-demand': Boolean(c.interest) }">
+                  {{ c.interest ? `🎯 ${c.interest}` : formatSnippet(c) }}
+                </span>
+              </div>
+              <div class="ms-thread-tags">
+                <span v-if="c.phone" class="tag-phone">📞 {{ c.phone }}</span>
+                <span v-if="c.province" class="tag-province">📍 {{ c.province }}</span>
+                <span :class="['tag-status', c.status.toLowerCase()]">{{ labelFor(c.status) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="!visibleCustomers.length" class="ms-threads-empty">
+            <div class="empty-icon">💬</div>
+            <h3>Không có cuộc trò chuyện nào</h3>
+            <p>Thử tìm từ khóa khác hoặc bấm nút làm mới để quét tin nhắn Fanpage.</p>
+          </div>
+        </div>
       </div>
-      <div class="head-btn-group">
-        <button v-if="currentTab === 'CARE'" class="ios-action-pill" @click="showCreate = !showCreate">
-          ＋ Thêm Khách Mới
-        </button>
-        <button v-else class="ios-action-pill" :disabled="analyticsBusy" @click="loadAnalytics">
-          ↻ Tải Lại Số Liệu
-        </button>
+
+      <!-- 2. GIAO DIỆN KHUNG CHAT TOÀN MÀN HÌNH CHUẨN MESSENGER -->
+      <div v-else-if="mobileChatActive && selected" class="ms-active-chat-view">
+        <!-- Messenger Header Top Bar -->
+        <header class="ms-chat-header">
+          <button type="button" class="ms-back-arrow-btn" @click="closeMobileChat" aria-label="Quay lại">
+            ‹
+          </button>
+          <div class="ms-chat-header-profile" @click="showMobileCrmDrawer = true">
+            <div class="ms-chat-header-avatar" :style="{ background: getAvatarGradient(selected.customerName) }">
+              {{ getInitials(selected.customerName) }}
+              <span class="ms-header-online-dot"></span>
+            </div>
+            <div class="ms-chat-header-info">
+              <h2 class="ms-chat-header-name">{{ selected.customerName }}</h2>
+              <p class="ms-chat-header-sub">
+                <span v-if="selected.phone">📞 {{ selected.phone }}</span>
+                <span v-else-if="selected.interest">🎯 {{ selected.interest }}</span>
+                <span v-else>Đang hoạt động trên {{ isCommentCustomer(selected) ? 'Bình luận' : 'Messenger' }}</span>
+              </p>
+            </div>
+          </div>
+          <div class="ms-chat-header-btns">
+            <a v-if="selected.phone" :href="'tel:' + selected.phone" class="ms-btn-call" title="Gọi điện ngay">
+              📞
+            </a>
+            <button type="button" class="ms-btn-crm-info" @click="showMobileCrmDrawer = true" title="Xem hồ sơ CRM">
+              ℹ️
+            </button>
+          </div>
+        </header>
+
+        <!-- Banner thông báo chính sách 24h & Kênh -->
+        <div v-if="messengerPolicyInfo" class="ms-chat-policy-banner" :class="{ 'is-expired': !messengerPolicyInfo.within24h }">
+          <span class="banner-icon">{{ messengerPolicyInfo.within24h ? '🟢' : '⚠️' }}</span>
+          <span class="banner-text">{{ messengerPolicyInfo.label }}</span>
+          <a
+            v-if="!messengerPolicyInfo.within24h && selected.phone"
+            :href="'https://zalo.me/' + selected.phone.replace(/\D/g, '')"
+            target="_blank"
+            rel="noopener"
+            class="btn-open-zalo"
+          >
+            💬 Mở Zalo
+          </a>
+        </div>
+
+        <!-- Khung tin nhắn cuộn mượt mà -->
+        <div class="ms-messages-scroll" ref="chatBodyRef">
+          <div
+            v-for="m in selected.messages"
+            :key="m.id"
+            :class="['ms-msg-item', m.direction === 'OUT' ? 'msg-out' : 'msg-in', m.body && m.body.startsWith('[Bình luận Facebook]') ? 'is-comment' : '']"
+          >
+            <div class="ms-bubble-meta">
+              <template v-if="m.direction === 'OUT'">Tú Audio</template>
+              <template v-else-if="m.body && m.body.startsWith('[Bình luận Facebook]')">📝 Khách bình luận</template>
+              <template v-else-if="m.platformMessageId">💬 Khách hàng</template>
+              <template v-else>📝 Ghi chú</template>
+              · {{ formatMessengerTime(m.createdAt) }}
+            </div>
+            <div v-if="m.body && !isPureImageLabel(m.body)" class="ms-bubble-text">
+              <p>{{ m.body.replace(/^\[Bình luận Facebook\]:\s*/i, '') }}</p>
+            </div>
+            <!-- Ảnh đính kèm -->
+            <div v-if="m.attachments && m.attachments.length" class="ms-bubble-images">
+              <img
+                v-for="(att, i) in m.attachments"
+                :key="i"
+                :src="att.previewUrl || att.url"
+                class="ms-img-preview"
+                @click="openLightbox(att.url)"
+              />
+            </div>
+          </div>
+          <div v-if="!selected.messages?.length" class="ms-no-chat">
+            Chưa có ghi nhận trao đổi. Hãy gửi tin nhắn đầu tiên cho khách!
+          </div>
+        </div>
+
+        <!-- Thanh nhập tin nhắn Messenger cố định dưới cùng -->
+        <form class="ms-input-bottom-bar" @submit.prevent="addMessage">
+          <div class="ms-mode-pills">
+            <button
+              type="button"
+              :class="['mode-pill', { active: messageDirection === 'OUT' }]"
+              :disabled="!messengerPolicyInfo.within24h"
+              @click="messageDirection = 'OUT'"
+            >
+              💬 FB
+            </button>
+            <button
+              type="button"
+              :class="['mode-pill', { active: messageDirection === 'IN' }]"
+              @click="messageDirection = 'IN'"
+            >
+              📝 Ghi chú
+            </button>
+          </div>
+          <input
+            v-model="messageBody"
+            type="text"
+            class="ms-input-text"
+            :placeholder="messageDirection === 'OUT' ? 'Nhập tin nhắn Messenger...' : 'Ghi chép nội bộ...'"
+            required
+          />
+          <button
+            type="submit"
+            class="ms-send-button"
+            :disabled="busy || (messageDirection === 'OUT' && !messengerPolicyInfo.within24h)"
+          >
+            {{ busy ? '⏳' : '➤' }}
+          </button>
+        </form>
       </div>
+
+      <!-- BOTTOM SHEETS / MODALS DÀNH CHO MOBILE -->
+      <!-- DRAWER 1: HỒ SƠ KHÁCH HÀNG CRM (Khi bấm ℹ️) -->
+      <Transition name="ms-sheet">
+        <div v-if="showMobileCrmDrawer && selected" class="ms-sheet-backdrop" @click="showMobileCrmDrawer = false">
+          <div class="ms-sheet-drawer" @click.stop>
+            <div class="ms-sheet-handle"></div>
+            <div class="ms-sheet-header">
+              <div>
+                <h3>Hồ Sơ Khách Hàng CRM</h3>
+                <p>{{ selected.customerName }} {{ selected.phone ? `· ${selected.phone}` : '' }}</p>
+              </div>
+              <button type="button" class="ms-sheet-close-btn" @click="showMobileCrmDrawer = false">✕</button>
+            </div>
+
+            <div class="ms-sheet-status-group">
+              <button
+                v-for="s in statusOptions.slice(1)"
+                :key="s.key"
+                type="button"
+                :class="['status-chip', `chip-${s.key.toLowerCase()}`, { active: edit.status === s.key }]"
+                @click="setStatusQuick(s.key)"
+              >
+                {{ s.label }}
+              </button>
+            </div>
+
+            <div class="ms-sheet-form">
+              <div class="ms-form-group">
+                <label>Nhu cầu của khách</label>
+                <input v-model="edit.interest" placeholder="Ví dụ: Đầu tư phòng thu âm" @change="save" />
+              </div>
+              <div class="ms-form-group">
+                <label>Số điện thoại</label>
+                <input v-model="edit.phone" placeholder="Nhập số điện thoại khách" @change="save" />
+              </div>
+              <div class="ms-form-group">
+                <label>Địa chỉ lắp đặt</label>
+                <input v-model="edit.address" placeholder="Số nhà, đường, thôn/xóm..." @change="save" />
+              </div>
+              <div class="ms-form-group">
+                <label>Tỉnh/Thành phố</label>
+                <input v-model="edit.province" list="fb-province-options" placeholder="Chọn tỉnh/thành" @change="save" />
+              </div>
+              <div class="ms-form-group">
+                <label>Ghi chú tư vấn</label>
+                <textarea v-model="edit.notes" rows="2" placeholder="Ghi chú thêm về thiết bị, giá..." @change="save"></textarea>
+              </div>
+              <div class="ms-form-group">
+                <label>Chiến dịch quảng cáo</label>
+                <select v-model="edit.sourceAdId" @change="onSourceAdChange">
+                  <option value="">-- Chưa gắn quảng cáo --</option>
+                  <option v-for="ad in ads" :key="ad.id" :value="ad.id">{{ ad.name }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="ms-sheet-footer">
+              <button type="button" class="btn-sheet-done" @click="showMobileCrmDrawer = false">
+                ✓ Hoàn tất &amp; Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- DRAWER 2: CÀI ĐẶT AI TỰ ĐỘNG (Khi bấm 🤖) -->
+      <Transition name="ms-sheet">
+        <div v-if="showMobileAiModal" class="ms-sheet-backdrop" @click="showMobileAiModal = false">
+          <div class="ms-sheet-drawer" @click.stop>
+            <div class="ms-sheet-handle"></div>
+            <div class="ms-sheet-header">
+              <div>
+                <h3>Cài Đặt Trợ Lý AI Tự Động</h3>
+                <p>Quản trị AI phản hồi Messenger &amp; Bình luận Fanpage</p>
+              </div>
+              <button type="button" class="ms-sheet-close-btn" @click="showMobileAiModal = false">✕</button>
+            </div>
+
+            <div class="ms-ai-sheet-body">
+              <div class="ai-card" :class="{ enabled: aiEnabled }">
+                <div class="ai-card-content">
+                  <strong>AI Chat Messenger</strong>
+                  <p>Tự động trả lời tin nhắn Messenger. Tự ngắt khi có SĐT hoặc có nhân viên chat.</p>
+                </div>
+                <button
+                  type="button"
+                  class="ios-switch"
+                  :class="{ on: aiEnabled }"
+                  :disabled="togglingAi"
+                  @click="toggleFacebookAi"
+                >
+                  <span class="switch-ball"></span>
+                </button>
+              </div>
+
+              <div class="ai-card" :class="{ enabled: commentAiEnabled }">
+                <div class="ai-card-content">
+                  <strong>AI Bình Luận (Cmt) Độc Lập</strong>
+                  <p>Luôn trả lời 100% comment công khai &amp; gửi tin nhắn riêng kéo khách vào Messenger.</p>
+                </div>
+                <button
+                  type="button"
+                  class="ios-switch"
+                  :class="{ on: commentAiEnabled }"
+                  :disabled="togglingCommentAi"
+                  @click="toggleCommentAi"
+                >
+                  <span class="switch-ball"></span>
+                </button>
+              </div>
+
+              <div class="sync-action-box">
+                <button type="button" class="btn-full-sync" :disabled="syncBusy" @click="forceSync">
+                  {{ syncBusy ? 'Đang quét tin nhắn mới…' : '↻ Quét tin nhắn Fanpage ngay' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- DRAWER 3: LỌC QUẢNG CÁO (Khi bấm ⚙️ Lọc QC) -->
+      <Transition name="ms-sheet">
+        <div v-if="showMobileFilterModal" class="ms-sheet-backdrop" @click="showMobileFilterModal = false">
+          <div class="ms-sheet-drawer" @click.stop>
+            <div class="ms-sheet-handle"></div>
+            <div class="ms-sheet-header">
+              <div>
+                <h3>Lọc Theo Nguồn Quảng Cáo</h3>
+                <p>Phân loại khách theo chiến dịch Meta Ads</p>
+              </div>
+              <button type="button" class="ms-sheet-close-btn" @click="showMobileFilterModal = false">✕</button>
+            </div>
+            <div class="ms-filter-sheet-body">
+              <select v-model="adFilter" class="sheet-ad-select">
+                <option value="ALL">Tất cả nguồn quảng cáo</option>
+                <option value="NONE">Chưa xác định quảng cáo</option>
+                <option v-for="ad in knownAds" :key="ad.id" :value="ad.id">{{ ad.name }} ({{ ad.count }})</option>
+              </select>
+              <div class="sheet-action-btns">
+                <button
+                  type="button"
+                  class="btn-match"
+                  :disabled="autoMatchingBusy || resetMatchingBusy"
+                  @click="autoMatchAds"
+                >
+                  {{ autoMatchingBusy ? 'Đang phân loại...' : '⚡ Khớp nguồn tự động' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-unmatch"
+                  :disabled="autoMatchingBusy || resetMatchingBusy"
+                  @click="resetMatchedAds"
+                >
+                  {{ resetMatchingBusy ? 'Đang bỏ khớp...' : '↺ Bỏ khớp' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </div>
 
-    <!-- Thanh chuyển đổi chức năng: Chăm sóc CRM vs Phân tích hiệu quả quảng cáo -->
-    <div class="view-tabs">
-      <button
-        type="button"
-        :class="['view-tab-btn', { active: currentTab === 'CARE' }]"
-        @click="currentTab = 'CARE'"
-      >
-        <span class="tab-label-full">💬 Chăm Sóc Tin Nhắn & Khách Hàng ({{ customers.length }})</span>
-        <span class="tab-label-short">💬 Khách Hàng ({{ customers.length }})</span>
-      </button>
-      <button
-        type="button"
-        :class="['view-tab-btn', { active: currentTab === 'ANALYTICS' }]"
-        @click="switchTab('ANALYTICS')"
-      >
-        <span class="tab-label-full">📊 Phân Tích Hiệu Quả Quảng Cáo & ROI</span>
-        <span class="tab-label-short">📊 Phân Tích & ROI</span>
-      </button>
-    </div>
+    <!-- =====================================================================
+         GIAO DIỆN DESKTOP (HOẶC KHI Ở TAB ANALYTICS)
+         ===================================================================== -->
+    <template v-if="!isMobile || currentTab === 'ANALYTICS'">
+      <!-- Đầu trang Facebook Care & Phân Tích Quảng Cáo -->
+      <div class="adm-page-head">
+        <div class="fb-title-wrap">
+          <h1 class="adm-page-title">Chăm Sóc Khách & Phân Tích Ads</h1>
+          <p class="adm-page-sub">Theo sát khách hàng từ lúc nhắn tin đến khi chốt đơn, đo lường chi phí Meta Ads thực tế.</p>
+        </div>
+        <div class="head-btn-group">
+          <button v-if="currentTab === 'CARE'" class="ios-action-pill" @click="showCreate = !showCreate">
+            ＋ Thêm Khách Mới
+          </button>
+          <button v-else class="ios-action-pill" :disabled="analyticsBusy" @click="loadAnalytics">
+            ↻ Tải Lại Số Liệu
+          </button>
+        </div>
+      </div>
 
-    <!-- TAB 1: CHĂM SÓC KHÁCH HÀNG CRM -->
-    <div v-if="currentTab === 'CARE'" class="care-tab-content">
+      <!-- Thanh chuyển đổi chức năng: Chăm sóc CRM vs Phân tích hiệu quả quảng cáo -->
+      <div class="view-tabs">
+        <button
+          type="button"
+          :class="['view-tab-btn', { active: currentTab === 'CARE' }]"
+          @click="currentTab = 'CARE'"
+        >
+          <span class="tab-label-full">💬 Chăm Sóc Tin Nhắn & Khách Hàng ({{ customers.length }})</span>
+          <span class="tab-label-short">💬 Khách Hàng ({{ customers.length }})</span>
+        </button>
+        <button
+          type="button"
+          :class="['view-tab-btn', { active: currentTab === 'ANALYTICS' }]"
+          @click="switchTab('ANALYTICS')"
+        >
+          <span class="tab-label-full">📊 Phân Tích Hiệu Quả Quảng Cáo & ROI</span>
+          <span class="tab-label-short">📊 Phân Tích & ROI</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- TAB 1: CHĂM SÓC KHÁCH HÀNG CRM (DESKTOP) -->
+    <div v-if="!isMobile && currentTab === 'CARE'" class="care-tab-content">
       <!-- Thẻ kết nối Facebook Messenger (Apple Grouped Inset Card) -->
       <div :class="['connection-card', { online: messengerConnected }]">
         <div class="conn-top-row">
@@ -266,11 +750,23 @@
             v-for="c in visibleCustomers"
             :key="c.id"
             :class="['customer-row', `status-border-${c.status.toLowerCase()}`, { active: selected?.id === c.id }, isCommentCustomer(c) ? 'is-comment-row' : 'is-messenger-row']"
-            @click="select(c)"
+            @click="onCustomerClick(c)"
           >
+            <!-- Messenger Avatar -->
+            <div class="row-avatar-box">
+              <div class="row-avatar-circle" :style="{ background: getAvatarGradient(c.customerName) }">
+                {{ getInitials(c.customerName) }}
+              </div>
+              <span class="row-avatar-online"></span>
+              <span :class="['row-channel-badge', isCommentCustomer(c) ? 'badge-comment' : 'badge-messenger']">
+                {{ isCommentCustomer(c) ? '📝' : '💬' }}
+              </span>
+            </div>
+
             <div class="customer-row-main">
               <div class="customer-name-row">
                 <strong class="customer-name-text">{{ c.customerName }}</strong>
+                <span class="row-time-text">{{ formatMessengerTime(c.updatedAt || c.createdAt) }}</span>
                 <span
                   :class="['channel-badge', isCommentCustomer(c) ? 'badge-comment' : 'badge-messenger']"
                   :title="isCommentCustomer(c) ? 'Khách tương tác từ Bình luận bài viết' : 'Khách nhắn tin qua Messenger'"
@@ -899,7 +1395,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import { apiRequest } from '../../utils/api'
@@ -907,6 +1403,81 @@ import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
 const adminStore = useAdminStore()
 const channelFilter = ref('ALL') // 'ALL' | 'MESSENGER' | 'COMMENT'
 const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), commentAiEnabled = ref(true), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
+const isMobile = ref(false)
+const mobileChatActive = ref(false)
+const showMobileCrmDrawer = ref(false)
+const showMobileAiModal = ref(false)
+const showMobileFilterModal = ref(false)
+const chatBodyRef = ref(null)
+
+const checkIsMobile = () => {
+  if (typeof window !== 'undefined') {
+    isMobile.value = window.innerWidth <= 768
+  }
+}
+
+const getInitials = (name) => {
+  if (!name) return '?'
+  const parts = String(name).trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return parts[0].slice(0, 2).toUpperCase()
+}
+
+const getAvatarGradient = (name) => {
+  const gradients = [
+    'linear-gradient(135deg, #0084ff 0%, #00c6ff 100%)',
+    'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+    'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+    'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+    'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+  ]
+  if (!name) return gradients[0]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i)
+  return gradients[hash % gradients.length]
+}
+
+const formatMessengerTime = (value) => {
+  if (!value) return ''
+  const d = parseUtcDate(value)
+  if (!d) return ''
+  const now = new Date()
+  const diffMs = now - d
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }).format(d)
+  }
+  if (diffDays === 1) return 'Hôm qua'
+  if (d.getFullYear() === now.getFullYear()) {
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit' }).format(d)
+  }
+  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: '2-digit' }).format(d)
+}
+
+function onCustomerClick(c) {
+  select(c)
+  if (isMobile.value) {
+    mobileChatActive.value = true
+    scrollChatToBottom()
+  }
+}
+
+function closeMobileChat() {
+  mobileChatActive.value = false
+  showMobileCrmDrawer.value = false
+}
+
+function scrollChatToBottom() {
+  nextTick(() => {
+    if (chatBodyRef.value) {
+      chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight
+    }
+  })
+}
 const currentTab = ref('CARE')
 const analyticsData = ref([])
 const analyticsPeriod = ref('today')
@@ -1089,7 +1660,13 @@ async function load({ silent = false, force = false } = {}) {
       else select(updated)
     } else if (customers.value.length && !silent) {
       const routeCustomer = customers.value.find(c => c.id === String(route.query.customerId || ''))
-      select(routeCustomer || customers.value[0])
+      if (routeCustomer) {
+        select(routeCustomer)
+        if (isMobile.value) mobileChatActive.value = true
+      } else {
+        select(customers.value[0])
+        if (isMobile.value) mobileChatActive.value = false
+      }
     }
   } catch (e) {
     if (!silent) error.value = e.message
@@ -1382,6 +1959,7 @@ async function addMessage() {
     messageBody.value = ''
     await load({ silent: true })
     select(customers.value.find(c => c.id === customerId) || selected.value)
+    scrollChatToBottom()
   } catch (e) {
     error.value = e.message
   } finally {
@@ -1390,6 +1968,8 @@ async function addMessage() {
 }
 const onVisible = () => { if (document.visibilityState === 'visible' && !busy.value && !syncBusy.value) load({ silent: true }) }
 onMounted(() => {
+  checkIsMobile()
+  window.addEventListener('resize', checkIsMobile)
   load(); loadAds()
   careTimer = setInterval(() => { if (document.visibilityState === 'visible' && !busy.value && !syncBusy.value) load({ silent: true }) }, 10000)
   adsTimer = setInterval(() => { if (document.visibilityState === 'visible' && !adsBusy.value) loadAds() }, 180000)
@@ -1398,6 +1978,7 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
 })
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkIsMobile)
   if (careTimer) clearInterval(careTimer)
   if (adsTimer) clearInterval(adsTimer)
   document.removeEventListener('visibilitychange', onVisible)
@@ -3986,5 +4567,1010 @@ onBeforeUnmount(() => {
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: underline;
+}
+
+/* ==========================================================================
+   GIAO DIỆN NATIVE CHUẨN FACEBOOK MESSENGER (MOBILE VIEW)
+   ========================================================================== */
+.ms-mobile-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - 70px);
+  background: #ffffff;
+  color: #050505;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin: -12px;
+  padding-bottom: 24px;
+}
+
+/* Header Top Bar chuẩn Messenger */
+.ms-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px 16px;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.ms-top-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ms-top-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ms-messenger-logo {
+  font-size: 1.45rem;
+}
+.ms-messenger-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #050505;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+.ms-live-pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #31a24c;
+  box-shadow: 0 0 0 2.5px rgba(49, 162, 76, 0.25);
+  display: inline-block;
+}
+.ms-chats-count {
+  font-size: 0.78rem;
+  color: #65676b;
+  font-weight: 500;
+}
+.ms-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ms-circle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #f0f2f5;
+  color: #050505;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s, transform 0.1s;
+}
+.ms-circle-btn:active {
+  transform: scale(0.92);
+  background: #e4e6eb;
+}
+.ms-circle-btn.spin {
+  animation: ms-spin 0.8s linear infinite;
+}
+@keyframes ms-spin {
+  100% { transform: rotate(360deg); }
+}
+.ms-dot-indicator {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+}
+.ms-dot-indicator.green { background: #31a24c; }
+.ms-dot-indicator.amber { background: #f59e0b; }
+
+/* Sub Tabs */
+.ms-nav-tabs {
+  display: flex;
+  padding: 4px 16px 8px 16px;
+  gap: 8px;
+  background: #ffffff;
+}
+.ms-nav-tab {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  background: #f0f2f5;
+  color: #65676b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.ms-nav-tab.active {
+  background: #e7f3ff;
+  color: #0084ff;
+  font-weight: 700;
+  border-color: rgba(0, 132, 255, 0.2);
+}
+
+/* Search bar */
+.ms-search-wrap {
+  padding: 4px 16px 8px 16px;
+  background: #ffffff;
+}
+.ms-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f0f2f5;
+  border-radius: 20px;
+  padding: 0 14px 0 36px;
+  height: 38px;
+}
+.ms-search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 0.95rem;
+  opacity: 0.55;
+}
+.ms-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: #050505;
+  outline: none;
+}
+.ms-search-input::placeholder {
+  color: #8a8d91;
+}
+.ms-search-clear {
+  border: none;
+  background: rgba(0, 0, 0, 0.18);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Filter Strip */
+.ms-filter-strip {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 16px 10px 16px;
+  gap: 6px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f2f5;
+}
+.ms-filter-strip::-webkit-scrollbar { display: none; }
+.ms-pill-chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: none;
+  background: #f0f2f5;
+  color: #65676b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.ms-pill-chip.active {
+  background: #0084ff;
+  color: #ffffff;
+}
+.ms-pill-chip.active b {
+  color: #ffffff;
+}
+.ms-pill-chip b {
+  font-weight: 800;
+  margin-left: 2px;
+}
+.ms-pill-chip.chip-msg.active { background: #0084ff; }
+.ms-pill-chip.chip-cmt.active { background: #9333ea; }
+.ms-pill-chip.chip-ad-filter.has-ad { background: #fef3c7; color: #b45309; }
+
+/* Mobile Create Form */
+.ms-mobile-create-form {
+  margin: 10px 16px;
+  padding: 14px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+.ms-form-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.ms-form-top strong {
+  font-size: 0.95rem;
+  color: #111827;
+}
+.ms-form-close {
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+}
+.ms-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ms-form-body input,
+.ms-form-body textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  outline: none;
+}
+.ms-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.btn-cancel {
+  border: none;
+  background: #f3f4f6;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.btn-save {
+  border: none;
+  background: #0084ff;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+/* Chat Threads List */
+.ms-chat-threads {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+.ms-thread-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f6f7f9;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ms-thread-item:active {
+  background: #f0f2f5;
+}
+.ms-thread-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+}
+.ms-thread-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.ms-thread-online-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #31a24c;
+  border: 2.5px solid #ffffff;
+}
+.ms-thread-channel-icon {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 0.75rem;
+  background: #ffffff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.ms-thread-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ms-thread-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ms-thread-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #050505;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-thread-time {
+  font-size: 0.72rem;
+  color: #8a8d91;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.ms-thread-snippet-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-thread-snippet {
+  font-size: 0.84rem;
+  color: #65676b;
+}
+.ms-thread-snippet.is-demand {
+  color: #0284c7;
+  font-weight: 600;
+}
+.ms-thread-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+.tag-phone {
+  font-size: 0.72rem;
+  color: #059669;
+  font-weight: 600;
+  background: #ecfdf5;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.tag-province {
+  font-size: 0.72rem;
+  color: #4b5563;
+  background: #f3f4f6;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.tag-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+.tag-status.moi { background: #fee2e2; color: #dc2626; }
+.tag-status.dang_tu_van { background: #fef3c7; color: #d97706; }
+.tag-status.cho_phan_hoi { background: #e0f2fe; color: #0284c7; }
+.tag-status.da_chot { background: #dcfce7; color: #15803d; }
+.tag-status.da_dung { background: #f3f4f6; color: #6b7280; }
+
+.ms-threads-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #8a8d91;
+}
+.ms-threads-empty .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+.ms-threads-empty h3 {
+  color: #111827;
+  font-size: 1rem;
+  margin: 0 0 4px 0;
+}
+.ms-threads-empty p {
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+/* Giao diện khung Chat toàn màn hình (Active Chat View) */
+.ms-active-chat-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+.ms-chat-header {
+  height: 56px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border-bottom: 1px solid #e4e6eb;
+  flex-shrink: 0;
+}
+.ms-back-arrow-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  font-size: 2.2rem;
+  color: #0084ff;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding-bottom: 4px;
+}
+.ms-chat-header-profile {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+.ms-chat-header-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ms-header-online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #31a24c;
+  border: 2px solid #ffffff;
+}
+.ms-chat-header-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ms-chat-header-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #050505;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-chat-header-sub {
+  font-size: 0.73rem;
+  color: #65676b;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-chat-header-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ms-btn-call,
+.ms-btn-crm-info {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  border: none;
+  color: #0084ff;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Policy Banner */
+.ms-chat-policy-banner {
+  padding: 6px 14px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.76rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #dcfce7;
+  flex-shrink: 0;
+}
+.ms-chat-policy-banner.is-expired {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fee2e2;
+}
+.btn-open-zalo {
+  margin-left: auto;
+  background: #0068ff;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+/* Messages Scroll Area */
+.ms-messages-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #ffffff;
+}
+.ms-msg-item {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+}
+.ms-msg-item.msg-in {
+  align-self: flex-start;
+}
+.ms-msg-item.msg-out {
+  align-self: flex-end;
+}
+.ms-bubble-meta {
+  font-size: 0.68rem;
+  color: #8a8d91;
+  margin-bottom: 3px;
+  padding: 0 4px;
+}
+.ms-msg-item.msg-out .ms-bubble-meta {
+  text-align: right;
+}
+.ms-bubble-text {
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.ms-msg-item.msg-in .ms-bubble-text {
+  background: #f0f2f5;
+  color: #050505;
+  border-bottom-left-radius: 4px;
+}
+.ms-msg-item.msg-out .ms-bubble-text {
+  background: linear-gradient(135deg, #0084ff 0%, #0072ff 100%);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+.ms-bubble-text p {
+  margin: 0;
+}
+.ms-bubble-images {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ms-img-preview {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 14px;
+  object-fit: cover;
+  cursor: pointer;
+}
+.ms-no-chat {
+  margin: auto;
+  text-align: center;
+  color: #8a8d91;
+  font-size: 0.85rem;
+  padding: 20px;
+}
+
+/* Bottom Chat Input Bar */
+.ms-input-bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
+  background: #ffffff;
+  border-top: 1px solid #e4e6eb;
+  flex-shrink: 0;
+}
+.ms-mode-pills {
+  display: flex;
+  background: #f0f2f5;
+  border-radius: 16px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.mode-pill {
+  border: none;
+  background: none;
+  padding: 5px 8px;
+  border-radius: 14px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #65676b;
+  cursor: pointer;
+}
+.mode-pill.active {
+  background: #ffffff;
+  color: #0084ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.ms-input-text {
+  flex: 1;
+  height: 38px;
+  border-radius: 20px;
+  border: none;
+  background: #f0f2f5;
+  padding: 0 14px;
+  font-size: 0.92rem;
+  color: #050505;
+  outline: none;
+}
+.ms-send-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #0084ff;
+  color: #ffffff;
+  border: none;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s;
+}
+.ms-send-button:active {
+  transform: scale(0.92);
+}
+.ms-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bottom Sheets / Drawers */
+.ms-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.ms-sheet-drawer {
+  background: #ffffff;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 12px 16px 24px 16px;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
+}
+.ms-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #d1d5db;
+  border-radius: 2px;
+  margin: 0 auto 10px auto;
+}
+.ms-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ms-sheet-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #050505;
+}
+.ms-sheet-header p {
+  margin: 2px 0 0 0;
+  font-size: 0.8rem;
+  color: #65676b;
+}
+.ms-sheet-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: #f0f2f5;
+  color: #65676b;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.ms-sheet-status-group {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 12px 0;
+  scrollbar-width: none;
+}
+.ms-sheet-status-group::-webkit-scrollbar { display: none; }
+.status-chip {
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.status-chip.active {
+  background: #0084ff;
+  color: #ffffff;
+  border-color: #0084ff;
+}
+.ms-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ms-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ms-form-group label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+.ms-form-group input,
+.ms-form-group select,
+.ms-form-group textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #050505;
+  outline: none;
+}
+.ms-form-group input:focus,
+.ms-form-group select:focus,
+.ms-form-group textarea:focus {
+  border-color: #0084ff;
+}
+.ms-sheet-footer {
+  margin-top: 16px;
+}
+.btn-sheet-done {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0084ff;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* AI Sheet */
+.ms-ai-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 0;
+}
+.ai-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+.ai-card.enabled {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.ai-card-content strong {
+  display: block;
+  font-size: 0.92rem;
+  color: #111827;
+}
+.ai-card-content p {
+  margin: 2px 0 0 0;
+  font-size: 0.74rem;
+  color: #6b7280;
+}
+.ios-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: #d1d5db;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.ios-switch.on {
+  background: #31a24c;
+}
+.switch-ball {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+.ios-switch.on .switch-ball {
+  transform: translateX(20px);
+}
+.sync-action-box {
+  margin-top: 8px;
+}
+.btn-full-sync {
+  width: 100%;
+  padding: 11px;
+  border-radius: 12px;
+  background: #f0f2f5;
+  color: #1f2937;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Filter Ads Sheet */
+.ms-filter-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 0;
+}
+.sheet-ad-select {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  outline: none;
+}
+.sheet-action-btns {
+  display: flex;
+  gap: 8px;
+}
+.btn-match,
+.btn-unmatch {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-match {
+  background: #2563eb;
+  color: #ffffff;
+}
+.btn-unmatch {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Transitions */
+.ms-sheet-enter-active,
+.ms-sheet-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ms-sheet-enter-from,
+.ms-sheet-leave-to {
+  opacity: 0;
+  transform: translateY(100%);
+}
+
+/* Desktop enhanced avatar styling */
+.row-avatar-box {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin-right: 10px;
+}
+.row-avatar-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.row-avatar-online {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #31a24c;
+  border: 2px solid #ffffff;
+}
+.row-channel-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 0.65rem;
+  background: #ffffff;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.row-time-text {
+  font-size: 0.72rem;
+  color: #8e8e93;
+  margin-left: auto;
 }
 </style>
