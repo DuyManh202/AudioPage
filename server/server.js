@@ -857,14 +857,37 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       }
     }
 
+    // Helper nhận biết câu xác nhận ngắn của khách ("Vâng", "Dạ", "Ok", "Cảm ơn"...)
+    const isShortAcknowledgement = (text) => {
+      if (!text) return false
+      const clean = text.toLowerCase().replace(/[^a-z0-9à-ỹ\s]/g, '').trim()
+      const shortAcks = new Set([
+        'vâng', 'vang', 'dạ', 'da', 'ok', 'oke', 'oki', 'okie', 'uhm', 'uh', 'ừ', 'ừm',
+        'dạ vâng', 'da vang', 'vâng ạ', 'vang a', 'dạ vâng ạ', 'da vang a',
+        'cảm ơn', 'cam on', 'cảm ơn shop', 'cam on shop', 'thanks', 'tks', 'thank',
+        'nhất trí', 'nhat tri', 'được', 'duoc', 'rồi', 'roi', 'ok a', 'ok anh', 'vâng anh', 'vang anh', 'vang b', 'vâng b'
+      ])
+      return shortAcks.has(clean)
+    }
+
     let reply = ''
 
     // =========================================================================
     // YÊU CẦU ANH TÚ: NẾU KHÁCH CHO SỐ THÌ NẾU CHƯA AI NHẮN THÌ SẼ BẢO NGƯỜI TA ĐỢI
+    // Chỉ kích hoạt khi khách THỰC SỰ ĐƯA SỐ MỚI trong tin nhắn này (tránh lặp lại nếu đã có SĐT từ trước)
     // =========================================================================
-    const detectedPhone = phoneFromMessage(latestText) || (customer.phone && String(customer.phone).trim().length >= 9 ? customer.phone : null)
+    const newlyProvidedPhone = phoneFromMessage(latestText)
+    const alreadyConfirmedPhone = realMsgs.some(m =>
+      m.direction === 'OUT' &&
+      (
+        (newlyProvidedPhone && m.body?.includes(newlyProvidedPhone)) ||
+        (customer.phone && m.body?.includes(customer.phone)) ||
+        m.body?.includes('đã nhận được số điện thoại/Zalo') ||
+        m.body?.includes('đã nhận được số Zalo')
+      )
+    )
 
-    if (detectedPhone) {
+    if (newlyProvidedPhone && !alreadyConfirmedPhone) {
       // Kiểm tra xem sau tin nhắn này của khách, đã có nhân sự thật nào nhắn lại chưa:
       const humanMsgsAfterInbound = realMsgs.filter(m =>
         m.direction === 'OUT' &&
@@ -889,18 +912,21 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
       const nameParts = (customer.customer_name || '').trim().split(/\s+/)
       const callName = nameParts.length > 0 ? nameParts[nameParts.length - 1] : 'anh'
-      const cleanPhone = phoneFromMessage(latestText) || detectedPhone
 
-      reply = `Dạ em Tú Audio đã nhận được số điện thoại/Zalo ${cleanPhone} của anh ${callName} rồi ạ! Anh đợi em một chút nhé, em/kỹ thuật bên em sẽ chủ động gọi điện hoặc nhắn tin Zalo hỗ trợ chi tiết cho anh ngay đây ạ!`
+      reply = `Dạ em Tú Audio đã nhận được số điện thoại/Zalo ${newlyProvidedPhone} của anh ${callName} rồi ạ! Anh đợi em một chút nhé, em/kỹ thuật bên em sẽ chủ động gọi điện hoặc nhắn tin Zalo hỗ trợ chi tiết cho anh ngay đây ạ!`
 
       await query(
         "UPDATE facebook_care_customers SET phone=COALESCE(phone, $1), status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2",
-        [cleanPhone, customerId]
+        [newlyProvidedPhone, customerId]
       ).catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
+    } else if (isShortAcknowledgement(latestText)) {
+      // Khách chỉ xác nhận "Vâng", "Dạ", "Ok", "Cảm ơn" -> Không gửi tin nhắn tự động lặp lại
+      console.log(`[Facebook AI] Khách ${customerId} gửi xác nhận ngắn "${latestText}" -> Bỏ qua không gửi tin nhắn tự động trùng lặp.`)
+      return
     }
 
     // =========================================================================
-    // NẾU KHÁCH CHƯA CHO SỐ: KIỂM TRA NHÂN SỰ VÀ TƯ VẤN GEMINI FLASH
+    // NẾU KHÁCH CHƯA CHO SỐ HOẶC HỎI TIẾP: KIỂM TRA NHÂN SỰ VÀ TƯ VẤN GEMINI FLASH
     // =========================================================================
     if (!reply) {
       // Kiểm tra nhân sự thật tư vấn: Chỉ dừng nếu người thật vừa chat trong vòng 5 phút (đang trực tiếp gõ phím) hoặc khách chưa gửi câu hỏi nào mới sau tin của nhân viên.
@@ -917,40 +943,52 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
       // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline...) để phản hồi chính xác 100%, không bị ảo giác
       const fastDeterministic = checkDeterministicAiResponse(latestText)
-      if (fastDeterministic && ['PHONE_CAPTURED', 'ICON_STICKER', 'GREETING', 'HOTLINE'].includes(fastDeterministic.type)) {
-        reply = fastDeterministic.reply
+      if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE'].includes(fastDeterministic.type)) {
+        if (fastDeterministic.type === 'ICON_STICKER' && (customer.phone || alreadyConfirmedPhone)) {
+          reply = 'Dạ em Tú Audio xin chào anh ạ! Em/kỹ thuật bên em đang chuẩn bị liên hệ hỗ trợ trực tiếp cho anh ngay đây ạ!'
+        } else {
+          reply = fastDeterministic.reply
+        }
       }
     }
 
     // 3. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng ngữ cảnh câu hỏi của khách
     if (!reply) {
       const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
+      const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
+
+      const phoneInstruction = hasKnownPhone
+        ? `LƯU Ý ĐẶC BIỆT: KHÁCH HÀNG NÀY ĐÃ CÓ SỐ ĐIỆN THOẠI/ZALO (${customer.phone || 'đã có số'}).
+TUYỆT ĐỐI KHÔNG HỎI HAY XIN LẠI SỐ ĐIỆN THOẠI/ZALO NỮA!
+Hãy trả lời đúng trọng tâm chuyên môn câu hỏi của khách (1-2 câu ngắn), giải đáp thắc mắc và nhắn anh yên tâm lát nữa em/kỹ thuật sẽ gọi điện thoại hoặc nhắn tin Zalo hỗ trợ chi tiết cho anh ngay.`
+        : `Câu 2: Khéo léo mời khách để lại số điện thoại hoặc Zalo để em Tú gọi điện hoặc kết bạn Zalo tư vấn chi tiết, gửi video test thực tế.`
 
       const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của anh Phùng Văn Tú (Tú Audio - Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
 BẠN ĐẠI DIỆN CHO ANH TÚ TƯ VẤN KHÁCH HÀNG TRỰC TIẾP TRÊN FACEBOOK MESSENGER.
 
 NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100%):
-1. ĐỘ DÀI: CHỈ TRẢ LỜI ĐÚNG 1 ĐẾN 2 CÂU NGẮN (TỐI ĐA 30-35 TỪ). TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG DÙNG VĂN MẪU RẬP KHUÔN.
+1. ĐỘ DÀI: CHỈ TRẢ LỜI ĐÚNG 1 ĐẾN 2 CÂU NGẮN (TỐI ĐA 30-35 TỪ). TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG DÙNG VĂN MẪU RẬP KHUÔN, TUYỆT ĐỐI KHÔNG TRẢ LỜI LẶP LẠI TIN NHẮN ĐÃ GỬI TRƯỚC ĐÓ.
 2. NỘI DUNG THÔNG MINH THEO TỪNG CÂU HỎI:
    - Câu 1: Trả lời thông minh, đúng trọng tâm câu hỏi của khách (bắt đúng bệnh vang số, tư vấn đúng diện tích phòng khách, đúng model loa/đẩy, dịch vụ tận nhà...).
-   - Câu 2: Khéo léo mời khách để lại số điện thoại hoặc Zalo để anh Tú gọi điện hoặc kết bạn Zalo tư vấn chi tiết, gửi video test thực tế.
+   - ${phoneInstruction}
 3. PHONG CÁCH ANH TÚ: Xưng "em" hoặc "em Tú", gọi khách là "anh" (hoặc "bác"). Giọng chân thành, thân thiện, đời thường của anh em kỹ thuật âm thanh.
 4. QUY TẮC BẮT BUỘC VỀ ICON & HÌNH ẢNH (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI, CẤM ĐOÁN MÒ):
-   - Nếu khách gửi ICON, NHÃN DÁN, NÚT LIKE (ví dụ: "[Khách gửi icon / nhãn dán 👍]" hoặc "👍"): Coi như lời chào hỏi thân thiện. Chào anh và xin số Zalo: "Dạ em Tú Audio xin chào anh ạ! Anh nhắn em xin số Zalo em tư vấn cấu hình dàn hoặc vang số trực tiếp cho nhanh và tiện nhất nhé anh!" - TUYỆT ĐỐI CẤM BẢO LÀ "NHẬN ĐƯỢC ẢNH BỘ DÀN".
+   - Nếu khách gửi ICON, NHÃN DÁN, NÚT LIKE (ví dụ: "[Khách gửi icon / nhãn dán 👍]" hoặc "👍"): Coi như lời chào hỏi thân thiện. Chào anh và tư vấn trực tiếp - TUYỆT ĐỐI CẤM BẢO LÀ "NHẬN ĐƯỢC ẢNH BỘ DÀN".
    - Nếu khách gửi HÌNH ẢNH THẬT ("[Khách gửi hình ảnh / tệp đính kèm]"): Trả lời "Dạ em Tú đã nhận được hình ảnh của anh rồi ạ! Anh cho em xin số Zalo em gọi điện trao đổi tư vấn trực tiếp cho tiện nhé anh!" - TUYỆT ĐỐI KHÔNG TỰ ĐOÁN ĐÂY LÀ ẢNH BỘ DÀN HAY THIẾT BỊ NÀO KHI CHƯA RÕ NỘI DUNG.
 5. PHẠM VI SẢN PHẨM & DỊCH VỤ CỐT LÕI (TUÂN THỦ 100%):
    - TÚ AUDIO CHUYÊN SALE DÀN KARAOKE GIA ĐÌNH & THIẾT BỊ PHÒNG HÁT CAO CẤP (Loa Full, Vang số, Cục đẩy công suất, Loa Sub, Micro không dây).
    - TUYỆT ĐỐI CẤM: KHÔNG nhận căn chỉnh, KHÔNG nhận sửa chữa, KHÔNG bán loa kéo / loa kẹo kéo di động. TUYỆT ĐỐI KHÔNG BAO GIỜ nhận có "công thức chỉnh loa kéo" hay "chỉ vặn nút loa kéo".
-   - NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối dịch vụ loa kéo và giải thích bên em chuyên dàn karaoke phòng hát. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối, xin số Zalo để tư vấn.
+   - NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối dịch vụ loa kéo và giải thích bên em chuyên dàn karaoke phòng hát. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối.
 
 Ví dụ tham khảo cách tư vấn:
 - Khách gửi 👍 hoặc icon: "Dạ em Tú Audio xin chào anh ạ! Anh nhắn em xin số Zalo em tư vấn cấu hình dàn hoặc vang số trực tiếp cho nhanh và tiện nhất nhé anh!"
-- Khách: "Toi dung vang so.gio muon set ap lai" -> "Dạ vâng anh, bên em có nhận qua tận nhà đo đạc căn chỉnh lại vang số cho anh hát nhẹ tiếng và chống hú tuyệt đối ạ. Anh cho em xin số Zalo em gọi trao đổi và hẹn lịch qua hỗ trợ anh nhé!"
+- Khách: "Toi dung vang so.gio muon set ap lai" -> "Dạ vâng anh, bên em có nhận qua tận nhà hoặc chỉnh qua máy tính Ultraviewer cho anh hát nhẹ tiếng và chống hú tuyệt đối ạ. Anh cho em xin số Zalo em gọi trao đổi và hẹn lịch hỗ trợ anh nhé!"
+- Khách: "Alo a có thê giup e chỉnh cái vang dk k ạ" (nếu khách đã có SĐT): "Dạ được anh nhé! Vang số bên em hỗ trợ căn chỉnh tận nơi hoặc qua máy tính rất nhanh ạ. Lát em/kỹ thuật sẽ gọi qua số của anh để hỗ trợ anh ngay nhé!"
 - Khách: "Phòng khách 25m2 thì lắp bộ nào vừa tiền em" -> "Dạ phòng 25m2 lắp đôi loa full 30 kèm đẩy liền vang tầm 15 đến 20 triệu là tiếng căng tròn, hát rất nhẹ ạ. Anh cho em xin số Zalo em gửi video quay test chất âm thực tế cho anh xem nhé!"
 - Khách: "Vang X5 của anh bị rè tiếng mic xử lý sao em" -> "Dạ tiếng mic rè thường do gain quá lớn, dây jack hoặc IC tiền khuếch đại anh ạ. Anh nhắn em số Zalo em gọi video hướng dẫn anh kiểm tra xử lý dứt điểm nhé anh!"
 - Khách: "Cửa hàng mình ở đâu" -> "Dạ showroom bên em ở 220 Nguyễn Danh Phương, Vĩnh Yên, Vĩnh Phúc ạ. Anh nhắn em xin số Zalo em gửi định vị vị trí qua cho tiện đi nhé anh!"
 
-HÃY TRẢ LỜI CÂU HỎI CỦA KHÁCH (CHỈ 1-2 CÂU NGẮN, TẬP TRUNG XIN SỐ ZALO):`
+HÃY TRẢ LỜI CÂU HỎI CỦA KHÁCH (CHỈ 1-2 CÂU NGẮN, TỰ NHIÊN, KHÔNG TRÙNG LẶP):`
 
       try {
         const apiKey = await getGeminiApiKey()
@@ -979,6 +1017,23 @@ HÃY TRẢ LỜI CÂU HỎI CỦA KHÁCH (CHỈ 1-2 CÂU NGẮN, TẬP TRUNG XIN
     if (!reply) {
       const fallbackDeterministic = checkDeterministicAiResponse(latestText)
       reply = fallbackDeterministic?.reply || 'Dạ em Tú Audio đây ạ! Anh nhắn em xin số Zalo em gọi điện tư vấn chi tiết và gửi video test máy cho tiện nhé anh!'
+    }
+
+    if (!reply || !reply.trim()) return
+
+    // KIỂM TRA CHỐNG TRÙNG LẶP TIN NHẮN TUYỆT ĐỐI (ANTI-DUPLICATE GUARD)
+    // AI không bao giờ gửi tin nhắn giống hệt hoặc lặp lại nội dung đã gửi gần đây cho khách
+    const recentOuts = realMsgs
+      .filter(m => m.direction === 'OUT')
+      .slice(-5)
+      .map(m => (m.body || '').trim().toLowerCase())
+
+    const normalizeForCompare = (s) => s.replace(/[^a-z0-9à-ỹ]/g, '')
+    const replyNorm = normalizeForCompare(reply.trim().toLowerCase())
+
+    if (recentOuts.some(outMsg => normalizeForCompare(outMsg) === replyNorm)) {
+      console.log(`[Facebook AI] Bỏ qua câu trả lời vì bị trùng lặp nội dung với tin nhắn đã gửi gần đây cho khách ${customerId}: "${reply}"`)
+      return
     }
 
     const sentPayload = await sendFacebookText(psid, reply)
