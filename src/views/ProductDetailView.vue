@@ -12,7 +12,7 @@
       <div class="detail-grid">
         <!-- Cột Trái: Ảnh Gallery & Nút Chuyển Xem Video Trực Tiếp -->
         <div class="detail-gallery">
-          <div class="media-tabs">
+          <div v-if="currentVideoUrl" class="media-tabs">
             <button
               type="button"
               :class="['media-tab-btn', { active: activeMediaTab === 'image' }]"
@@ -29,17 +29,17 @@
             </button>
           </div>
 
-          <div v-if="activeMediaTab === 'image'" class="main-image-wrap">
+          <div v-if="activeMediaTab === 'image' || !currentVideoUrl" class="main-image-wrap">
             <img :src="product.image" :alt="product.name" />
             <span v-if="product.badge" class="badge-overlay">{{ product.badge }}</span>
 
-            <button class="watch-video-btn-overlay" type="button" @click="activeMediaTab = 'video'">
+            <button v-if="currentVideoUrl" class="watch-video-btn-overlay" type="button" @click="activeMediaTab = 'video'">
               <span class="play-icon">▶</span>
               <span>Bấm Xem Video Test Âm Thực Tế</span>
             </button>
           </div>
 
-          <div v-else class="main-video-wrap">
+          <div v-else-if="currentVideoUrl" class="main-video-wrap">
             <video
               v-if="isDirectVideo(currentVideoUrl)"
               :src="embedUrl"
@@ -118,8 +118,8 @@
         </div>
       </div>
 
-      <!-- Khối Video Mô Tả & Test Chất Âm Thực Tế -->
-      <div class="video-showcase-section" id="video-section">
+      <!-- Khối Video Mô Tả & Test Chất Âm Thực Tế (Chỉ hiển thị khi sản phẩm có video test) -->
+      <div v-if="currentVideoUrl" class="video-showcase-section" id="video-section">
         <div class="video-section-header">
           <span class="badge-gold">TRẢI NGHIỆM THỰC CHỨNG 100%</span>
           <h2>Video Mô Tả &amp; Hát Thử Chất Âm Thực Tế</h2>
@@ -205,20 +205,20 @@ const product = computed(() => {
 
 const currentVideoUrl = computed(() => {
   if (product.value?.videoUrl && product.value.videoUrl.trim() !== '') {
-    return product.value.videoUrl
+    return product.value.videoUrl.trim()
   }
-  return 'https://www.youtube.com/watch?v=hK7F0a_2x-Q'
+  return null
 })
 
 const currentVideoTitle = computed(() => {
   if (product.value?.videoTitle && product.value.videoTitle.trim() !== '') {
-    return product.value.videoTitle
+    return product.value.videoTitle.trim()
   }
   return `Video Test Chất Âm Thực Tế ${product.value?.name || 'Thiết Bị'} — Quay Mộc Tại Showroom & Nhà Khách`
 })
 
 const embedUrl = computed(() => {
-  return getEmbedVideoUrl(currentVideoUrl.value)
+  return currentVideoUrl.value ? getEmbedVideoUrl(currentVideoUrl.value) : ''
 })
 
 const handleConsult = () => {

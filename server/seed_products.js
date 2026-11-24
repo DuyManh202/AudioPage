@@ -3,7 +3,7 @@ import { catalogProducts } from './catalogProducts.js'
 
 async function seed() {
   try {
-    console.log(`Bắt đầu nạp ${catalogProducts.length} sản phẩm vào Aiven PostgreSQL...`)
+    console.log(`Bắt đầu đồng bộ ${catalogProducts.length} sản phẩm vào Aiven PostgreSQL...`)
     
     // Đảm bảo các danh mục tồn tại trước
     const categories = [
@@ -25,50 +25,125 @@ async function seed() {
       `, cat)
     }
 
-    let inserted = 0
+    const existingRes = await query('SELECT id, slug FROM products')
+    const existingBySlug = new Map()
+    existingRes.rows.forEach(r => existingBySlug.set(r.slug, r.id))
+
+    let updatedCount = 0
+    let insertedCount = 0
+
     for (const p of catalogProducts) {
-      await query(`
-        INSERT INTO products (
-          id, name, slug, category_id, bass_size, power_rms, power_peak, price, original_price,
-          room_size, badge, in_stock, rating, reviews_count,
-          image_url, video_url, video_title, matching_amplifier, short_desc, specs, gifts
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20::json, $21::json)
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          category_id = EXCLUDED.category_id,
-          bass_size = EXCLUDED.bass_size,
-          power_rms = EXCLUDED.power_rms,
-          power_peak = EXCLUDED.power_peak,
-          price = EXCLUDED.price,
-          original_price = EXCLUDED.original_price,
-          room_size = EXCLUDED.room_size,
-          badge = EXCLUDED.badge,
-          in_stock = EXCLUDED.in_stock,
-          rating = EXCLUDED.rating,
-          reviews_count = EXCLUDED.reviews_count,
-          image_url = EXCLUDED.image_url,
-          video_url = EXCLUDED.video_url,
-          video_title = EXCLUDED.video_title,
-          matching_amplifier = EXCLUDED.matching_amplifier,
-          short_desc = EXCLUDED.short_desc,
-          specs = EXCLUDED.specs,
-          gifts = EXCLUDED.gifts,
-          updated_at = CURRENT_TIMESTAMP
-      `, [
-        p.id, p.name, p.slug || p.id, p.category || 'loa-full', p.bassSize || '-',
-        Number(p.powerRMS) || 0, Number(p.powerPeak) || 0,
-        Number(p.price) || 0, Number(p.originalPrice) || 0,
-        p.roomSize || '20 - 35m²', p.badge || '',
-        p.inStock ?? true, Number(p.rating) || 5.0, Number(p.reviewsCount) || 30,
-        p.image || '', p.videoUrl || '', p.videoTitle || '',
-        p.matchingAmplifier || '', p.shortDesc || '',
-        JSON.stringify(p.specs || {}), JSON.stringify(p.gifts || [])
-      ])
-      inserted++
+      const slug = p.slug || p.id
+      const existingId = existingBySlug.get(slug)
+
+      if (existingId) {
+        // Cập nhật sản phẩm đã tồn tại theo existingId
+        await query(`
+          UPDATE products SET
+            name = $2,
+            category_id = $3,
+            bass_size = $4,
+            power_rms = $5,
+            power_peak = $6,
+            price = $7,
+            original_price = $8,
+            room_size = $9,
+            badge = $10,
+            in_stock = $11,
+            rating = $12,
+            reviews_count = $13,
+            image_url = $14,
+            video_url = $15,
+            video_title = $16,
+            matching_amplifier = $17,
+            short_desc = $18,
+            specs = $19::json,
+            gifts = $20::json,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+        `, [
+          existingId,
+          p.name,
+          p.category || 'loa-full',
+          p.bassSize || '-',
+          Number(p.powerRMS) || 0,
+          Number(p.powerPeak) || 0,
+          Number(p.price) || 0,
+          Number(p.originalPrice) || 0,
+          p.roomSize || '20 - 35m²',
+          p.badge || '',
+          p.inStock ?? true,
+          Number(p.rating) || 5.0,
+          Number(p.reviewsCount) || 30,
+          p.image || '',
+          p.videoUrl || null,
+          p.videoTitle || null,
+          p.matchingAmplifier || '',
+          p.shortDesc || '',
+          JSON.stringify(p.specs || {}),
+          JSON.stringify(p.gifts || [])
+        ])
+        updatedCount++
+      } else {
+        // Thêm mới sản phẩm
+        await query(`
+          INSERT INTO products (
+            id, name, slug, category_id, bass_size, power_rms, power_peak, price, original_price,
+            room_size, badge, in_stock, rating, reviews_count,
+            image_url, video_url, video_title, matching_amplifier, short_desc, specs, gifts
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20::json, $21::json)
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            category_id = EXCLUDED.category_id,
+            bass_size = EXCLUDED.bass_size,
+            power_rms = EXCLUDED.power_rms,
+            power_peak = EXCLUDED.power_peak,
+            price = EXCLUDED.price,
+            original_price = EXCLUDED.original_price,
+            room_size = EXCLUDED.room_size,
+            badge = EXCLUDED.badge,
+            in_stock = EXCLUDED.in_stock,
+            rating = EXCLUDED.rating,
+            reviews_count = EXCLUDED.reviews_count,
+            image_url = EXCLUDED.image_url,
+            video_url = EXCLUDED.video_url,
+            video_title = EXCLUDED.video_title,
+            matching_amplifier = EXCLUDED.matching_amplifier,
+            short_desc = EXCLUDED.short_desc,
+            specs = EXCLUDED.specs,
+            gifts = EXCLUDED.gifts,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          slug,
+          p.name,
+          slug,
+          p.category || 'loa-full',
+          p.bassSize || '-',
+          Number(p.powerRMS) || 0,
+          Number(p.powerPeak) || 0,
+          Number(p.price) || 0,
+          Number(p.originalPrice) || 0,
+          p.roomSize || '20 - 35m²',
+          p.badge || '',
+          p.inStock ?? true,
+          Number(p.rating) || 5.0,
+          Number(p.reviewsCount) || 30,
+          p.image || '',
+          p.videoUrl || null,
+          p.videoTitle || null,
+          p.matchingAmplifier || '',
+          p.shortDesc || '',
+          JSON.stringify(p.specs || {}),
+          JSON.stringify(p.gifts || [])
+        ])
+        existingBySlug.set(slug, slug)
+        insertedCount++
+      }
     }
 
     const check = await query('SELECT count(*) FROM products')
-    console.log(`✅ Thành công! Đã nạp ${inserted} sản phẩm. Tổng số sản phẩm trong DB hiện tại: ${check.rows[0].count}`)
+    console.log(`✅ Thành công! Đã cập nhật ${updatedCount} sản phẩm cũ, thêm mới ${insertedCount} sản phẩm mới.`)
+    console.log(`📊 Tổng số sản phẩm trong cơ sở dữ liệu hiện tại: ${check.rows[0].count} sản phẩm.`)
     process.exit(0)
   } catch (err) {
     console.error('❌ Lỗi khi nạp sản phẩm vào DB:', err)
