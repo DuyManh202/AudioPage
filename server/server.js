@@ -417,6 +417,22 @@ const fetchFacebookProfileName = async (psid) => {
   }
 }
 
+const isSystemFacebookNotice = (body) => {
+  if (!body) return false
+  const str = String(body).trim()
+  return (
+    str.startsWith('Facebook tạo đoạn chat') ||
+    str.includes('Facebook tạo đoạn chat này vì') ||
+    str.includes('đã trả lời tin nhắn chào mừng tự động') ||
+    str.includes('Để thay đổi hoặc gỡ lời chào này') ||
+    str.startsWith('Đã thêm nhãn tự động:') ||
+    str.includes('Đã đặt giai đoạn của khách hàng tiềm năng') ||
+    str.includes('Đoạn chat này chưa dùng được tính năng phản hồi bằng AI') ||
+    str.includes('Bạn có muốn được chỉ định cho cuộc trò chuyện này') ||
+    str.includes('Bạn đã được chỉ định cho cuộc trò chuyện này')
+  )
+}
+
 const FB_SYNC_INTERVAL_MS = 25000
 let fbSyncInFlight = null
 let fbLastSyncMs = 0
@@ -504,11 +520,8 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
           .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
 
         const latestMsg = normalizedMessages[normalizedMessages.length - 1] || null
-        // Lấy tin nhắn thực chất nhất (bỏ qua thông báo hệ thống Facebook tạo đoạn chat từ bình luận)
-        const realMsgs = normalizedMessages.filter(m =>
-          !m.body?.startsWith('Facebook tạo đoạn chat') &&
-          !m.body?.includes('Facebook tạo đoạn chat này vì')
-        )
+        // Lấy tin nhắn thực chất nhất (bỏ qua toàn bộ thông báo hệ thống / nhãn tự động Facebook)
+        const realMsgs = normalizedMessages.filter(m => !isSystemFacebookNotice(m.body))
         const displayLatestMsg = realMsgs[realMsgs.length - 1] || latestMsg
         const inboundMessages = normalizedMessages.filter(message => message.direction === 'IN')
         const inferredAddress = inboundMessages.slice().reverse().map(message => addressFromMessage(message.body)).find(Boolean)
@@ -645,9 +658,10 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
           }
         }
 
-        // Tự động kích hoạt AI phản hồi nếu tin nhắn mới nhất trong hội thoại là khách gửi và chưa có ai trả lời
-        if (latestMsg && latestMsg.direction === 'IN' && psid) {
-          const msgAgeMs = Date.now() - Date.parse(latestMsg.createdAt)
+        // Tự động kích hoạt AI phản hồi nếu tin nhắn thực mới nhất trong hội thoại là khách gửi và chưa có ai trả lời
+        const latestRealForAi = realMsgs[realMsgs.length - 1]
+        if (latestRealForAi && latestRealForAi.direction === 'IN' && psid) {
+          const msgAgeMs = Date.now() - Date.parse(latestRealForAi.createdAt)
           // Chỉ phản hồi các tin nhắn trong vòng 24 giờ (tuân thủ chính sách Meta Messenger)
           if (msgAgeMs >= 0 && msgAgeMs <= 24 * 60 * 60 * 1000) {
             isFacebookAiEnabled().then(enabled => {
@@ -797,61 +811,39 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
     const customer = customerResult.rows[0]
     if (!customer) return
 
-    // 1. DỪNG NẾU KHÁCH ĐÃ CÓ SỐ ĐIỆN THOẠI (Chỉ tư vấn đến khi có SĐT là chuyển giao)
-    if (customer.phone && String(customer.phone).trim().length >= 9) {
-      console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã có SĐT (${customer.phone}) -> Dừng AI để chuyển giao nhân sự/anh Tú chăm sóc trực tiếp.`)
-      return
-    }
-
-    // 2. DỪNG NẾU KHÁCH ĐÃ CÓ NHÂN SỰ PHỤ TRÁCH HOẶC ĐANG Ở CÁC TRẠNG THÁI ĐÃ TIẾP QUẢN
+    // 1. DỪNG NẾU KHÁCH ĐÃ CÓ NHÂN SỰ PHỤ TRÁCH HOẶC ĐANG Ở CÁC TRẠNG THÁI HOÀN THÀNH / HỦY
     if (customer.assigned_to && customer.assigned_to.trim()) {
       console.log(`[Facebook AI] Khách ${customerId} đã được gán cho nhân sự (${customer.assigned_to}) -> AI dừng tư vấn.`)
       return
     }
-    if (['DANG_TU_VAN', 'HOAN_THANH', 'HUY'].includes(customer.status)) {
+    if (['HOAN_THANH', 'HUY'].includes(customer.status)) {
       console.log(`[Facebook AI] Khách ${customerId} đang có trạng thái ${customer.status} -> AI dừng tư vấn.`)
       return
     }
 
     const msgs = historyResult.rows.reverse()
 
-    // Lọc bỏ các thông báo hệ thống Facebook (VD: "Facebook tạo đoạn chat này vì...") để lấy đúng nội dung câu hỏi thật của khách
-    const realInbounds = msgs.filter(m =>
-      m.direction === 'IN' &&
-      !m.body?.startsWith('Facebook tạo đoạn chat') &&
-      !m.body?.includes('Facebook tạo đoạn chat này vì') &&
-      !m.body?.includes('đã trả lời tin nhắn chào mừng tự động')
-    )
-    const latestInbound = realInbounds.slice(-1)[0] || msgs.filter(m => m.direction === 'IN').slice(-1)[0]
-    const latestMsg = msgs[msgs.length - 1]
+    // Lọc bỏ toàn bộ các thông báo hệ thống / nhãn tự động Facebook để lấy đúng tin nhắn trao đổi thực
+    const realMsgs = msgs.filter(m => !isSystemFacebookNotice(m.body))
+    if (!realMsgs.length) return
 
-    // Nếu tin nhắn mới nhất trong hội thoại đã là OUT (Tú Audio hoặc AI đã trả lời) -> Dừng, không gửi lặp
-    if (!latestMsg || latestMsg.direction !== 'IN') return
+    const latestRealMsg = realMsgs[realMsgs.length - 1]
+    const realInbounds = realMsgs.filter(m => m.direction === 'IN')
+    const latestInbound = realInbounds[realInbounds.length - 1]
+
+    // Nếu tin nhắn thực mới nhất trong hội thoại đã là OUT (Tú Audio hoặc AI đã trả lời) -> Dừng, không gửi lặp
+    if (!latestRealMsg || latestRealMsg.direction !== 'IN') return
 
     const latestText = latestInbound?.body || ''
-    if (!latestText || latestText.includes('đã trả lời tin nhắn chào mừng tự động') || latestText.startsWith('Facebook tạo đoạn chat')) return
+    if (!latestText || isSystemFacebookNotice(latestText)) return
 
     const isCommentReferral = msgs.some(m => m.body?.includes('Facebook tạo đoạn chat này vì') || m.body?.includes('comment_id='))
 
     // NGUYÊN TẮC ANH TÚ: Khách nào ĐÃ TỪNG INBOX rồi thì KHÔNG ĐƯỢC gửi thêm tin nhắn riêng tự động từ bình luận nữa
     if (isCommentReferral) {
-      const hadPreviousOutMsg = msgs.some(m => m.direction === 'OUT')
+      const hadPreviousOutMsg = realMsgs.some(m => m.direction === 'OUT')
       if (hadPreviousOutMsg) {
         console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã từng inbox trước đây -> Không gửi thêm tin nhắn riêng từ bình luận.`)
-        return
-      }
-    }
-
-    // 3. KIỂM TRA NHÂN SỰ THẬT TƯ VẤN:
-    // - Nếu là tin nhắn tạo từ bình luận (Comment Referral): LUÔN LUÔN TRẢ LỜI ĐỘC LẬP 100%, không bị chặn bởi nhân sự.
-    // - Nếu là chat thông thường: Chỉ dừng nếu người thật vừa chat trong vòng 5 phút (đang trực tiếp gõ phím) hoặc khách chưa gửi câu hỏi nào mới sau tin của nhân viên.
-    if (!isCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
-      const lastHumanMsg = humanCheckResult.rows[0]
-      const humanAgeMinutes = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60)
-      const inboundAfterHuman = latestInbound?.created_at && new Date(latestInbound.created_at).getTime() > new Date(lastHumanMsg.created_at).getTime()
-      if (humanAgeMinutes >= 0 && (humanAgeMinutes < 5 || !inboundAfterHuman)) {
-        const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
-        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp -> AI nhường quyền.`)
         return
       }
     }
@@ -867,16 +859,63 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     let reply = ''
 
-    // 1. Nếu khách vừa để lại số điện thoại / Zalo trong tin nhắn -> Xác nhận ngay 1 lần, lưu vào DB và dừng AI cho các tin nhắn sau
-    const detectedPhone = phoneFromMessage(latestText)
+    // =========================================================================
+    // YÊU CẦU ANH TÚ: NẾU KHÁCH CHO SỐ THÌ NẾU CHƯA AI NHẮN THÌ SẼ BẢO NGƯỜI TA ĐỢI
+    // =========================================================================
+    const detectedPhone = phoneFromMessage(latestText) || (customer.phone && String(customer.phone).trim().length >= 9 ? customer.phone : null)
+
     if (detectedPhone) {
-      reply = `Dạ vâng anh, em Tú đã nhận được số Zalo ${detectedPhone} của anh rồi ạ! Em kết bạn nhắn qua Zalo với anh ngay bây giờ nhé anh!`
-      await query("UPDATE facebook_care_customers SET phone=$1, status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2", [detectedPhone, customerId])
-        .catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
+      // Kiểm tra xem sau tin nhắn này của khách, đã có nhân sự thật nào nhắn lại chưa:
+      const humanMsgsAfterInbound = realMsgs.filter(m =>
+        m.direction === 'OUT' &&
+        (m.created_by == null || !String(m.created_by).includes('AI')) &&
+        new Date(m.created_at).getTime() > new Date(latestInbound.created_at).getTime()
+      )
+
+      if (humanMsgsAfterInbound.length > 0) {
+        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã có nhân sự thật nhắn sau khi cho SĐT -> AI nhường quyền.`)
+        return
+      }
+
+      // Kiểm tra xem AI đã từng gửi tin xác nhận bảo khách đợi sau tin nhắn mới nhất này chưa (tránh spam lặp):
+      const aiMsgsAfterInbound = realMsgs.filter(m =>
+        m.direction === 'OUT' &&
+        String(m.created_by || '').includes('AI') &&
+        new Date(m.created_at).getTime() >= new Date(latestInbound.created_at).getTime()
+      )
+      if (aiMsgsAfterInbound.length > 0) {
+        return
+      }
+
+      const nameParts = (customer.customer_name || '').trim().split(/\s+/)
+      const callName = nameParts.length > 0 ? nameParts[nameParts.length - 1] : 'anh'
+      const cleanPhone = phoneFromMessage(latestText) || detectedPhone
+
+      reply = `Dạ em Tú Audio đã nhận được số điện thoại/Zalo ${cleanPhone} của anh ${callName} rồi ạ! Anh đợi em một chút nhé, em/kỹ thuật bên em sẽ chủ động gọi điện hoặc nhắn tin Zalo hỗ trợ chi tiết cho anh ngay đây ạ!`
+
+      await query(
+        "UPDATE facebook_care_customers SET phone=COALESCE(phone, $1), status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2",
+        [cleanPhone, customerId]
+      ).catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
     }
 
-    // 2. Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline...) để phản hồi chính xác 100%, không bị ảo giác
+    // =========================================================================
+    // NẾU KHÁCH CHƯA CHO SỐ: KIỂM TRA NHÂN SỰ VÀ TƯ VẤN GEMINI FLASH
+    // =========================================================================
     if (!reply) {
+      // Kiểm tra nhân sự thật tư vấn: Chỉ dừng nếu người thật vừa chat trong vòng 5 phút (đang trực tiếp gõ phím) hoặc khách chưa gửi câu hỏi nào mới sau tin của nhân viên.
+      if (!isCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
+        const lastHumanMsg = humanCheckResult.rows[0]
+        const humanAgeMinutes = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60)
+        const inboundAfterHuman = latestInbound?.created_at && new Date(latestInbound.created_at).getTime() > new Date(lastHumanMsg.created_at).getTime()
+        if (humanAgeMinutes >= 0 && (humanAgeMinutes < 5 || !inboundAfterHuman)) {
+          const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
+          console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp -> AI nhường quyền.`)
+          return
+        }
+      }
+
+      // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline...) để phản hồi chính xác 100%, không bị ảo giác
       const fastDeterministic = checkDeterministicAiResponse(latestText)
       if (fastDeterministic && ['PHONE_CAPTURED', 'ICON_STICKER', 'GREETING', 'HOTLINE'].includes(fastDeterministic.type)) {
         reply = fastDeterministic.reply
