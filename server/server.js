@@ -11,6 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
+import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
 import { catalogProducts } from './catalogProducts.js'
 import {
@@ -78,6 +79,8 @@ const addressFromMessage = value => {
   if (address.length < 8 || !/(\d|phường|xã|quận|huyện|thị trấn|thôn|ấp|tổ|khu phố|đường|phố|ngõ|ngách|hẻm|chung cư|tòa nhà)/i.test(address)) return null
   return address
 }
+
+export { extractCustomerInterest } from './interestExtractor.js'
 
 const normalizePhoneForSync = value => {
   const digits = String(value || '').replace(/\D/g, '')
@@ -512,13 +515,14 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
         const inferredProvince = inboundMessages.slice().reverse().map(message => findProvince(message.body, { requireContext: true })).find(Boolean)
           || (inferredAddress ? findProvince(inferredAddress) : null)
         const inferredPhone = inboundMessages.map(message => phoneFromMessage(message.body)).find(Boolean)
+        const inferredInterest = extractCustomerInterest(inboundMessages.map(m => m.body), displayLatestMsg?.body || latestMsg?.body || '')
         const convUpdatedIso = conv.updated_time && !Number.isNaN(Date.parse(conv.updated_time))
           ? new Date(conv.updated_time).toISOString()
           : (latestMsg?.createdAt || new Date().toISOString())
 
         const customerRes = await query(`INSERT INTO facebook_care_customers
-          (id, customer_name, facebook_id, phone, status, last_message, province, location_lat, location_lng, address, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, 'MOI', $5, $6, $7, $8, $9, $10::timestamptz, $10::timestamptz)
+          (id, customer_name, facebook_id, phone, status, last_message, province, location_lat, location_lng, address, interest, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, 'MOI', $5, $6, $7, $8, $9, $10, $11::timestamptz, $11::timestamptz)
           ON CONFLICT (facebook_id) WHERE facebook_id IS NOT NULL DO UPDATE SET
             customer_name = CASE
               WHEN facebook_care_customers.customer_name LIKE 'Khách Facebook %' AND EXCLUDED.customer_name NOT LIKE 'Khách Facebook %'
@@ -528,13 +532,18 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
             last_message = COALESCE(EXCLUDED.last_message, facebook_care_customers.last_message),
             address=COALESCE(NULLIF(facebook_care_customers.address,''),EXCLUDED.address),
+            interest = CASE
+              WHEN facebook_care_customers.interest IS NULL OR facebook_care_customers.interest = '' OR facebook_care_customers.interest = 'Tư vấn âm thanh qua Facebook' OR facebook_care_customers.interest = 'Tư vấn âm thanh karaoke'
+              THEN COALESCE(EXCLUDED.interest, facebook_care_customers.interest)
+              ELSE facebook_care_customers.interest
+            END,
             province=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.province ELSE COALESCE(EXCLUDED.province,facebook_care_customers.province) END,
             location_lat=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lat ELSE COALESCE(EXCLUDED.location_lat,facebook_care_customers.location_lat) END,
             location_lng=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.location_lng ELSE COALESCE(EXCLUDED.location_lng,facebook_care_customers.location_lng) END,
             updated_at = GREATEST(facebook_care_customers.updated_at, EXCLUDED.updated_at)
-          RETURNING id,customer_name,phone,address`, [
+          RETURNING id,customer_name,phone,address,interest`, [
           `FB-${randomUUID()}`, resolvedName, psid, inferredPhone || null, displayLatestMsg?.body || latestMsg?.body || null,
-          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, inferredAddress || null, convUpdatedIso
+          inferredProvince?.displayName || null, inferredProvince?.lat || null, inferredProvince?.lng || null, inferredAddress || null, inferredInterest || null, convUpdatedIso
         ])
         const syncedCustomer = customerRes.rows[0]
         const customerId = syncedCustomer?.id
@@ -2529,7 +2538,9 @@ const syncFbCustomersToLeads = async () => {
       const cleanLastMsg = cleanCustomerNote(c.last_message)
       const cleanNotes = cleanCustomerNote(c.notes)
 
-      const leadInterest = c.interest || cleanAd || 'Tư vấn âm thanh qua Facebook'
+      const leadInterest = (c.interest && c.interest !== 'Tư vấn âm thanh qua Facebook' && c.interest !== 'Tư vấn âm thanh karaoke')
+        ? c.interest
+        : extractCustomerInterest([c.last_message, c.notes], c.last_message, c.source_ad_name)
       const leadNote = [
         cleanAd ? `QC: ${cleanAd}` : '',
         cleanLastMsg ? `Tin nhắn: ${cleanLastMsg}` : '',
@@ -2545,6 +2556,7 @@ const syncFbCustomersToLeads = async () => {
           name = EXCLUDED.name,
           phone = EXCLUDED.phone,
           address = CASE WHEN leads.address IS NULL OR leads.address = '' THEN EXCLUDED.address ELSE leads.address END,
+          interest = CASE WHEN leads.interest IS NULL OR leads.interest = '' OR leads.interest = 'Tư vấn âm thanh qua Facebook' THEN EXCLUDED.interest ELSE leads.interest END,
           notes = CASE WHEN leads.notes IS NULL OR leads.notes = '' THEN EXCLUDED.notes ELSE leads.notes END,
           updated_at = CURRENT_TIMESTAMP
       `, [
