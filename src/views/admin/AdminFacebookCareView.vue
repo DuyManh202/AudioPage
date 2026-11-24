@@ -187,6 +187,37 @@
           >✕</button>
         </div>
 
+        <!-- BỘ LỌC KÊNH TƯƠNG TÁC (TIN NHẮN vs BÌNH LUẬN) -->
+        <div class="fb-channel-bar" aria-label="Phân loại kênh tương tác">
+          <button
+            type="button"
+            :class="['fb-channel-btn', { active: channelFilter === 'ALL' }]"
+            @click="channelFilter = 'ALL'"
+          >
+            <span class="channel-icon">🌐</span>
+            <span>Tất cả</span>
+            <b class="pill-count">{{ customers.length }}</b>
+          </button>
+          <button
+            type="button"
+            :class="['fb-channel-btn', 'btn-messenger', { active: channelFilter === 'MESSENGER' }]"
+            @click="channelFilter = 'MESSENGER'"
+          >
+            <span class="channel-icon">💬</span>
+            <span>Tin nhắn</span>
+            <b class="pill-count">{{ messengerCustomersCount }}</b>
+          </button>
+          <button
+            type="button"
+            :class="['fb-channel-btn', 'btn-comment', { active: channelFilter === 'COMMENT' }]"
+            @click="channelFilter = 'COMMENT'"
+          >
+            <span class="channel-icon">📝</span>
+            <span>Bình luận</span>
+            <b class="pill-count">{{ commentCustomersCount }}</b>
+          </button>
+        </div>
+
         <div class="fb-status-scroll">
           <button
             v-for="item in statusOptions"
@@ -195,7 +226,7 @@
             @click="filter = item.key"
           >
             <span>{{ item.label }}</span>
-            <b class="pill-count">{{ item.key === 'ALL' ? customers.length : customers.filter(c => c.status === item.key).length }}</b>
+            <b class="pill-count">{{ countForStatus(item.key) }}</b>
           </button>
         </div>
 
@@ -234,14 +265,22 @@
           <button
             v-for="c in visibleCustomers"
             :key="c.id"
-            :class="['customer-row', `status-border-${c.status.toLowerCase()}`, { active: selected?.id === c.id }]"
+            :class="['customer-row', `status-border-${c.status.toLowerCase()}`, { active: selected?.id === c.id }, isCommentCustomer(c) ? 'is-comment-row' : 'is-messenger-row']"
             @click="select(c)"
           >
             <div class="customer-row-main">
-              <strong>{{ c.customerName }}</strong>
-              <small class="line-clamp">{{ c.interest || c.lastMessage || 'Chưa ghi nhu cầu' }}</small>
+              <div class="customer-name-row">
+                <strong class="customer-name-text">{{ c.customerName }}</strong>
+                <span
+                  :class="['channel-badge', isCommentCustomer(c) ? 'badge-comment' : 'badge-messenger']"
+                  :title="isCommentCustomer(c) ? 'Khách tương tác từ Bình luận bài viết' : 'Khách nhắn tin qua Messenger'"
+                >
+                  {{ isCommentCustomer(c) ? '📝 Bình luận' : '💬 Tin nhắn' }}
+                </span>
+              </div>
+              <small class="line-clamp" :title="c.interest || c.lastMessage">{{ formatSnippet(c) }}</small>
               <div class="customer-row-sub">
-                <small class="contact-num">{{ c.phone || c.facebookId || c.id }}</small>
+                <small class="contact-num">{{ c.phone || (isCommentCustomer(c) ? 'Bình luận Facebook' : c.facebookId || c.id) }}</small>
                 <small v-if="c.sourceAdName || c.sourceAdId" class="source-small">QC: {{ c.sourceAdName || c.sourceAdId }}</small>
               </div>
             </div>
@@ -263,14 +302,21 @@
         <section v-if="selected" class="detail">
           <div class="detail-head">
             <div class="detail-title-col">
-              <h2>{{ selected.customerName }}</h2>
-              <p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId"> · ID: {{ selected.facebookId }}</span></p>
+              <div class="detail-name-row">
+                <h2>{{ selected.customerName }}</h2>
+                <span
+                  :class="['detail-channel-tag', isCommentCustomer(selected) ? 'tag-comment' : 'tag-messenger']"
+                >
+                  {{ isCommentCustomer(selected) ? '📝 Khách từ Bình luận Facebook' : '💬 Khách từ Tin nhắn Messenger' }}
+                </span>
+              </div>
+              <p>{{ selected.phone || 'Chưa có số điện thoại' }} <span v-if="selected.facebookId && !selected.facebookId.startsWith('FB-CMT-')"> · ID: {{ selected.facebookId }}</span></p>
             </div>
             <div class="detail-quick-actions">
               <a v-if="selected.phone" :href="'tel:' + selected.phone" class="quick-call-pill">
                 📞 Gọi ngay
               </a>
-              <a v-if="selected.facebookId" :href="'https://facebook.com/' + selected.facebookId" target="_blank" rel="noopener" class="quick-fb-pill">
+              <a v-if="selected.facebookId && !selected.facebookId.startsWith('FB-CMT-')" :href="'https://facebook.com/' + selected.facebookId" target="_blank" rel="noopener" class="quick-fb-pill">
                 💬 Facebook
               </a>
             </div>
@@ -312,17 +358,20 @@
 
           <div class="history-head">
             <h3>Lịch sử tư vấn</h3>
-            <span>{{ messengerConnected ? 'Tin nhắn OUT sẽ gửi qua Messenger' : 'Ghi nhận nội bộ · Messenger chưa kết nối' }}</span>
+            <span>{{ isCommentCustomer(selected) ? 'Bình luận Facebook & Phản hồi tự động' : (messengerConnected ? 'Tin nhắn OUT sẽ gửi qua Messenger' : 'Ghi nhận nội bộ · Messenger chưa kết nối') }}</span>
           </div>
           <div class="history">
-            <div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in', !m.platformMessageId && m.direction === 'IN' ? 'note' : '']">
+            <div v-for="m in selected.messages" :key="m.id" :class="['message', m.direction === 'OUT' ? 'out' : 'in', !m.platformMessageId && m.direction === 'IN' ? 'note' : '', m.body && m.body.startsWith('[Bình luận Facebook]') ? 'is-comment-msg' : '']">
               <small>
                 <template v-if="m.direction === 'OUT'">
                   <span class="sender-tag out">Tú Audio</span>
                   <span v-if="m.createdBy && m.createdBy !== 'Tú Audio'"> ({{ m.createdBy }})</span>
                 </template>
+                <template v-else-if="m.body && m.body.startsWith('[Bình luận Facebook]')">
+                  <span class="sender-tag comment-user">📝 Khách bình luận</span>
+                </template>
                 <template v-else-if="m.platformMessageId">
-                  <span class="sender-tag fb-user">Khách hàng (Messenger)</span>
+                  <span class="sender-tag fb-user">💬 Khách hàng (Messenger)</span>
                 </template>
                 <template v-else>
                   <span class="sender-tag staff-note">📝 Ghi chú nội bộ</span>
@@ -331,7 +380,7 @@
                 · {{ displayDate(m.createdAt) }}
               </small>
               <div v-if="m.body && !isPureImageLabel(m.body)" class="message-text">
-                <p>{{ m.body }}</p>
+                <p>{{ m.body.replace(/^\[Bình luận Facebook\]:\s*/i, '') }}</p>
               </div>
 
               <!-- Hiển thị ảnh thực tế nếu đã có attachments -->
@@ -377,6 +426,14 @@
             <div v-if="!messengerPolicyInfo.within24h && selected.phone" class="quick-contact-actions">
               <a :href="'tel:' + selected.phone" class="quick-contact-btn phone" title="Gọi điện cho khách">📞 Gọi {{ selected.phone }}</a>
               <a :href="'https://zalo.me/' + selected.phone.replace(/\D/g, '')" target="_blank" rel="noopener" class="quick-contact-btn zalo" title="Nhắn Zalo">💬 Mở Zalo</a>
+            </div>
+          </div>
+
+          <div v-if="isCommentCustomer(selected)" class="comment-channel-banner">
+            <span class="comment-banner-icon">📝</span>
+            <div class="comment-banner-content">
+              <strong>Khách hàng từ Bình luận bài viết / Reel trên Fanpage</strong>
+              <p>Hệ thống AI Tú Audio đã trả lời công khai dưới bình luận của khách. Để trao đổi thêm hoặc chốt đơn, nhân viên nên gọi điện trực tiếp hoặc nhắn tin qua Zalo số điện thoại của khách.</p>
             </div>
           </div>
 
@@ -848,6 +905,7 @@ import { useAdminStore } from '../../stores/adminStore'
 import { apiRequest } from '../../utils/api'
 import { VIETNAM_PROVINCES } from '../../../server/vietnamProvinces.js'
 const adminStore = useAdminStore()
+const channelFilter = ref('ALL') // 'ALL' | 'MESSENGER' | 'COMMENT'
 const customers = ref([]), newArrivals = ref([]), selected = ref(null), showCreate = ref(false), busy = ref(false), syncBusy = ref(false), error = ref(''), orderSyncNotice = ref(''), keyword = ref(''), filter = ref('ALL'), adFilter = ref('ALL'), messageBody = ref(''), messageDirection = ref('OUT'), messengerConnected = ref(false), aiEnabled = ref(false), commentAiEnabled = ref(true), lastSyncedAt = ref(''), syncError = ref(''), ads = ref([]), adsBusy = ref(false), adsError = ref(''), adsConfigured = ref(false), autoMatchingBusy = ref(false), autoMatchNotice = ref(''), resetMatchingBusy = ref(false)
 const currentTab = ref('CARE')
 const analyticsData = ref([])
@@ -959,7 +1017,56 @@ const knownAds = computed(() => {
   })
   return [...grouped.values()].sort((a, b) => a.name.localeCompare(b.name, 'vi'))
 })
-const visibleCustomers = computed(() => customers.value.filter(c => (filter.value === 'ALL' || c.status === filter.value) && (adFilter.value === 'ALL' || (adFilter.value === 'NONE' ? !c.sourceAdId : c.sourceAdId === adFilter.value)) && `${c.customerName} ${c.phone} ${c.interest} ${c.lastMessage || ''} ${c.facebookId} ${c.sourceAdName || ''} ${c.sourceCampaignName || ''} ${c.sourceAdId || ''}`.toLowerCase().includes(keyword.value.toLowerCase())))
+
+const isCommentCustomer = (c) => {
+  if (!c) return false
+  return Boolean(
+    c.sourceType === 'FACEBOOK_COMMENT' ||
+    String(c.id || '').startsWith('FB-CMT-') ||
+    String(c.facebookId || '').startsWith('FB-CMT-') ||
+    (c.lastMessage && c.lastMessage.startsWith('[Bình luận Facebook]')) ||
+    (c.notes && c.notes.includes('[Bình luận Facebook]'))
+  )
+}
+
+const isMessengerCustomer = (c) => Boolean(c && !isCommentCustomer(c))
+
+const messengerCustomersCount = computed(() => customers.value.filter(isMessengerCustomer).length)
+const commentCustomersCount = computed(() => customers.value.filter(isCommentCustomer).length)
+
+const countForStatus = (statusKey) => {
+  return customers.value.filter(c => {
+    if (channelFilter.value === 'MESSENGER' && !isMessengerCustomer(c)) return false
+    if (channelFilter.value === 'COMMENT' && !isCommentCustomer(c)) return false
+    if (statusKey !== 'ALL' && c.status !== statusKey) return false
+    return true
+  }).length
+}
+
+const formatSnippet = (c) => {
+  if (!c) return ''
+  const text = c.interest || c.lastMessage || 'Chưa ghi nhu cầu'
+  return text.replace(/^\[Bình luận Facebook\]:\s*/i, '').trim()
+}
+
+const visibleCustomers = computed(() => customers.value.filter(c => {
+  if (channelFilter.value === 'MESSENGER' && !isMessengerCustomer(c)) return false
+  if (channelFilter.value === 'COMMENT' && !isCommentCustomer(c)) return false
+  if (filter.value !== 'ALL' && c.status !== filter.value) return false
+  if (adFilter.value !== 'ALL') {
+    if (adFilter.value === 'NONE') {
+      if (c.sourceAdId) return false
+    } else if (c.sourceAdId !== adFilter.value) {
+      return false
+    }
+  }
+  if (keyword.value.trim()) {
+    const kw = keyword.value.trim().toLowerCase()
+    const target = `${c.customerName} ${c.phone} ${c.interest} ${c.lastMessage || ''} ${c.facebookId} ${c.sourceAdName || ''} ${c.sourceCampaignName || ''} ${c.sourceAdId || ''}`.toLowerCase()
+    if (!target.includes(kw)) return false
+  }
+  return true
+}))
 const isEditingDetail = () => typeof document !== 'undefined' && Boolean(document.activeElement?.closest('.detail .edit-grid, .detail .notes, .detail .detail-head'))
 async function load({ silent = false, force = false } = {}) {
   try {
@@ -1737,6 +1844,73 @@ onBeforeUnmount(() => {
   border-color: var(--ios-blue);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
 }
+
+/* BỘ LỌC KÊNH TƯƠNG TÁC (TIN NHẮN vs BÌNH LUẬN) */
+.fb-channel-bar {
+  display: flex;
+  gap: 6px;
+  background: #f2f2f7;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.fb-channel-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: #636366;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+.fb-channel-btn:hover {
+  color: var(--ios-label);
+  background: rgba(255, 255, 255, 0.6);
+}
+.fb-channel-btn.active {
+  background: #ffffff;
+  color: var(--ios-label);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.fb-channel-btn.btn-messenger.active {
+  color: #007aff;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.18);
+}
+.fb-channel-btn.btn-comment.active {
+  color: #d97706;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.18);
+}
+.fb-channel-btn .channel-icon {
+  font-size: 0.9rem;
+}
+.fb-channel-btn .pill-count {
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.fb-channel-btn.active .pill-count {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--ios-label);
+}
+.fb-channel-btn.btn-messenger.active .pill-count {
+  background: rgba(0, 122, 255, 0.12);
+  color: #007aff;
+}
+.fb-channel-btn.btn-comment.active .pill-count {
+  background: rgba(217, 119, 6, 0.14);
+  color: #d97706;
+}
+
 .fb-status-scroll {
   display: flex;
   gap: 6px;
@@ -2009,6 +2183,17 @@ onBeforeUnmount(() => {
   border-color: rgba(0, 122, 255, 0.35);
   box-shadow: 0 2px 8px rgba(0, 122, 255, 0.15);
 }
+.customer-row.is-comment-row {
+  background: #fffdf7;
+  border-color: rgba(245, 158, 11, 0.22);
+}
+.customer-row.is-comment-row:hover {
+  background: #fdf8eb;
+}
+.customer-row.is-comment-row.active {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+}
 .customer-row-main {
   flex: 1;
   min-width: 0;
@@ -2016,10 +2201,37 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 3px;
 }
-.customer-row-main strong {
+.customer-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.customer-name-text {
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--ios-label);
+}
+.channel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+.channel-badge.badge-messenger {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
+  border: 1px solid rgba(0, 122, 255, 0.22);
+}
+.channel-badge.badge-comment {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 .customer-row-sub {
   display: flex;
@@ -2106,6 +2318,35 @@ onBeforeUnmount(() => {
   margin: 0 0 4px;
   font-size: 1.1rem;
   font-weight: 700;
+}
+.detail-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.detail-name-row h2 {
+  margin: 0;
+}
+.detail-channel-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.2px;
+}
+.detail-channel-tag.tag-messenger {
+  background: rgba(0, 122, 255, 0.12);
+  color: #007aff;
+  border: 1px solid rgba(0, 122, 255, 0.25);
+}
+.detail-channel-tag.tag-comment {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 .detail-head p {
   font-size: 0.78rem;
@@ -2309,8 +2550,43 @@ onBeforeUnmount(() => {
 .sender-tag.staff-note {
   color: #b45309;
 }
+.sender-tag.comment-user {
+  color: #d97706;
+}
 .sender-tag.out {
   color: #ffffff;
+}
+.message.is-comment-msg {
+  background: #fefce8 !important;
+  border-left: 3px solid #f59e0b !important;
+}
+.comment-channel-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fffbeb;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 10px;
+}
+.comment-banner-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.comment-banner-content strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #92400e;
+  margin-bottom: 2px;
+}
+.comment-banner-content p {
+  font-size: 0.76rem;
+  color: #b45309;
+  margin: 0;
+  line-height: 1.4;
 }
 .message small {
   color: var(--ios-secondary);
