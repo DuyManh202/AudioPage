@@ -199,6 +199,15 @@
         <div class="toolbar-actions">
           <button
             type="button"
+            class="adm-btn adm-btn-purple"
+            :disabled="generatingAiScript"
+            @click="openAiGenerateModal"
+          >
+            <span v-if="generatingAiScript">⏳ AI Đang Soạn...</span>
+            <span v-else>✨ AI Tự Động Soạn Kịch Bản</span>
+          </button>
+          <button
+            type="button"
             class="adm-btn adm-btn-gold"
             :disabled="trainingInFlight"
             @click="triggerRetrainAi"
@@ -484,6 +493,39 @@
           <button type="button" class="close-btn" @click="showRuleModal = false">✕</button>
         </div>
         <form @submit.prevent="saveRule">
+          <!-- Hộp AI Tự Động Soạn Kịch Bản -->
+          <div class="ai-generator-banner">
+            <div class="ai-banner-title">
+              <span class="ai-badge-sparkle">✨ AI TỰ ĐỘNG SOẠN KỊCH BẢN</span>
+              <span class="ai-banner-sub">Gemini 3.8 Flash tự động bắt bệnh tâm lý, tìm từ khóa &amp; viết câu trả lời</span>
+            </div>
+            <div class="ai-banner-input-group">
+              <input
+                v-model="aiPromptInput"
+                type="text"
+                placeholder="Nhập ý tưởng (VD: Khách sợ ồn hàng xóm, chê đắt, hỏi loa kéo...) hoặc để trống để AI tự sáng tạo"
+                :disabled="generatingAiScript"
+                @keydown.enter.prevent="handleAutoGenerateScript"
+              />
+              <button
+                type="button"
+                class="adm-btn adm-btn-purple ai-gen-btn"
+                :disabled="generatingAiScript"
+                @click="handleAutoGenerateScript"
+              >
+                <span v-if="generatingAiScript">⏳ Đang viết...</span>
+                <span v-else>✨ AI Viết Ngay</span>
+              </button>
+            </div>
+            <div class="ai-quick-suggestions">
+              <span class="quick-title">Gợi ý nhanh:</span>
+              <button type="button" class="quick-chip" @click="applyQuickTopic('Khách ở chung cư sợ làm phiền hàng xóm')">Chung cư sợ ồn</button>
+              <button type="button" class="quick-chip" @click="applyQuickTopic('Khách chê giá cao hơn chỗ khác')">Chê giá cao</button>
+              <button type="button" class="quick-chip" @click="applyQuickTopic('Khách muốn vang số ghép với amply cũ')">Vang ghép Amply cũ</button>
+              <button type="button" class="quick-chip" @click="applyQuickTopic('Khách sợ mua phải hàng nhái bãi Trung Quốc')">Sợ hàng nhái</button>
+            </div>
+          </div>
+
           <label class="form-field">
             <span>Tiêu đề kịch bản:</span>
             <input
@@ -579,6 +621,8 @@ const trainingInFlight = ref(false)
 const showRuleModal = ref(false)
 const isEditingRule = ref(false)
 const savingRule = ref(false)
+const generatingAiScript = ref(false)
+const aiPromptInput = ref('')
 
 const ruleForm = ref({
   id: '',
@@ -589,6 +633,45 @@ const ruleForm = ref({
   suggested_response: '',
   is_active: true
 })
+
+const handleAutoGenerateScript = async () => {
+  generatingAiScript.value = true
+  try {
+    const res = await apiRequest('/admin/ai-training/auto-generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        topic: aiPromptInput.value.trim(),
+        personaType: ruleForm.value.persona_type
+      })
+    })
+
+    if (res?.data) {
+      if (res.data.title) ruleForm.value.title = res.data.title
+      if (res.data.persona_type) ruleForm.value.persona_type = res.data.persona_type
+      if (res.data.psychological_trigger) ruleForm.value.psychological_trigger = res.data.psychological_trigger
+      if (res.data.customer_keywords) ruleForm.value.customer_keywords = res.data.customer_keywords
+      if (res.data.suggested_response) ruleForm.value.suggested_response = res.data.suggested_response
+      adminStore.showNotice('✨ AI đã tự động soạn thảo xong toàn bộ kịch bản tâm lý!', 'success')
+    } else {
+      adminStore.showNotice(res?.message || 'Không thể tạo kịch bản từ AI', 'warning')
+    }
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Lỗi khi gọi AI soạn kịch bản', 'error')
+  } finally {
+    generatingAiScript.value = false
+  }
+}
+
+const applyQuickTopic = (topic) => {
+  aiPromptInput.value = topic
+  handleAutoGenerateScript()
+}
+
+const openAiGenerateModal = () => {
+  openCreateRuleModal()
+  aiPromptInput.value = ''
+  handleAutoGenerateScript()
+}
 
 const activeRulesCount = computed(() => trainingRules.value.filter(r => r.is_active).length)
 
@@ -1975,6 +2058,116 @@ const sendTestMessage = async () => {
   text-align: center;
   color: #64748b;
   font-size: 0.95rem;
+}
+
+/* AI Generator Banner */
+.ai-generator-banner {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(79, 70, 229, 0.06) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.ai-banner-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ai-badge-sparkle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+}
+
+.ai-banner-sub {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ai-banner-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ai-banner-input-group input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.88rem;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.ai-banner-input-group input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.ai-gen-btn {
+  white-space: nowrap;
+  font-weight: 600;
+  padding: 9px 18px;
+  font-size: 0.85rem;
+}
+
+.ai-quick-suggestions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-title {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.quick-chip {
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.quick-chip:hover {
+  background: #f5f3ff;
+  border-color: #8b5cf6;
+  color: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.adm-btn-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 6px rgba(109, 40, 217, 0.25);
+}
+
+.adm-btn-purple:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {

@@ -5255,6 +5255,98 @@ app.post('/api/v1/admin/ai-training/train', authenticateAdmin, authorizeRoles('S
   }
 })
 
+// AI TỰ ĐỘNG SOẠN KỊCH BẢN TÂM LÝ BÁN HÀNG THEO YÊU CẦU HOẶC TỰ ĐỘNG ĐỀ XUẤT
+app.post('/api/v1/admin/ai-training/auto-generate', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const { topic, personaType } = req.body || {}
+    const apiKey = await getGeminiApiKey()
+    const model = await getGeminiModel()
+    if (!apiKey) {
+      return res.status(400).json({ success: false, message: 'Chưa cấu hình Google Gemini API Key trong hệ thống.' })
+    }
+
+    // Lấy danh sách các kịch bản hiện có để AI không bị trùng lặp
+    const existingRules = await query('SELECT title, customer_keywords FROM ai_training_rules LIMIT 15')
+    const existingTitles = existingRules.rows.map(r => r.title).join('; ')
+
+    // Lấy thêm vài tin nhắn thực tế gần đây của khách làm cảm hứng
+    let recentCustomerMsgs = ''
+    try {
+      const msgs = await query(`
+        SELECT body FROM facebook_messages 
+        WHERE direction = 'IN' AND body IS NOT NULL AND length(body) > 10 
+        ORDER BY created_at DESC LIMIT 15
+      `)
+      if (msgs.rows.length) {
+        recentCustomerMsgs = msgs.rows.map(m => m.body.replace(/\\n+/g, ' ')).join(' | ')
+      }
+    } catch (_) {}
+
+    const prompt = `Bạn là Chuyên gia Đào tạo AI Bán Hàng & Chuyên gia Âm thanh Karaoke cao cấp Tú Audio (tuaudio.vn, hotline/Zalo 0984.259.898, showroom Phố Nguyễn Danh Phương, Vĩnh Yên).
+Nhiệm vụ của bạn là SOẠN THẢO 1 KỊCH BẢN TÂM LÝ KHÁCH HÀNG THỰC CHIẾN MỚI để nạp vào não bộ AI cho hệ thống bán hàng và tư vấn âm thanh.
+
+${topic ? `Yêu cầu chủ đề / tình huống từ anh Tú: "${topic}"` : 'Hãy tự động phân tích và tạo ra 1 tình huống bán hàng âm thanh karaoke gia đình thực tế và rất phổ biến mà khách hay gặp (chưa trùng với các kịch bản đã có).'}
+${personaType ? `Nhóm tâm lý ưu tiên: ${personaType}` : ''}
+
+Các kịch bản hiện đã có trong hệ thống (HÃY TRÁNH TRÙNG LẶP):
+${existingTitles || 'Chưa có'}
+
+${recentCustomerMsgs ? `Các câu hỏi thực tế khách vừa nhắn trên Fanpage để bạn tham khảo:\n${recentCustomerMsgs}\n` : ''}
+
+YÊU CẦU ĐẶC BIỆT THEO CHUẨN TÚ AUDIO:
+1. "persona_type" phải là một trong các giá trị: "HU_RIT_THAT_VONG", "NANG_CAP_DO_CU", "DICH_VU_TAN_NHA", "DO_GIA_SO_HO", "KHACH_MOI_TRON_BO", hoặc "CHUYEN_SAU".
+2. "psychological_trigger": Nêu rõ nỗi sợ, băn khoăn thầm kín của khách và đòn bẩy tâm lý để thuyết phục họ.
+3. "customer_keywords": 4-8 cụm từ khách hay nhắn nhất (viết chữ thường không dấu hoặc có dấu, ngăn cách bằng dấu phẩy).
+4. "suggested_response": Câu trả lời 1-2 câu cực kỳ thấu cảm, chuyên môn cao, đúng văn phong của anh Tú Audio. Tuyệt đối KHÔNG từ chối khách thô lỗ. Luôn gợi mở giải pháp và khéo léo xin số điện thoại hoặc Zalo để gửi video test / tư vấn chi tiết.
+
+TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON (không kèm markdown):
+{
+  "title": "Tiêu đề kịch bản ngắn gọn, rõ ràng",
+  "persona_type": "Mã nhóm persona",
+  "psychological_trigger": "Phân tích nỗi đau tâm lý và giải pháp",
+  "customer_keywords": "từ khóa 1, từ khóa 2, từ khóa 3, từ khóa 4",
+  "suggested_response": "Câu trả lời mẫu chuẩn phong cách anh Tú"
+}`
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+    const geminiRes = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json'
+        }
+      }),
+      signal: AbortSignal.timeout(20000)
+    })
+
+    const data = await geminiRes.json().catch(() => ({}))
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    if (!rawText) {
+      throw new Error('Gemini không phản hồi dữ liệu kịch bản.')
+    }
+
+    let parsed = null
+    try {
+      const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
+      parsed = JSON.parse(cleanJson)
+    } catch (e) {
+      throw new Error('Dữ liệu JSON từ Gemini không đúng định dạng: ' + rawText.slice(0, 100))
+    }
+
+    res.json({
+      success: true,
+      message: 'AI đã tự động soạn kịch bản tâm lý thành công!',
+      data: parsed
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // ==========================================
 // CẤU HÌNH DỊP LỄ HỘI & HIỆU ỨNG SỰ KIỆN
 // ==========================================
