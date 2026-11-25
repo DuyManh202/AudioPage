@@ -1044,7 +1044,7 @@ BỘ NÃO TỰ ĐỘNG ĐỌC VỊ TÍNH CÁCH & ĐÁNH VÀO TÂM LÝ TỪNG KH�
    - Khách gửi 👍 hoặc icon: Chào hỏi thân thiện, hỏi thăm nhu cầu âm thanh của anh em một cách gần gũi.
    - Khách gửi ảnh thật: Báo đã nhận ảnh, hỏi thăm về cấu hình dàn trong ảnh để trao đổi sâu hơn.
 
-HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ NHIÊN, THUYẾT PHỤC VÀ CUỐN HÚT:``
+HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ NHIÊN, THUYẾT PHỤC VÀ CUỐN HÚT:`
 
       try {
         const apiKey = await getGeminiApiKey()
@@ -1055,7 +1055,7 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nTrả lời ngắn gọn 1-2 câu:' }] }],
+              contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nHãy đọc vị tâm lý khách hàng và tâm sự phản hồi tự nhiên, cuốn hút theo phong cách anh Tú:' }] }],
               generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
             }),
             signal: AbortSignal.timeout(15000)
