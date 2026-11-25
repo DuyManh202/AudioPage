@@ -878,8 +878,30 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
     // Nếu tin nhắn thực mới nhất trong hội thoại đã là OUT (Tú Audio hoặc AI đã trả lời) -> Dừng, không gửi lặp
     if (!latestRealMsg || latestRealMsg.direction !== 'IN') return
 
-    const latestText = latestInbound?.body || ''
-    if (!latestText || isSystemFacebookNotice(latestText)) return
+    // XỬ LÝ KHÁCH NHẮN NHIỀU TIN LIÊN TIẾP MỘT LÚC (GỘP TRỌN VẸN CÁC CÂU HỎI)
+    // Tìm vị trí tin nhắn OUT gần nhất mà Shop hoặc AI đã gửi cho khách
+    let lastOutIndex = -1
+    for (let i = realMsgs.length - 1; i >= 0; i--) {
+      if (realMsgs[i].direction === 'OUT') {
+        lastOutIndex = i
+        break
+      }
+    }
+
+    // Lấy tất cả các tin nhắn IN liên tiếp kể từ sau tin OUT gần nhất (toàn bộ đợt nhắn mới này của khách)
+    const pendingInboundMsgs = lastOutIndex >= 0
+      ? realMsgs.slice(lastOutIndex + 1).filter(m => m.direction === 'IN')
+      : realMsgs.filter(m => m.direction === 'IN')
+
+    if (!pendingInboundMsgs.length) return
+
+    // Gộp tất cả các tin nhắn mới của khách thành 1 văn bản đầy đủ, ngăn cách bằng xuống dòng
+    const latestText = pendingInboundMsgs
+      .map(m => (m.body || '').trim())
+      .filter(b => b && !isSystemFacebookNotice(b))
+      .join('\n')
+
+    if (!latestText) return
 
     const isCommentReferral = msgs.some(m => m.body?.includes('Facebook tạo đoạn chat này vì') || m.body?.includes('comment_id='))
 
@@ -1001,7 +1023,9 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     // 3. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng ngữ cảnh câu hỏi của khách
     if (!reply) {
-      const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
+      // Lịch sử trao đổi trước cụm tin nhắn mới này của khách
+      const priorMsgs = lastOutIndex >= 0 ? realMsgs.slice(0, lastOutIndex + 1) : []
+      const historyFormatted = priorMsgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
       const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
       const psychologicalContext = await getAiPsychologicalTrainingContext()
 
@@ -1032,15 +1056,23 @@ BỘ NÃO TỰ ĐỘNG ĐỌC VỊ TÍNH CÁCH & ĐÁNH VÀO TÂM LÝ TỪNG KH�
 
 2. NGHỆ THUẬT TÂM SỰ & DẪN DẮT (GIAO TIẾP TỰ NHIÊN NHƯ NGƯỜI THẬT NÓI CHUYỆN VỚI NHAU):
    - Nói chuyện tự nhiên, có cảm xúc, linh hoạt và thông minh như một con người thực thụ. Tuyệt đối KHÔNG trả lời như robot, KHÔNG dùng mẫu câu rập khuôn, KHÔNG lặp lại tin nhắn cũ.
-   - Độ dài vừa vặn (2 đến 3 câu ngắt ý tự nhiên, khoảng 35 - 55 từ), đủ để tâm sự thấu đáo mà không làm khách ngại đọc.
+   - Độ dài vừa vặn (2 đến 4 câu ngắt ý tự nhiên), đủ để tâm sự thấu đáo mà không làm khách ngại đọc.
    - ${phoneInstruction}
 
-3. NGUYÊN TẮC CỐT LÕI VỀ DỊCH VỤ & SẢN PHẨM:
+3. QUY TẮC BẮT BUỘC KHI KHÁCH HỎI NHIỀU CÂU / NHẮN NHIỀU TIN CÙNG MỘT LÚC:
+   - Khách hàng thường gửi 2-3 tin nhắn liên tiếp hỏi các ý khác nhau (Ví dụ: tin 1 hỏi địa chỉ showroom, tin 2 hỏi bên mình có đi căn chỉnh tận nhà không và xem có cần bổ sung thêm đồ gì không).
+   - TUYỆT ĐỐI KHÔNG ĐƯỢC CHỈ TRẢ LỜI MỖI MỘT Ý RỒI BỎ QUÊN CÁC Ý CÒN LẠI!
+   - BẠN PHẢI TRẢ LỜI ĐẦY ĐỦ, TRỌN VẸN VÀ LIỀN MẠCH TẤT CẢ CÁC CÂU HỎI CỦA KHÁCH:
+     + Trả lời câu hỏi 1 (ví dụ chỉ rõ showroom ở 220 Nguyễn Danh Phương, Vĩnh Yên).
+     + Trả lời câu hỏi 2 (ví dụ khẳng định bên em có nhận qua tận nơi căn chỉnh, kiểm tra thiết bị nào còn tốt thì giữ lại để tiết kiệm chi phí, thiếu gì mới bổ sung sau).
+     + Khéo léo mời bác kết bạn Zalo hoặc gửi vị trí/ảnh dàn để tiện trao đổi.
+
+4. NGUYÊN TẮC CỐT LÕI VỀ DỊCH VỤ & SẢN PHẨM:
    - DỊCH VỤ CĂN CHỈNH / SETUP TẬN NƠI: BẮT BUỘC NHẬN HẾT 100%! Tuyệt đối CẤM từ chối khách lẻ! Tâm sự bên em có nhận qua tận nhà và có đội thợ đi ghép chuyến các tỉnh liên tục nên chi phí rất hợp lý, hoặc hỗ trợ qua máy tính Ultraviewer rất nhanh gọn.
    - NÂNG CẤP ĐỒ CŨ: Luôn ưu tiên giữ lại món đồ nào còn tốt để tiết kiệm tiền cho khách, chỉ tư vấn nâng cấp món thực sự cần thiết.
    - TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất cháy nổ. Lịch sự định hướng khách sang dàn karaoke gia đình.
 
-4. XỬ LÝ ICON & ẢNH GỬI (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI):
+5. XỬ LÝ ICON & ẢNH GỬI (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI):
    - Khách gửi 👍 hoặc icon: Chào hỏi thân thiện, hỏi thăm nhu cầu âm thanh của anh em một cách gần gũi.
    - Khách gửi ảnh thật: Báo đã nhận ảnh, hỏi thăm về cấu hình dàn trong ảnh để trao đổi sâu hơn.
 
@@ -1055,7 +1087,14 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: systemInstruction + '\n\nLỊCH SỬ CHAT:\n' + historyFormatted + '\n\nKhách nhắn: "' + latestText + '"\nHãy đọc vị tâm lý khách hàng và tâm sự phản hồi tự nhiên, cuốn hút theo phong cách anh Tú:' }] }],
+              contents: [{
+                role: 'user',
+                parts: [{
+                  text: systemInstruction +
+                    (historyFormatted ? '\n\nLỊCH SỬ CHAT TRƯỚC ĐÓ:\n' + historyFormatted : '') +
+                    '\n\nCÁC CÂU HỎI MỚI KHÁCH VỪA NHẮN (LƯU Ý ĐẶC BIỆT: NẾU KHÁCH HỎI NHIỀU Ý HOẶC NHẮN NHIỀU TIN, BẮT BUỘC TRẢ LỜI ĐẦY ĐỦ TẤT CẢ CÁC CÂU HỎI MỘT CÁCH GỌN GÀNG, KHÔNG ĐƯỢC BỎ SÓT Ý NÀO):\n"' + latestText + '"\n\nHãy đọc vị tâm lý khách hàng và trả lời trọn vẹn mọi thắc mắc của khách theo phong cách chuyên gia anh Tú:'
+                }]
+              }],
               generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
             }),
             signal: AbortSignal.timeout(15000)
