@@ -557,7 +557,7 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
               THEN EXCLUDED.customer_name
               ELSE facebook_care_customers.customer_name
             END,
-            phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
+            phone = COALESCE(NULLIF(EXCLUDED.phone, ''), facebook_care_customers.phone),
             last_message = COALESCE(EXCLUDED.last_message, facebook_care_customers.last_message),
             address=COALESCE(NULLIF(facebook_care_customers.address,''),EXCLUDED.address),
             interest = CASE
@@ -578,6 +578,9 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
         if (!customerId) continue
         if (inferredPhone || inferredProvince || inferredAddress) {
           await syncOpenOrdersForCustomer({ customerName: syncedCustomer.customer_name, phone: syncedCustomer.phone, address: syncedCustomer.address })
+          if (syncedCustomer.phone) {
+            await syncFbCustomersToLeads().catch(() => {})
+          }
         }
         syncedCustomers += 1
 
@@ -1187,7 +1190,7 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
               THEN EXCLUDED.customer_name
               ELSE facebook_care_customers.customer_name
             END,
-            phone=COALESCE(facebook_care_customers.phone,EXCLUDED.phone),
+            phone = COALESCE(NULLIF(EXCLUDED.phone, ''), facebook_care_customers.phone),
             last_message=COALESCE(EXCLUDED.last_message,facebook_care_customers.last_message),
             address=COALESCE(NULLIF(facebook_care_customers.address,''),EXCLUDED.address),
             province=CASE WHEN facebook_care_customers.location_manually_set THEN facebook_care_customers.province ELSE COALESCE(EXCLUDED.province,facebook_care_customers.province) END,
@@ -1207,6 +1210,7 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
         const syncedCustomer = customer.rows[0]
         if (syncedCustomer?.phone) {
           await syncOpenOrdersForCustomer({ customerName: syncedCustomer.customer_name, phone: syncedCustomer.phone, address: syncedCustomer.address })
+          await syncFbCustomersToLeads().catch(() => {})
         }
         if (!text) continue
         const platformMessageId = event.message?.mid || (event.timestamp ? `postback-${psid}-${event.timestamp}` : `event-${randomUUID()}`)
@@ -2663,27 +2667,50 @@ const syncFbCustomersToLeads = async () => {
 
       const leadStatus = c.status === 'DA_CHOT' ? 'DA_CHOT' : (c.status === 'DA_HUY' ? 'HUY' : (c.status === 'DANG_TU_VAN' ? 'DA_GOI' : 'MOI'))
 
-      await query(`
-        INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, '', $6, 0, $7, COALESCE($8, CURRENT_TIMESTAMP), COALESCE($9, CURRENT_TIMESTAMP))
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          phone = EXCLUDED.phone,
-          address = CASE WHEN leads.address IS NULL OR leads.address = '' THEN EXCLUDED.address ELSE leads.address END,
-          interest = CASE WHEN leads.interest IS NULL OR leads.interest = '' OR leads.interest = 'Tư vấn âm thanh qua Facebook' THEN EXCLUDED.interest ELSE leads.interest END,
-          notes = CASE WHEN leads.notes IS NULL OR leads.notes = '' THEN EXCLUDED.notes ELSE leads.notes END,
-          updated_at = CURRENT_TIMESTAMP
-      `, [
-        leadId,
-        c.customer_name || 'Khách Facebook ' + cleanP.slice(-4),
-        cleanP,
-        leadAddress,
-        leadInterest,
-        leadStatus,
-        leadNote,
-        c.created_at || new Date(),
-        c.updated_at || new Date()
-      ]).catch(() => {})
+      // Kiểm tra xem số điện thoại này đã có trong leads chưa (tránh sinh 2 dòng LD-... và FB-CMT-...)
+      const existingLead = await query(`SELECT id, name, notes, address, interest FROM leads WHERE phone = $1 LIMIT 1`, [cleanP])
+      if (existingLead.rows.length > 0) {
+        const cur = existingLead.rows[0]
+        const mergedNotes = [cur.notes, leadNote].filter(Boolean)
+        const uniqueMerged = [...new Set(mergedNotes.join(' · ').split(' · '))].join(' · ').slice(0, 2000)
+        await query(`
+          UPDATE leads SET
+            name = CASE WHEN leads.name IS NULL OR leads.name = '' OR leads.name LIKE 'Khách Facebook %' THEN $1 ELSE leads.name END,
+            address = CASE WHEN leads.address IS NULL OR leads.address = '' OR leads.address = 'Facebook Comment Lead' THEN $2 ELSE leads.address END,
+            interest = CASE WHEN leads.interest IS NULL OR leads.interest = '' OR leads.interest = 'Tư vấn âm thanh qua Facebook' THEN $3 ELSE leads.interest END,
+            notes = $4,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $5
+        `, [
+          c.customer_name || cur.name || ('Khách Facebook ' + cleanP.slice(-4)),
+          leadAddress || cur.address,
+          leadInterest || cur.interest,
+          uniqueMerged,
+          cur.id
+        ]).catch(() => {})
+      } else {
+        await query(`
+          INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, '', $6, 0, $7, COALESCE($8, CURRENT_TIMESTAMP), COALESCE($9, CURRENT_TIMESTAMP))
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            phone = EXCLUDED.phone,
+            address = CASE WHEN leads.address IS NULL OR leads.address = '' THEN EXCLUDED.address ELSE leads.address END,
+            interest = CASE WHEN leads.interest IS NULL OR leads.interest = '' OR leads.interest = 'Tư vấn âm thanh qua Facebook' THEN EXCLUDED.interest ELSE leads.interest END,
+            notes = CASE WHEN leads.notes IS NULL OR leads.notes = '' THEN EXCLUDED.notes ELSE leads.notes END,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          leadId,
+          c.customer_name || 'Khách Facebook ' + cleanP.slice(-4),
+          cleanP,
+          leadAddress,
+          leadInterest,
+          leadStatus,
+          leadNote,
+          c.created_at || new Date(),
+          c.updated_at || new Date()
+        ]).catch(() => {})
+      }
     }
   } catch (err) {
     console.warn('[syncFbCustomersToLeads warning]:', err.message)

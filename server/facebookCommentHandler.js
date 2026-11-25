@@ -431,18 +431,25 @@ async function saveCustomerToCrm({ customerId, name, phone, message, province, a
     `, [customerId, name, phone, message, source, province, address])
 
     if (phone) {
-      await query(`
-        INSERT INTO leads (id, name, phone, address, interest, status, notes)
-        VALUES ($1, $2, $3, $4, $5, 'MOI', $6)
-        ON CONFLICT DO NOTHING
-      `, [
-        'LD-' + randomUUID(),
-        name,
-        phone,
-        address || province || 'Facebook Comment Lead',
-        'Khách để lại SĐT trên bình luận bài viết Facebook',
-        'Khách bình luận trên Fanpage: ' + message
-      ]).catch(() => {})
+      const existing = await query(`SELECT id, notes FROM leads WHERE phone = $1 LIMIT 1`, [phone])
+      if (existing.rows.length > 0) {
+        const currentNotes = existing.rows[0].notes || ''
+        const newNote = 'Khách bình luận trên Fanpage: ' + message
+        const updatedNotes = currentNotes.includes(message) ? currentNotes : (currentNotes ? currentNotes + ' · ' + newNote : newNote).slice(0, 2000)
+        await query(`UPDATE leads SET notes = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [updatedNotes, existing.rows[0].id])
+      } else {
+        await query(`
+          INSERT INTO leads (id, name, phone, address, interest, status, notes)
+          VALUES ($1, $2, $3, $4, $5, 'MOI', $6)
+        `, [
+          'LD-' + randomUUID(),
+          name,
+          phone,
+          address || province || 'Facebook Comment Lead',
+          'Khách để lại SĐT trên bình luận bài viết Facebook',
+          'Khách bình luận trên Fanpage: ' + message
+        ]).catch(() => {})
+      }
     }
   } catch (err) {
     console.warn('[CRM Save Warning]:', err.message)
