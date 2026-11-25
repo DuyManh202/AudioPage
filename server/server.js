@@ -116,12 +116,27 @@ const syncOpenOrdersForCustomer = async ({ customerName, phone, previousPhone, a
   return result.rowCount || 0
 }
 
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',').map(origin => origin.trim()).filter(Boolean)
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean)
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
-    callback(new Error('Origin chưa được cho phép bởi cấu hình CORS.'))
-  }
+    if (!origin) return callback(null, true)
+    if (
+      allowedOrigins.includes(origin) ||
+      origin === 'https://amek.io.vn' ||
+      origin === 'http://amek.io.vn' ||
+      origin.endsWith('.amek.io.vn') ||
+      origin === 'https://audioshop.vercel.app' ||
+      origin.endsWith('.vercel.app')
+    ) {
+      return callback(null, true)
+    }
+    return callback(null, false)
+  },
+  credentials: true
 }))
 app.use(express.json({ limit: '10mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer) } }))
 
