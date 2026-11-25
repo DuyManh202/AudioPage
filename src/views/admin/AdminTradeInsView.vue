@@ -220,14 +220,16 @@
     </div>
 
     <!-- Hộp phóng to ảnh thiết bị cũ -->
-    <div v-if="previewImage" class="adm-modal-backdrop" @click="previewImage = null">
-      <div class="lightbox-wrap" @click.stop>
-        <button type="button" class="lightbox-close" @click="previewImage = null">
-          <AdminIcon name="x" :size="18" />
-        </button>
-        <img :src="previewImage" alt="Ảnh thực tế thiết bị cũ của khách" />
+    <Teleport to="body">
+      <div v-if="previewImage" class="adm-modal-backdrop" @click="previewImage = null">
+        <div class="lightbox-wrap" @click.stop>
+          <button type="button" class="lightbox-close" @click="previewImage = null">
+            <AdminIcon name="x" :size="18" />
+          </button>
+          <img :src="previewImage" alt="Ảnh thực tế thiết bị cũ của khách" />
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 

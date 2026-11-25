@@ -353,79 +353,81 @@
     </div>
 
     <!-- Modal Thêm Mới / Chỉnh Sửa Hồ Sơ Khách Hàng -->
-    <div v-if="modalOpen" class="adm-modal-backdrop" @click.self="closeModal">
-      <div class="adm-modal">
-        <div class="adm-modal-head">
-          <div>
-            <h3>{{ editingLead ? `Hồ Sơ Khách Hàng: ${editingLead.name}` : 'Ghi Nhận Khách Tư Vấn Mới' }}</h3>
-            <p>Cập nhật lịch hẹn chở loa thử tại nhà, giá trị dự kiến và ghi chú âm học phòng khách</p>
-          </div>
-          <button type="button" class="adm-modal-close" @click="closeModal" aria-label="Đóng">
-            <AdminIcon name="x" :size="18" />
-          </button>
-        </div>
-
-        <form @submit.prevent="submitLeadForm">
-          <div class="adm-modal-body">
-            <div class="adm-form-grid">
-              <div class="adm-field">
-                <label>Họ và Tên Khách Hàng <span class="required">*</span></label>
-                <input type="text" v-model="leadForm.name" required placeholder="Ví dụ: Anh Hoàng, Bác Tuấn..." />
-              </div>
-              <div class="adm-field">
-                <label>Số Điện Thoại / Zalo (10 chữ số) <span class="required">*</span></label>
-                <input
-                  type="tel"
-                  v-model="leadForm.phone"
-                  required
-                  pattern="^(0|\+84)[35789][0-9]{8}$"
-                  placeholder="Ví dụ: 0987654321"
-                />
-              </div>
+    <Teleport to="body">
+      <div v-if="modalOpen" class="adm-modal-backdrop" @click.self="closeModal">
+        <div class="adm-modal">
+          <div class="adm-modal-head">
+            <div>
+              <h3>{{ editingLead ? `Hồ Sơ Khách Hàng: ${editingLead.name}` : 'Ghi Nhận Khách Tư Vấn Mới' }}</h3>
+              <p>Cập nhật lịch hẹn chở loa thử tại nhà, giá trị dự kiến và ghi chú âm học phòng khách</p>
             </div>
-
-            <div class="adm-field">
-              <label>Địa Chỉ Lắp Đặt / Khu Vực</label>
-              <input type="text" v-model="leadForm.address" placeholder="Ví dụ: Việt Trì, Phú Thọ / Cầu Giấy, Hà Nội..." />
-            </div>
-
-            <div class="adm-field">
-              <label>Sản Phẩm / Gói Dàn Quan Tâm</label>
-              <input type="text" v-model="leadForm.interest" placeholder="Ví dụ: Dàn Karaoke 29 Triệu / Loa Full 30 PF 12 Pro..." />
-            </div>
-
-            <div class="adm-form-grid">
-              <div class="adm-field">
-                <label>Ngày &amp; Giờ Hẹn Thử Tại Nhà</label>
-                <input type="datetime-local" v-model="leadForm.appointmentDate" />
-              </div>
-              <div class="adm-field">
-                <label>Giá Trị Đơn Dự Kiến / Chốt (VNĐ)</label>
-                <input type="number" min="0" v-model.number="leadForm.dealValue" placeholder="Ví dụ: 29000000" />
-              </div>
-            </div>
-
-            <div class="adm-field">
-              <label>Đặc Điểm Phòng Khách &amp; Âm Học</label>
-              <input type="text" v-model="leadForm.roomInfo" placeholder="Ví dụ: Phòng 30m², trần thạch cao, cầu thang thông tầng..." />
-            </div>
-
-            <div class="adm-field">
-              <label>Ghi Chú Kỹ Thuật &amp; Nhu Cầu Riêng</label>
-              <textarea rows="3" v-model="leadForm.note" placeholder="Ví dụ: Khách thích tiếng micro nhẹ, mang kèm thêm Sub hơi 40 để thử trực tiếp..."></textarea>
-            </div>
-          </div>
-
-          <div class="adm-modal-foot">
-            <button type="button" class="adm-btn adm-btn-ghost" @click="closeModal">Đóng</button>
-            <button type="submit" class="adm-btn adm-btn-gold" :disabled="saving">
-              <AdminIcon name="check" :size="16" />
-              <span>{{ saving ? 'Đang lưu...' : 'Lưu Hồ Sơ Khách Hàng' }}</span>
+            <button type="button" class="adm-modal-close" @click="closeModal" aria-label="Đóng">
+              <AdminIcon name="x" :size="18" />
             </button>
           </div>
-        </form>
+
+          <form @submit.prevent="submitLeadForm">
+            <div class="adm-modal-body">
+              <div class="adm-form-grid">
+                <div class="adm-field">
+                  <label>Họ và Tên Khách Hàng <span class="required">*</span></label>
+                  <input type="text" v-model="leadForm.name" required placeholder="Ví dụ: Anh Hoàng, Bác Tuấn..." />
+                </div>
+                <div class="adm-field">
+                  <label>Số Điện Thoại / Zalo (10 chữ số) <span class="required">*</span></label>
+                  <input
+                    type="tel"
+                    v-model="leadForm.phone"
+                    required
+                    pattern="^(0|\+84)[35789][0-9]{8}$"
+                    placeholder="Ví dụ: 0987654321"
+                  />
+                </div>
+              </div>
+
+              <div class="adm-field">
+                <label>Địa Chỉ Lắp Đặt / Khu Vực</label>
+                <input type="text" v-model="leadForm.address" placeholder="Ví dụ: Việt Trì, Phú Thọ / Cầu Giấy, Hà Nội..." />
+              </div>
+
+              <div class="adm-field">
+                <label>Sản Phẩm / Gói Dàn Quan Tâm</label>
+                <input type="text" v-model="leadForm.interest" placeholder="Ví dụ: Dàn Karaoke 29 Triệu / Loa Full 30 PF 12 Pro..." />
+              </div>
+
+              <div class="adm-form-grid">
+                <div class="adm-field">
+                  <label>Ngày &amp; Giờ Hẹn Thử Tại Nhà</label>
+                  <input type="datetime-local" v-model="leadForm.appointmentDate" />
+                </div>
+                <div class="adm-field">
+                  <label>Giá Trị Đơn Dự Kiến / Chốt (VNĐ)</label>
+                  <input type="number" min="0" v-model.number="leadForm.dealValue" placeholder="Ví dụ: 29000000" />
+                </div>
+              </div>
+
+              <div class="adm-field">
+                <label>Đặc Điểm Phòng Khách &amp; Âm Học</label>
+                <input type="text" v-model="leadForm.roomInfo" placeholder="Ví dụ: Phòng 30m², trần thạch cao, cầu thang thông tầng..." />
+              </div>
+
+              <div class="adm-field">
+                <label>Ghi Chú Kỹ Thuật &amp; Nhu Cầu Riêng</label>
+                <textarea rows="3" v-model="leadForm.note" placeholder="Ví dụ: Khách thích tiếng micro nhẹ, mang kèm thêm Sub hơi 40 để thử trực tiếp..."></textarea>
+              </div>
+            </div>
+
+            <div class="adm-modal-foot">
+              <button type="button" class="adm-btn adm-btn-ghost" @click="closeModal">Đóng</button>
+              <button type="submit" class="adm-btn adm-btn-gold" :disabled="saving">
+                <AdminIcon name="check" :size="16" />
+                <span>{{ saving ? 'Đang lưu...' : 'Lưu Hồ Sơ Khách Hàng' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 

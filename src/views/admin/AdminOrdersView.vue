@@ -225,7 +225,8 @@
     </div>
 
     <!-- Modal Xem Chi Tiết & In Phiếu Xuất Kho / Giao Hàng -->
-    <div v-if="selectedOrder" class="adm-modal-backdrop" @click.self="selectedOrder = null">
+    <Teleport to="body">
+      <div v-if="selectedOrder" class="adm-modal-backdrop" @click.self="selectedOrder = null">
       <div class="adm-modal invoice-modal">
         <div class="adm-modal-head no-print">
           <div>
@@ -297,6 +298,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 

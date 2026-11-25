@@ -398,7 +398,8 @@
     </div>
 
     <!-- Modal Xem Chi Tiết Sự Kiện & Bảng So Sánh Trước vs Sau -->
-    <div v-if="selectedLog" class="adm-modal-backdrop" @click.self="selectedLog = null">
+    <Teleport to="body">
+      <div v-if="selectedLog" class="adm-modal-backdrop" @click.self="selectedLog = null">
       <div class="adm-modal detail-modal deep-detail-modal">
         <div class="adm-modal-head">
           <div>
@@ -527,9 +528,11 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <!-- Modal Quản Lý Tường Lửa WAF & IP Bị Khóa -->
-    <div v-if="wafModalOpen" class="adm-modal-backdrop" @click.self="wafModalOpen = false">
+    <Teleport to="body">
+      <div v-if="wafModalOpen" class="adm-modal-backdrop" @click.self="wafModalOpen = false">
       <div class="adm-modal">
         <div class="adm-modal-head">
           <div>
@@ -576,6 +579,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 

@@ -244,7 +244,8 @@
     </div>
 
     <!-- Modal Thêm / Sửa Thiết Bị & Chạy Sale (2 Cột Chuyên Nghiệp) -->
-    <div v-if="isModalOpen" class="adm-modal-backdrop" @click.self="closeModal">
+    <Teleport to="body">
+      <div v-if="isModalOpen" class="adm-modal-backdrop" @click.self="closeModal">
       <div class="adm-modal wide">
         <div class="adm-modal-head">
           <div>
@@ -512,6 +513,7 @@
         </form>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 

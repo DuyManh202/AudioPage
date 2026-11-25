@@ -275,7 +275,8 @@
     </div>
 
     <!-- MODAL SOẠN THẢO & CẤU HÌNH CHI TIẾT GÓI DÀN -->
-    <div v-if="isModalOpen" class="modal-backdrop" @click.self="closeModal">
+    <Teleport to="body">
+      <div v-if="isModalOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal-box modal-wide">
         <div class="modal-header">
           <div class="header-titles">
@@ -563,9 +564,11 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <!-- MODAL XÁC NHẬN XÓA GÓI DÀN -->
-    <div v-if="deleteTargetCombo" class="modal-backdrop" @click.self="deleteTargetCombo = null">
+    <Teleport to="body">
+      <div v-if="deleteTargetCombo" class="modal-backdrop" @click.self="deleteTargetCombo = null">
       <div class="modal-box modal-sm">
         <div class="modal-header">
           <h2>Xác Nhận Xóa Gói Dàn</h2>
@@ -597,6 +600,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1427,8 +1431,9 @@ const executeDeleteCombo = async () => {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;

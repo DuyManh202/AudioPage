@@ -410,7 +410,8 @@
     </div>
 
     <!-- Modal Phê Duyệt & Phân Quyền Nhân Sự Mới -->
-    <div v-if="approveModalUser" class="adm-modal-backdrop" @click.self="approveModalUser = null">
+    <Teleport to="body">
+      <div v-if="approveModalUser" class="adm-modal-backdrop" @click.self="approveModalUser = null">
       <div class="adm-modal pwd-modal">
         <div class="adm-modal-head">
           <div>
@@ -451,9 +452,11 @@
         </form>
       </div>
     </div>
+    </Teleport>
 
     <!-- Modal Đặt Lại Mật Khẩu & Cập Nhật Email Bảo Mật -->
-    <div v-if="pwdModalUser" class="adm-modal-backdrop" @click.self="pwdModalUser = null">
+    <Teleport to="body">
+      <div v-if="pwdModalUser" class="adm-modal-backdrop" @click.self="pwdModalUser = null">
       <div class="adm-modal pwd-modal">
         <div class="adm-modal-head">
           <div>
@@ -506,9 +509,11 @@
         </form>
       </div>
     </div>
+    </Teleport>
 
     <!-- Modal Phân Quyền Chi Tiết Từng Tài Khoản -->
-    <div v-if="permissionModalUser" class="adm-modal-backdrop" @click.self="permissionModalUser = null">
+    <Teleport to="body">
+      <div v-if="permissionModalUser" class="adm-modal-backdrop" @click.self="permissionModalUser = null">
       <div class="adm-modal perm-modal">
         <div class="adm-modal-head">
           <div>
@@ -639,9 +644,11 @@
         </form>
       </div>
     </div>
+    </Teleport>
 
     <!-- Modal Giám Sát Trực Tuyến & Vị Trí Nhân Sự -->
-    <div v-if="showOnlineMonitorModal" class="adm-modal-backdrop" @click.self="showOnlineMonitorModal = false">
+    <Teleport to="body">
+      <div v-if="showOnlineMonitorModal" class="adm-modal-backdrop" @click.self="showOnlineMonitorModal = false">
       <div class="adm-modal monitor-modal">
         <div class="adm-modal-head">
           <div>
@@ -741,6 +748,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
