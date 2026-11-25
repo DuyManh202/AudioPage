@@ -3837,8 +3837,23 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       if (stat.closedCustomers > 0) qualityScore += Math.min(25, stat.closedCustomers * 12)
       qualityScore = Math.max(10, Math.min(100, Math.round(qualityScore)))
 
-      // Bộ chẩn đoán "Bắt bệnh quảng cáo & Ra quyết định" chuẩn phương pháp Chu Minh Hạnh
+      // Hệ thống AI Phân Tích & Tối Ưu Tăng Trưởng Quảng Cáo (Meta Ads AI Strategy Engine)
       // ĐẶC BIỆT TỐI ƯU CHO GIAI ĐOẠN CHƯA CÓ ĐƠN (ĐO QUA SỐ ĐIỆN THOẠI & PHỄU MQL)
+      // Phân tích mục đích & chiến lược chạy quảng cáo chuyên sâu
+      let objective = 'Mở rộng tiếp cận & Nhận diện thương hiệu'
+      let strategy = 'Dẫn dắt khách hàng vào hộp thư Messenger để đội ngũ kỹ thuật Tú Audio tư vấn trực tiếp.'
+      const lowerName = ((ad.name || '') + ' ' + (ad.campaignName || '')).toLowerCase()
+      if (lowerName.includes('căn chỉnh') || lowerName.includes('miễn phí') || lowerName.includes('thu cũ')) {
+        objective = 'Tạo Phễu Thu Khách Nét (Lead Gen) & Thu SĐT để Chốt Combo / Thu Cũ Đổi Mới'
+        strategy = 'Dùng mồi câu "Căn chỉnh miễn phí vang số / Thu cũ đổi mới" tiếp cận khách có dàn sẵn đang hát dở, lọc lấy SĐT người dùng thật để sale tư vấn nâng cấp trọn bộ.'
+      } else if (lowerName.includes('thu hút khách hàng') || lowerName.includes('combo') || lowerName.includes('bán') || lowerName.includes('dàn')) {
+        objective = 'Thúc Đẩy Doanh Số Trực Tiếp (Direct Sales) - Bán Trọn Gói Combo Dàn Karaoke'
+        strategy = 'Giới thiệu các cấu hình dàn karaoke gia đình phối ghép chuẩn âm học, kích thích khách hàng mua trọn bộ để nhận ưu đãi và quà tặng.'
+      } else if (lowerName.includes('chỉnh tiếng mic') || lowerName.includes('tiếng nhạc') || lowerName.includes('chống hú')) {
+        objective = 'Giải Quyết Nỗi Đau Khách Hàng (Hát Nặng, Tiếng Hú Rít) → Nâng Cấp Vang Số / Mic'
+        strategy = 'Đánh trúng bức xúc khi dàn karaoke gia đình hát bị mệt, rú rít hoặc nhạc mỏng, điều hướng khách hàng nâng cấp vang số cao cấp hoặc micro chuyên nghiệp.'
+      }
+
       let diagnosis = {
         action: 'HOLD',
         actionLabel: '👁️ Tiếp tục theo dõi',
@@ -3893,7 +3908,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           actionLabel: '🛑 TẮT NGAY (Cắt Lỗ)',
           badgeClass: 'badge-kill',
           disease: '🚨 Bệnh Content Hỏng: CTR quá thấp (< 1.2%)',
-          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn hay SĐT, CTR chỉ ${ctr}%. Đúng bài anh Hạnh dạy: Tắt ngay lập tức, không nuôi hy vọng làm cháy ngân sách!`
+          advice: `Đã tiêu ${new Intl.NumberFormat('vi-VN').format(spend)} đ nhưng không có tin nhắn hay SĐT, CTR chỉ ${ctr}%. Khuyến nghị AI: Tắt ngay lập tức để cắt lỗ, không nuôi hy vọng làm cháy ngân sách!`
         }
       } else if (frequency >= 1.8 && spend >= 300000) {
         diagnosis = {
@@ -3901,7 +3916,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           actionLabel: '🔄 THAY BÀI / ĐỔI TỆP',
           badgeClass: 'badge-change',
           disease: `⚠️ Bão Hòa Tệp (Tần suất ${frequency}x >= 1.8x)`,
-          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lại lần 2-3). Theo anh Hạnh: Tệp đã bắt đầu mòn, giá tin nhắn và SĐT sẽ tăng vọt. Cần đổi video mới hoặc nhân nhóm đổi tệp target.`
+          advice: `Tần suất hiển thị ${frequency}x (khách đã thấy lại lần 2-3). Cảnh báo AI: Tệp bắt đầu bão hòa, giá tin nhắn và SĐT sẽ tăng vọt. Cần đổi video mới hoặc nhân nhóm đổi tệp target.`
         }
       } else if (ctr < 1.5 && spend >= 100000 && cpm <= 80000) {
         diagnosis = {
@@ -3946,6 +3961,9 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         name: ad.name,
         campaignId: ad.campaignId,
         campaignName: ad.campaignName,
+        objective,
+        strategy,
+        profit: Math.round(effectiveRevenue - spend),
         status: ad.status,
         isMetaActive: ad.isMetaActive,
         statusLabel: ad.statusLabel,
@@ -4073,12 +4091,15 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       success: true,
       summary: {
         totalSpend,
+        totalRevenue,
         totalLeads,
         totalPhoneCustomers,
+        totalImpressions,
+        totalClicks,
+        totalReach,
         avgPhoneRate,
         avgCpp,
         totalClosed,
-        totalRevenue,
         avgCpl,
         avgRoas,
         overallCr,

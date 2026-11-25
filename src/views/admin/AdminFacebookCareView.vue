@@ -1056,7 +1056,7 @@
         </div>
       </div>
 
-      <!-- HUD CHẨN ĐOÁN AI & PHƯƠNG PHÁP CHU MINH HẠNH -->
+      <!-- HUD CHẨN ĐOÁN AI & CỐ VẤN TĂNG TRƯỞNG QUẢNG CÁO -->
       <div class="cyber-radar-hud">
         <div class="radar-scan-effect"></div>
         <div class="hud-left">
@@ -1065,12 +1065,11 @@
             <span class="radar-ring"></span>
           </div>
           <div class="hud-info">
-            <div class="hud-tag">AI CHẨN ĐOÁN & RA QUYẾT ĐỊNH · CHU MINH HẠNH METHOD</div>
-            <h3 class="hud-title">Bắt Mạch Chiến Dịch Quảng Cáo &amp; Đề Xuất Tối Ưu Tức Thì</h3>
+            <div class="hud-tag">🤖 CHUYÊN GIA AI TỐI ƯU &amp; TĂNG TRƯỞNG QUẢNG CÁO · META ADS COPILOT</div>
+            <h3 class="hud-title">Bắt Mạch Chiến Dịch &amp; Phân Tích Dòng Tiền Đầu Tư (Chi vs Thu)</h3>
             <p class="hud-desc">
-              Đo lường phễu chuyển đổi 5 tầng: <strong>Độ hút Content (CTR)</strong> → <strong>Giá tiếp cận (CPM)</strong> → 
-              <strong>Giá tin nhắn (CPL)</strong> → <strong>Khách nét có Số Điện Thoại (CPP)</strong> → <strong>Chốt đơn</strong>.
-              Đặc biệt chuẩn xác để bắt bệnh quảng cáo ngay cả khi chưa có đơn hàng!
+              Đo lường chi tiết mục đích chạy QC, đối soát số tiền chi và doanh thu thực thu, bắt bệnh độ hút Content (CTR),
+              giá thầu (CPM), giá tin nhắn (CPL), tệp khách nét có SĐT (CPP) và tỷ suất sinh lời ROAS.
             </p>
           </div>
         </div>
@@ -1103,11 +1102,246 @@
         </div>
       </div>
 
+      <!-- KHU VỰC BIỂU ĐỒ TRỰC QUAN: CHI TIÊU VS DOANH THU & PHỄU CHUYỂN ĐỔI -->
+      <div class="adm-card analytics-chart-card">
+        <div class="chart-card-head">
+          <div class="chart-head-left">
+            <div class="chart-badge">VISUAL PERFORMANCE CHARTS</div>
+            <h3 class="chart-card-title">
+              📊 Biểu Đồ Đối Soát Tài Chính &amp; Phễu Chuyển Đổi Chiến Dịch
+            </h3>
+            <p class="chart-card-subtitle">
+              Trực quan hóa chi tiết số tiền chi ra vs doanh thu thu về theo từng mục đích chiến dịch quảng cáo.
+            </p>
+          </div>
+
+          <div class="chart-head-controls">
+            <div class="chart-tab-group">
+              <button
+                type="button"
+                :class="['chart-tab-btn', { active: activeChartView === 'BAR' }]"
+                @click="activeChartView = 'BAR'"
+              >
+                📊 Chi Phí vs Doanh Thu
+              </button>
+              <button
+                type="button"
+                :class="['chart-tab-btn', { active: activeChartView === 'FUNNEL' }]"
+                @click="activeChartView = 'FUNNEL'"
+              >
+                🌪️ Phễu Chuyển Đổi (Funnel)
+              </button>
+            </div>
+            <button
+              type="button"
+              class="chart-collapse-btn"
+              @click="showCharts = !showCharts"
+              :title="showCharts ? 'Thu gọn biểu đồ' : 'Mở rộng biểu đồ'"
+            >
+              {{ showCharts ? '▲ Thu gọn' : '▼ Mở biểu đồ' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-show="showCharts" class="chart-card-body">
+          <!-- GÓC NHÌN 1: BIỂU ĐỒ CỘT ĐÔI SO SÁNH CHI TIÊU & DOANH THU TỪNG CHIẾN DỊCH -->
+          <div v-if="activeChartView === 'BAR'" class="chart-view-bars">
+            <div class="chart-bars-legend">
+              <div class="legend-item">
+                <span class="legend-color legend-spend"></span>
+                <span>Chi Phí QC Đã Chi (Spend)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color legend-revenue"></span>
+                <span>Doanh Thu Thu Được (Revenue)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color legend-profit"></span>
+                <span>Lãi Gộp / ROAS Thực Tế</span>
+              </div>
+            </div>
+
+            <div class="campaign-bars-list">
+              <div
+                v-for="item in filteredAnalyticsData"
+                :key="'bar-' + item.id"
+                class="campaign-bar-row"
+                :class="{ 'row-highlight-win': item.roas >= 2 || item.diagnosis?.action === 'SCALE' }"
+              >
+                <div class="bar-row-meta">
+                  <div class="bar-campaign-title-wrap">
+                    <span :class="['cyber-dot', item.isMetaActive ? 'dot-active' : 'dot-paused']"></span>
+                    <strong class="bar-campaign-title">{{ item.name }}</strong>
+                    <span :class="['obj-badge', 'obj-badge-' + getCampaignObjective(item).color]">
+                      {{ getCampaignObjective(item).icon }} {{ getCampaignObjective(item).tag }}
+                    </span>
+                  </div>
+                  <div class="bar-campaign-strategy">{{ getCampaignObjective(item).title }}</div>
+                </div>
+
+                <div class="bar-visual-tracks">
+                  <!-- Thanh Chi Phí (Spend) -->
+                  <div class="track-row track-spend">
+                    <div class="track-label">Chi tiêu:</div>
+                    <div class="track-bar-container">
+                      <div class="bar-fill fill-spend" :style="{ width: getSpendBarWidth(item.spend) }"></div>
+                      <span class="bar-val-text text-red">{{ formatMoney(item.spend) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Thanh Doanh Thu (Revenue) -->
+                  <div class="track-row track-revenue">
+                    <div class="track-label">Doanh thu:</div>
+                    <div class="track-bar-container">
+                      <div class="bar-fill fill-revenue" :style="{ width: getRevenueBarWidth(item.effectiveRevenue || item.metaConversionValue || 0) }"></div>
+                      <span class="bar-val-text text-gold">
+                        {{ formatMoney(item.effectiveRevenue || item.metaConversionValue || 0) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bar-row-financials">
+                  <div v-if="(item.effectiveRevenue || item.metaConversionValue || 0) > 0" class="fin-stat-box fin-profit">
+                    <span class="fin-label">Lãi gộp QC</span>
+                    <strong class="fin-val text-green">
+                      +{{ formatMoney(Math.max(0, (item.effectiveRevenue || item.metaConversionValue || 0) - item.spend)) }}
+                    </strong>
+                    <span :class="['roas-pill', item.roas >= 3 ? 'roas-high' : 'roas-mid']">ROAS: {{ item.roas }}x</span>
+                  </div>
+                  <div v-else-if="item.phoneCustomers > 0" class="fin-stat-box fin-leads">
+                    <span class="fin-label">Phễu SĐT Nét</span>
+                    <strong class="fin-val text-amber">{{ item.phoneCustomers }} SĐT ({{ item.phoneRate }}%)</strong>
+                    <small class="fin-sub">Giá: {{ item.cpp > 0 ? formatMoney(item.cpp) : 'Rẻ' }}/SĐT</small>
+                  </div>
+                  <div v-else class="fin-stat-box fin-neutral">
+                    <span class="fin-label">Trạng thái</span>
+                    <strong class="fin-val text-muted">{{ item.cpl > 0 ? formatMoney(item.cpl) + '/tin' : 'Đang phân phối' }}</strong>
+                  </div>
+
+                  <div class="bar-ai-verdict">
+                    <span :class="['action-badge', `action-${(item.diagnosis?.action || 'HOLD').toLowerCase()}`]">
+                      {{ item.diagnosis?.actionLabel || 'Theo dõi' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GÓC NHÌN 2: PHỄU CHUYỂN ĐỔI MARKETING & SALES (FUNNEL) -->
+          <div v-else class="chart-view-funnel">
+            <div class="funnel-summary-banner">
+              <div class="funnel-kpi">
+                <span class="kpi-label">Tổng vốn QC bỏ ra</span>
+                <strong class="kpi-val text-red">{{ formatMoney(analyticsSummary.totalSpend) }}</strong>
+              </div>
+              <div class="funnel-arrow">➜</div>
+              <div class="funnel-kpi">
+                <span class="kpi-label">Tổng doanh thu thu về</span>
+                <strong class="kpi-val text-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</strong>
+              </div>
+              <div class="funnel-arrow">➜</div>
+              <div class="funnel-kpi">
+                <span class="kpi-label">Lợi nhuận gộp tạm tính</span>
+                <strong class="kpi-val text-green">
+                  +{{ formatMoney(Math.max(0, analyticsSummary.totalRevenue - analyticsSummary.totalSpend)) }}
+                </strong>
+              </div>
+              <div class="funnel-kpi">
+                <span class="kpi-label">Hệ số nhân tiền</span>
+                <strong class="kpi-val text-neon-blue">{{ analyticsSummary.avgRoas }}x ROAS</strong>
+              </div>
+            </div>
+
+            <div class="funnel-steps-container">
+              <!-- Tầng 1: Ngân Sách -->
+              <div class="funnel-step step-1">
+                <div class="step-badge">TẦNG 1</div>
+                <div class="step-info">
+                  <span class="step-name">💳 Tổng Ngân Sách Đã Chi</span>
+                  <p class="step-hint">Chi phí bơm trực tiếp vào hệ thống Meta Ads</p>
+                </div>
+                <div class="step-bar-wrap">
+                  <div class="funnel-bar bar-100"></div>
+                </div>
+                <div class="step-number text-red">{{ formatMoney(analyticsSummary.totalSpend) }}</div>
+              </div>
+
+              <!-- Tầng 2: Lượt Tiếp Cận (Impressions) -->
+              <div class="funnel-step step-2">
+                <div class="step-badge">TẦNG 2</div>
+                <div class="step-info">
+                  <span class="step-name">👁️ Lượt Hiển Thị &amp; Sức Hút Content</span>
+                  <p class="step-hint">Độ hút 3s đầu video: <strong>CTR {{ analyticsSummary.avgCtr || 0 }}%</strong> ({{ (analyticsSummary.avgCtr || 0) >= 2 ? '🔥 Rất hút' : 'Cần tối ưu' }}) · CPM {{ formatMoney(analyticsSummary.avgCpm || 0) }}</p>
+                </div>
+                <div class="step-bar-wrap">
+                  <div class="funnel-bar bar-85"></div>
+                </div>
+                <div class="step-number text-neon-blue">{{ formatNumber(analyticsSummary.totalImpressions || 0) }} lượt xem</div>
+              </div>
+
+              <!-- Tầng 3: Tin Nhắn Messenger (Leads) -->
+              <div class="funnel-step step-3">
+                <div class="step-badge">TẦNG 3</div>
+                <div class="step-info">
+                  <span class="step-name">💬 Khách Nhắn Tin Vào Fanpage (Leads)</span>
+                  <p class="step-hint">Giá mỗi tin nhắn trung bình (CPL): <strong>{{ analyticsSummary.avgCpl > 0 ? formatMoney(analyticsSummary.avgCpl) : '—' }}</strong></p>
+                </div>
+                <div class="step-bar-wrap">
+                  <div class="funnel-bar bar-70"></div>
+                </div>
+                <div class="step-number text-blue">{{ analyticsSummary.totalLeads }} tin nhắn</div>
+              </div>
+
+              <!-- Tầng 4: SĐT Khách Nét (MQL) -->
+              <div class="funnel-step step-4">
+                <div class="step-badge">TẦNG 4</div>
+                <div class="step-info">
+                  <span class="step-name">📞 Khách Nét Cung Cấp Số Điện Thoại</span>
+                  <p class="step-hint">Tỷ lệ để lại SĐT: <strong>{{ analyticsSummary.avgPhoneRate || 0 }}%</strong> · Chi phí/1 SĐT (CPP): <strong>{{ (analyticsSummary.avgCpp || 0) > 0 ? formatMoney(analyticsSummary.avgCpp) : '—' }}</strong></p>
+                </div>
+                <div class="step-bar-wrap">
+                  <div class="funnel-bar bar-50"></div>
+                </div>
+                <div class="step-number text-amber">{{ analyticsSummary.totalPhoneCustomers || 0 }} SĐT nét</div>
+              </div>
+
+              <!-- Tầng 5: Đơn Hàng Thành Công -->
+              <div class="funnel-step step-5">
+                <div class="step-badge">TẦNG 5</div>
+                <div class="step-info">
+                  <span class="step-name">🎯 Đơn Hàng Chốt Thành Công (Purchases)</span>
+                  <p class="step-hint">Tỷ lệ chốt đơn: <strong>{{ analyticsSummary.overallCr || 0 }}%</strong> trên tổng khách nhắn tin</p>
+                </div>
+                <div class="step-bar-wrap">
+                  <div class="funnel-bar bar-35"></div>
+                </div>
+                <div class="step-number text-green">{{ analyticsSummary.totalClosed }} đơn chốt</div>
+              </div>
+
+              <!-- Tầng 6: Doanh Thu & Thu Về -->
+              <div class="funnel-step step-6">
+                <div class="step-badge">TẦNG 6</div>
+                <div class="step-info">
+                  <span class="step-name">💰 Tổng Doanh Thu Thực Thu (Revenue)</span>
+                  <p class="step-hint">Lãi ròng QC: <strong>+{{ formatMoney(Math.max(0, analyticsSummary.totalRevenue - analyticsSummary.totalSpend)) }}</strong> · ROAS đạt <strong>{{ analyticsSummary.avgRoas }}x</strong></p>
+                </div>
+                <div class="step-bar-wrap">
+                  <div class="funnel-bar bar-20"></div>
+                </div>
+                <div class="step-number text-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Bảng xếp hạng chi tiết từng quảng cáo (Futuristic 7-Column Layout) -->
       <div class="adm-card analytics-table-card">
         <div class="table-card-head">
           <div class="head-title-wrap">
-            <h3>Bảng Bắt Bệnh & Hiệu Quả Từng Quảng Cáo (ROI & Technical Ranking)</h3>
+            <h3>Bảng Phân Tích Chiến Dịch &amp; Hiệu Quả Đầu Tư (ROI &amp; Ads Performance)</h3>
             <p class="period-indicator-text">
               Đang đối soát: <strong class="text-neon-blue">{{ analyticsSummary.periodLabel || 'Hôm nay' }}</strong> · CTR, CPM, Freq, Mess và Doanh thu thực tế
             </p>
@@ -1249,18 +1483,18 @@
           <table class="analytics-table futuristic-table">
             <thead>
               <tr>
-                <th>Chiến Dịch &amp; Trạng Thái</th>
-                <th>Chi Phí &amp; Giá / Tin</th>
-                <th>Chỉ Số Content (CTR · CPM)</th>
+                <th>Chiến Dịch &amp; Mục Đích Chạy QC</th>
+                <th>Chi Phí Đã Chi &amp; Giá / Tin</th>
+                <th>Sức Hút Content (CTR · CPM)</th>
                 <th>Tin Nhắn &amp; Khách CRM</th>
-                <th>{{ effectiveAnalyticsMode === 'PHONE' ? 'Khách Nét SĐT & Giá / SĐT (CPP)' : 'Đơn Chốt & Doanh Thu' }}</th>
-                <th>Bắt Bệnh &amp; Quyết Định (Chu Minh Hạnh)</th>
+                <th>{{ effectiveAnalyticsMode === 'PHONE' ? 'Khách Nét SĐT & Giá / SĐT (CPP)' : 'Doanh Thu & Lợi Nhuận Thực Tế' }}</th>
+                <th>Đánh Giá Chuyên Gia AI &amp; Đề Xuất Tối Ưu</th>
                 <th class="text-right">Thao Tác</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in filteredAnalyticsData" :key="item.id" :class="`row-status-${item.isMetaActive ? 'active' : 'paused'}`">
-                <!-- Cột 1: Chiến Dịch & Trạng Thái -->
+                <!-- Cột 1: Chiến Dịch & Mục Đích Chạy QC -->
                 <td class="col-campaign">
                   <div class="campaign-cell">
                     <div class="campaign-status-row">
@@ -1270,6 +1504,12 @@
                       </span>
                     </div>
                     <strong class="campaign-title">{{ item.name }}</strong>
+                    <div class="objective-pill-row">
+                      <span :class="['obj-badge', 'obj-badge-' + getCampaignObjective(item).color]">
+                        {{ getCampaignObjective(item).icon }} {{ getCampaignObjective(item).tag }}
+                      </span>
+                    </div>
+                    <div class="objective-desc-sub">{{ getCampaignObjective(item).title }}</div>
                     <span class="campaign-sub">{{ item.campaignName || ('ID: ' + item.id) }}</span>
                   </div>
                 </td>
@@ -1341,6 +1581,9 @@
                     <div class="revenue-val-row" style="margin: 2px 0;">
                       <strong class="text-gold font-bold" style="font-size: 1.05rem;">{{ formatMoney(item.effectiveRevenue || item.metaConversionValue || 0) }}</strong>
                     </div>
+                    <div v-if="(item.effectiveRevenue || item.metaConversionValue || 0) > 0" class="profit-val-row" style="margin-bottom: 2px; font-size: 0.74rem;">
+                      <span class="text-green font-bold">Lãi: +{{ formatMoney(Math.max(0, (item.effectiveRevenue || item.metaConversionValue || 0) - item.spend)) }}</span>
+                    </div>
                     <div class="roas-row">
                       <span :class="['roas-pill', item.roas >= 3 ? 'roas-high' : item.roas > 0 ? 'roas-mid' : 'roas-zero']">
                         ROAS: {{ item.roas }}x
@@ -1352,7 +1595,7 @@
                   </div>
                 </td>
 
-                <!-- Cột 6: Bắt Bệnh & Ra Quyết Định (Chu Minh Hạnh) -->
+                <!-- Cột 6: Đánh Giá Chuyên Gia AI & Đề Xuất Tối Ưu -->
                 <td class="col-diagnosis">
                   <div class="diagnosis-box">
                     <div class="action-badge-row">
@@ -1563,6 +1806,76 @@ const effectiveAnalyticsMode = computed(() => {
   if (userAnalyticsMode.value === 'REVENUE') return 'REVENUE'
   return (analyticsSummary.value.totalClosed || 0) > 0 ? 'REVENUE' : 'PHONE'
 })
+
+const activeChartView = ref('BAR') // 'BAR' | 'FUNNEL'
+const showCharts = ref(true)
+
+const getCampaignObjective = (item) => {
+  if (item && item.objective) {
+    const isLeadGen = item.objective.includes('Phễu') || item.objective.includes('SĐT')
+    const isSales = item.objective.includes('Doanh Số') || item.objective.includes('Combo')
+    const isPainPoint = item.objective.includes('Nỗi Đau') || item.objective.includes('Vang')
+    return {
+      tag: isLeadGen ? 'PHỄU THU HÚT SĐT' : (isSales ? 'CHUYỂN ĐỔI DOANH SỐ' : (isPainPoint ? 'NÂNG CẤP THIẾT BỊ' : 'LAN TỎA THƯƠNG HIỆU')),
+      title: item.objective,
+      desc: item.strategy || 'Tối ưu chuyển đổi khách hàng qua kênh Messenger và gọi điện tư vấn.',
+      color: isLeadGen ? 'gold' : (isSales ? 'emerald' : (isPainPoint ? 'cyan' : 'blue')),
+      icon: isLeadGen ? '🎯' : (isSales ? '🚀' : (isPainPoint ? '⚡' : '📢'))
+    }
+  }
+  const text = (((item && item.name) || '') + ' ' + ((item && item.campaignName) || '')).toLowerCase()
+  if (text.includes('căn chỉnh') || text.includes('miễn phí') || text.includes('thu cũ')) {
+    return {
+      tag: 'PHỄU THU HÚT SĐT · CHỐT COMBO',
+      title: 'Tạo Phễu Thu Khách Nét & SĐT Dàn Lỗi để Chốt Combo / Thu Cũ Đổi Mới',
+      desc: 'Mồi câu căn chỉnh & nâng cấp dàn tại nhà để tiếp cận tệp khách đang có dàn karaoke, lọc lấy số điện thoại có nhu cầu cao chuyển giao cho sale chốt đơn.',
+      color: 'gold',
+      icon: '🎯'
+    }
+  }
+  if (text.includes('thu hút khách hàng') || text.includes('combo') || text.includes('dàn') || text.includes('bán')) {
+    return {
+      tag: 'CHUYỂN ĐỔI DOANH THU TRỰC TIẾP',
+      title: 'Bán Trọn Gói Combo Dàn Karaoke Gia Đình & Khuyến Mãi Lớn',
+      desc: 'Đánh thẳng vào khách hàng có nhu cầu sắm mới dàn karaoke gia đình, giới thiệu cấu hình đồng bộ âm học kèm quà tặng hấp dẫn.',
+      color: 'emerald',
+      icon: '🚀'
+    }
+  }
+  if (text.includes('chỉnh tiếng mic') || text.includes('tiếng nhạc') || text.includes('hú rít') || text.includes('vang số')) {
+    return {
+      tag: 'GIẢI QUYẾT NỖI ĐAU HÁT NẶNG & HÚ RÍT',
+      title: 'Đánh Đúng Nỗi Đau Hát Mệt / Hú Rít → Nâng Cấp Vang Số & Micro',
+      desc: 'Khai thác tâm lý khó chịu khi hát bị mệt, rú rít để dẫn dắt khách hàng nâng cấp vang số chống hú hoặc micro chuyên nghiệp.',
+      color: 'cyan',
+      icon: '⚡'
+    }
+  }
+  return {
+    tag: 'MỞ RỘNG NHẬN DIỆN THƯƠNG HIỆU',
+    title: 'Lan Tỏa Thương Hiệu Tú Audio & Kéo Khách Vào Hộp Thư Tư Vấn',
+    desc: 'Tăng cường nhận diện chuyên gia âm thanh Tú Audio và thu hút tương tác của khách hàng yêu ca hát trên toàn quốc.',
+    color: 'blue',
+    icon: '📢'
+  }
+}
+
+const maxChartSpendOrRevenue = computed(() => {
+  const vals = filteredAnalyticsData.value.map(a => Math.max(Number(a.spend) || 0, Number(a.effectiveRevenue) || Number(a.metaConversionValue) || 0))
+  return Math.max(...vals, 1000000)
+})
+
+const getSpendBarWidth = (spend) => {
+  const s = Number(spend) || 0
+  if (s <= 0 || maxChartSpendOrRevenue.value === 0) return '3%'
+  return Math.min(100, Math.max(4, Math.round((s / maxChartSpendOrRevenue.value) * 100))) + '%'
+}
+
+const getRevenueBarWidth = (rev) => {
+  const r = Number(rev) || 0
+  if (r <= 0 || maxChartSpendOrRevenue.value === 0) return '0%'
+  return Math.min(100, Math.max(4, Math.round((r / maxChartSpendOrRevenue.value) * 100))) + '%'
+}
 
 const getScoreClass = (score = 50) => {
   if (score >= 80) return 'score-win'
@@ -5659,5 +5972,406 @@ onBeforeUnmount(() => {
   font-size: 0.72rem;
   color: #8e8e93;
   margin-left: auto;
+}
+
+/* ==========================================================================
+   KHU VỰC BIỂU ĐỒ TRỰC QUAN (VISUAL CHARTS DASHBOARD) & PHÂN TÍCH MỤC ĐÍCH QC
+   ========================================================================== */
+.analytics-chart-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+.chart-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.chart-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 3px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.chart-card-title {
+  font-size: 1.22rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-card-subtitle {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+}
+.chart-head-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.chart-tab-group {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 3px;
+}
+.chart-tab-btn {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.chart-tab-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.chart-collapse-btn {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.chart-collapse-btn:hover {
+  background: #f8fafc;
+}
+
+/* Legend */
+.chart-bars-legend {
+  display: flex;
+  gap: 20px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+.legend-spend {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+.legend-revenue {
+  background: linear-gradient(135deg, #10b981, #eab308);
+}
+.legend-profit {
+  background: linear-gradient(135deg, #0284c7, #8b5cf6);
+}
+
+/* Campaign Bars List */
+.campaign-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.campaign-bar-row {
+  display: grid;
+  grid-template-columns: 290px 1fr 210px;
+  gap: 20px;
+  align-items: center;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+.campaign-bar-row:hover {
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e1;
+}
+.campaign-bar-row.row-highlight-win {
+  border-left: 4px solid #10b981;
+  background: #f0fdf4;
+}
+.bar-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bar-campaign-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bar-campaign-title {
+  font-size: 0.92rem;
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.bar-campaign-strategy {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+/* Objective Badges */
+.obj-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.obj-badge-gold {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.obj-badge-emerald {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.obj-badge-cyan {
+  background: #cffafe;
+  color: #155e75;
+  border: 1px solid #a5f3fc;
+}
+.obj-badge-blue {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* Bar Tracks */
+.bar-visual-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.76rem;
+}
+.track-label {
+  width: 72px;
+  font-weight: 600;
+  color: #64748b;
+  flex-shrink: 0;
+  text-align: right;
+}
+.track-bar-container {
+  flex: 1;
+  height: 20px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fill-spend {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+.fill-revenue {
+  background: linear-gradient(90deg, #10b981, #eab308);
+}
+.bar-val-text {
+  font-weight: 800;
+  font-size: 0.74rem;
+  padding-left: 8px;
+  white-space: nowrap;
+}
+
+/* Financials in Bar Card */
+.bar-row-financials {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.fin-stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.fin-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.fin-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.fin-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+/* Funnel Visualization */
+.funnel-summary-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0f172a;
+  border-radius: 16px;
+  padding: 18px 24px;
+  color: #ffffff;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.funnel-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kpi-label {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.kpi-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+.funnel-arrow {
+  font-size: 1.2rem;
+  color: #64748b;
+}
+.funnel-steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.funnel-step {
+  display: grid;
+  grid-template-columns: 80px 240px 1fr 150px;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+.funnel-step:hover {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: #cbd5e1;
+}
+.step-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+.step-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.step-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.step-hint {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin: 0;
+}
+.step-bar-wrap {
+  height: 16px;
+  background: #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.funnel-bar {
+  height: 100%;
+  border-radius: 8px;
+}
+.bar-100 { width: 100%; background: linear-gradient(90deg, #ef4444, #f97316); }
+.bar-85 { width: 85%; background: linear-gradient(90deg, #0284c7, #38bdf8); }
+.bar-70 { width: 70%; background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.bar-50 { width: 50%; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.bar-35 { width: 35%; background: linear-gradient(90deg, #10b981, #34d399); }
+.bar-20 { width: 20%; background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+.step-number {
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* Objective in Table */
+.objective-pill-row {
+  margin: 4px 0 2px;
+}
+.objective-desc-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 1024px) {
+  .campaign-bar-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .funnel-step {
+    grid-template-columns: 70px 1fr 110px;
+    gap: 10px;
+  }
+  .step-bar-wrap {
+    display: none;
+  }
 }
 </style>
