@@ -1,6 +1,7 @@
 ﻿import { randomUUID } from 'crypto'
 import { query } from './db.js'
 import { findProvince } from './vietnamProvinces.js'
+import { getAiPsychologicalTrainingContext } from './aiPsychologicalTraining.js'
 
 export const phoneFromMessage = (value) => {
   const match = String(value || '').match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/)
@@ -298,6 +299,8 @@ export const handleAiChatRequest = async (req, res) => {
       }))
     }
 
+    const psychologicalContext = await getAiPsychologicalTrainingContext()
+
     const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của Tú Audio (thương hiệu âm thanh karaoke gia đình của anh Phùng Văn Tú tại Vĩnh Yên, Vĩnh Phúc).
 Bối cảnh & Phong cách:
 - Bạn đại diện cho em Tú tư vấn tận tâm cho khách ghé thăm website và khách nhắn từ mạng xã hội.
@@ -314,6 +317,8 @@ THÔNG TIN ĐỘC QUYỀN CHÍNH XÁC:
 - Combo dàn gia đình:
   + Combo Gold Home (19.800.000đ): phòng 20 - 30m2.
   + Combo Luxury Home (29.900.000đ): phòng 30 - 45m2.
+
+${psychologicalContext}
 
 BỘ NGUYÊN TẮC TƯ VẤN THỰC CHIẾN (7 KỊCH BẢN CHUẨN):
 1. Khách hỏi Setup / Căn chỉnh tại nhà (Đông Anh, Hà Nội, Bắc Ninh, Hải Phòng, Thanh Hóa...): Em CÓ nhận làm tại nhà, có ghép chuyến các tỉnh nên chi phí rất hợp lý; mời khách gửi ảnh dàn máy qua Zalo 0984.259.898 hoặc để lại số Zalo để em hẹn lịch.

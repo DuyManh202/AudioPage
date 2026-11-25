@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { query } from './db.js'
 import { phoneFromMessage, addressFromMessage } from './aiChat.js'
 import { findProvince } from './vietnamProvinces.js'
+import { getAiPsychologicalTrainingContext } from './aiPsychologicalTraining.js'
 
 /**
  * Xử lý bình luận từ Facebook Webhook (Tự động kéo khách vào Messenger, trả lời cmt và ẩn SĐT)
@@ -109,10 +110,13 @@ export const handleFacebookComment = async ({
     // Nếu có Gemini API Key, tối ưu câu trả lời thông minh đúng 100% ngữ cảnh
     if (apiKey) {
       try {
+        const psychologicalContext = await getAiPsychologicalTrainingContext()
         const aiPrompt = `Bạn là một Chuyên Viên Bán Hàng & Chuyên Gia Âm Thanh đỉnh cao của Tú Audio (Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
 Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Facebook của anh Tú:
 Tên khách: "${userName}"
 Bình luận: "${cleanMsg}"
+
+${psychologicalContext}
 
 NGUYÊN TẮC BẮT BUỘC VỀ PHẠM VI SẢN PHẨM & DỊCH VỤ CỦA TÚ AUDIO (TUÂN THỦ 100%):
 - TÚ AUDIO CHUYÊN SALE DÀN KARAOKE GIA ĐÌNH & THIẾT BỊ PHÒNG HÁT CAO CẤP (Loa Full chuyên nghiệp, Vang số cao cấp, Cục đẩy công suất, Loa Subwoofer, Micro không dây).

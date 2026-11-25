@@ -11,6 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
+import { getAiPsychologicalTrainingContext, clearAiPsychologicalTrainingCache } from './aiPsychologicalTraining.js'
 import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
 import { catalogProducts } from './catalogProducts.js'
@@ -1002,6 +1003,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
     if (!reply) {
       const historyFormatted = msgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
       const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
+      const psychologicalContext = await getAiPsychologicalTrainingContext()
 
       const phoneInstruction = hasKnownPhone
         ? `LƯU Ý ĐẶC BIỆT: KHÁCH HÀNG NÀY ĐÃ CÓ SỐ ĐIỆN THOẠI/ZALO (${customer.phone || 'đã có số'}).
@@ -1011,6 +1013,8 @@ Hãy trả lời đúng trọng tâm chuyên môn câu hỏi của khách (1-2 c
 
       const systemInstruction = `Bạn là Trợ lý AI Chuyên Gia Âm Thanh của anh Phùng Văn Tú (Tú Audio - Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
 BẠN ĐẠI DIỆN CHO ANH TÚ TƯ VẤN KHÁCH HÀNG TRỰC TIẾP TRÊN FACEBOOK MESSENGER.
+
+${psychologicalContext}
 
 NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100%):
 1. ĐỘ DÀI: CHỈ TRẢ LỜI ĐÚNG 1 ĐẾN 2 CÂU NGẮN (TỐI ĐA 30-35 TỪ). TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG DÙNG VĂN MẪU RẬP KHUÔN, TUYỆT ĐỐI KHÔNG TRẢ LỜI LẶP LẠI TIN NHẮN ĐÃ GỬI TRƯỚC ĐÓ.
@@ -5112,6 +5116,139 @@ app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_A
         maskedKey,
         model: currentModel || 'gemini-3.8-flash'
       }
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// ==========================================
+// ĐÀO TẠO TÂM LÝ KHÁCH HÀNG & KỊCH BẢN CHỐT SALE AI (AI TRAINING HUB)
+// ==========================================
+app.get('/api/v1/admin/ai-training', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM ai_training_rules ORDER BY created_at ASC, id ASC')
+    res.json({
+      success: true,
+      data: result.rows
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.post('/api/v1/admin/ai-training', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { title, personaType, psychologicalTrigger, customerKeywords, suggestedResponse, isActive } = req.body
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Tiêu đề kịch bản tâm lý không được để trống.' })
+    }
+    if (!psychologicalTrigger || !psychologicalTrigger.trim()) {
+      return res.status(400).json({ success: false, message: 'Phân tích tâm lý & đòn bẩy không được để trống.' })
+    }
+    if (!suggestedResponse || !suggestedResponse.trim()) {
+      return res.status(400).json({ success: false, message: 'Câu trả lời mẫu phong cách anh Tú không được để trống.' })
+    }
+
+    const id = 'rule-' + randomUUID().slice(0, 8)
+    const result = await query(`
+      INSERT INTO ai_training_rules (id, title, persona_type, psychological_trigger, customer_keywords, suggested_response, is_active, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      RETURNING *
+    `, [
+      id,
+      title.trim(),
+      (personaType || 'CHUYEN_SAU').trim().toUpperCase(),
+      psychologicalTrigger.trim(),
+      (customerKeywords || '').trim(),
+      suggestedResponse.trim(),
+      typeof isActive === 'boolean' ? isActive : true
+    ])
+
+    clearAiPsychologicalTrainingCache()
+    res.json({
+      success: true,
+      message: 'Thêm kịch bản tâm lý mới thành công!',
+      data: result.rows[0]
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.put('/api/v1/admin/ai-training/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { title, personaType, psychologicalTrigger, customerKeywords, suggestedResponse, isActive } = req.body
+
+    const existing = await query('SELECT id FROM ai_training_rules WHERE id = $1', [id])
+    if (!existing.rows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy kịch bản tâm lý này.' })
+    }
+
+    const result = await query(`
+      UPDATE ai_training_rules
+      SET title = COALESCE($1, title),
+          persona_type = COALESCE($2, persona_type),
+          psychological_trigger = COALESCE($3, psychological_trigger),
+          customer_keywords = COALESCE($4, customer_keywords),
+          suggested_response = COALESCE($5, suggested_response),
+          is_active = COALESCE($6, is_active),
+          updated_at = NOW()
+      WHERE id = $7
+      RETURNING *
+    `, [
+      title ? title.trim() : null,
+      personaType ? personaType.trim().toUpperCase() : null,
+      psychologicalTrigger ? psychologicalTrigger.trim() : null,
+      typeof customerKeywords === 'string' ? customerKeywords.trim() : null,
+      suggestedResponse ? suggestedResponse.trim() : null,
+      typeof isActive === 'boolean' ? isActive : null,
+      id
+    ])
+
+    clearAiPsychologicalTrainingCache()
+    res.json({
+      success: true,
+      message: 'Cập nhật kịch bản tâm lý thành công!',
+      data: result.rows[0]
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.delete('/api/v1/admin/ai-training/:id', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const result = await query('DELETE FROM ai_training_rules WHERE id = $1 RETURNING id', [id])
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy kịch bản tâm lý cần xóa.' })
+    }
+
+    clearAiPsychologicalTrainingCache()
+    res.json({
+      success: true,
+      message: 'Đã xóa kịch bản tâm lý thành công!'
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+app.post('/api/v1/admin/ai-training/train', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
+  try {
+    clearAiPsychologicalTrainingCache()
+    const activeRules = await query('SELECT COUNT(*) as count FROM ai_training_rules WHERE is_active = TRUE')
+    const count = Number(activeRules.rows[0]?.count || 0)
+    
+    // Nạp mới vào bộ nhớ
+    await getAiPsychologicalTrainingContext()
+
+    res.json({
+      success: true,
+      message: `Đã nạp ${count} kịch bản tâm lý thành công vào toàn bộ hệ thống AI (Website, Messenger, Comment Facebook)!`,
+      activeCount: count
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

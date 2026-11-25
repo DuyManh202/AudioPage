@@ -147,6 +147,162 @@
       </div>
     </div>
 
+    <!-- Thanh Điều Hướng Chức Năng (Tabs) -->
+    <div class="ai-tabs-nav">
+      <button
+        type="button"
+        class="ai-tab-btn"
+        :class="{ active: activeTab === 'training' }"
+        @click="activeTab = 'training'"
+      >
+        <span class="tab-icon">🎯</span>
+        <span class="tab-title">Đào Tạo Tâm Lý Khách Hàng (AI Training Hub)</span>
+        <span class="tab-badge">{{ trainingRules.length }} kịch bản</span>
+      </button>
+
+      <button
+        type="button"
+        class="ai-tab-btn"
+        :class="{ active: activeTab === 'testing' }"
+        @click="activeTab = 'testing'"
+      >
+        <span class="tab-icon">💬</span>
+        <span class="tab-title">Cửa Sổ Thử Nghiệm Chat Trực Tiếp</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: KHU VỰC ĐÀO TẠO TÂM LÝ KHÁCH HÀNG (AI TRAINING HUB) -->
+    <div v-if="activeTab === 'training'" class="training-hub-wrapper">
+      <!-- Toolbar & Thống Kê Nhanh -->
+      <div class="training-toolbar adm-card">
+        <div class="toolbar-info">
+          <div class="toolbar-title-wrap">
+            <span class="toolbar-icon">🧠</span>
+            <div>
+              <h2 class="toolbar-title">Bộ Não Đọc Vị Tâm Lý &amp; Kịch Bản Chốt Sale AI</h2>
+              <p class="toolbar-desc">
+                Huấn luyện AI cách đọc vị nỗi đau tâm lý từng khách hàng (hú rít, mua đi bán lại, cần thợ tại nhà, dò giá...),
+                xuất chiêu đúng tâm lý và khéo léo xin số Zalo/điện thoại theo chuẩn phong cách chuyên gia âm thanh Tú Audio.
+              </p>
+            </div>
+          </div>
+          <div class="training-stats">
+            <span class="stat-pill active">
+              🟢 Đang kích hoạt: <strong>{{ activeRulesCount }}/{{ trainingRules.length }}</strong> kịch bản
+            </span>
+            <span class="stat-pill info">
+              ⚡ Tự động nạp: <strong>Gemini 3.8 Flash</strong>
+            </span>
+          </div>
+        </div>
+
+        <div class="toolbar-actions">
+          <button
+            type="button"
+            class="adm-btn adm-btn-gold"
+            :disabled="trainingInFlight"
+            @click="triggerRetrainAi"
+          >
+            <span v-if="trainingInFlight">⏳ Đang nạp kiến thức...</span>
+            <span v-else>⚡ Huấn Luyện AI Tức Thì</span>
+          </button>
+          <button
+            type="button"
+            class="adm-btn adm-btn-blue"
+            @click="openCreateRuleModal"
+          >
+            + Thêm Kịch Bản Tâm Lý Mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Danh Sách Kịch Bản Tâm Lý -->
+      <div v-if="loadingTraining" class="loading-box adm-card">
+        <span>Đang tải các kịch bản tâm lý từ máy chủ...</span>
+      </div>
+
+      <div v-else-if="!trainingRules.length" class="empty-box adm-card">
+        <p>Chưa có kịch bản tâm lý nào. Bấm nút <strong>"+ Thêm Kịch Bản Tâm Lý Mới"</strong> để bắt đầu đào tạo!</p>
+      </div>
+
+      <div v-else class="rules-grid">
+        <div
+          v-for="rule in trainingRules"
+          :key="rule.id"
+          class="training-rule-card adm-card"
+          :class="{ inactive: !rule.is_active }"
+        >
+          <div class="rule-card-header">
+            <div class="rule-header-left">
+              <span class="persona-tag" :class="getPersonaClass(rule.persona_type)">
+                {{ getPersonaLabel(rule.persona_type) }}
+              </span>
+              <h3 class="rule-card-title">{{ rule.title }}</h3>
+            </div>
+            <div class="rule-header-right">
+              <button
+                type="button"
+                class="rule-toggle-btn"
+                :class="{ active: rule.is_active }"
+                @click="toggleRuleActive(rule)"
+                :title="rule.is_active ? 'Bấm để tạm dừng kịch bản này' : 'Bấm để kích hoạt kịch bản này'"
+              >
+                <span class="toggle-dot"></span>
+                <span class="toggle-text">{{ rule.is_active ? 'ĐANG BẬT' : 'ĐÃ TẮT' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Nội Dung Đòn Bẩy Tâm Lý -->
+          <div class="rule-section">
+            <span class="section-label">🎯 Nỗi Đau &amp; Đòn Bẩy Tâm Lý Cốt Lõi:</span>
+            <p class="trigger-text">{{ rule.psychological_trigger }}</p>
+          </div>
+
+          <!-- Từ Khóa Nhận Diện -->
+          <div v-if="rule.customer_keywords" class="rule-section">
+            <span class="section-label">🔍 Dấu Hiệu / Từ Khóa Khách Thường Nhắn:</span>
+            <div class="keywords-wrap">
+              <span v-for="kw in parseKeywords(rule.customer_keywords)" :key="kw" class="kw-tag">
+                {{ kw }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Câu Trả Lời Mẫu Chuẩn Anh Tú -->
+          <div class="rule-section response-box">
+            <span class="section-label">💬 Câu Trả Lời Mẫu Chuẩn Phong Cách Anh Tú:</span>
+            <blockquote class="suggested-quote">
+              "{{ rule.suggested_response }}"
+            </blockquote>
+          </div>
+
+          <!-- Thao Tác -->
+          <div class="rule-card-footer">
+            <small class="rule-id">Mã: {{ rule.id }}</small>
+            <div class="rule-actions">
+              <button
+                type="button"
+                class="action-btn edit-btn"
+                @click="openEditRuleModal(rule)"
+              >
+                ✏️ Chỉnh Sửa
+              </button>
+              <button
+                type="button"
+                class="action-btn delete-btn"
+                @click="deleteRule(rule)"
+              >
+                🗑️ Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: KHU VỰC THỬ NGHIỆM TRỰC TIẾP (TESTING CONSOLE) -->
+    <div v-else class="testing-workspace-wrapper">
     <!-- Stat Cards -->
     <section class="stat-grid">
       <div class="adm-card stat-card">
@@ -319,10 +475,84 @@
       </section>
     </div>
   </div>
+
+    <!-- Modal Thêm / Chỉnh Sửa Kịch Bản Tâm Lý -->
+    <div v-if="showRuleModal" class="adm-modal-backdrop" @click.self="showRuleModal = false">
+      <div class="adm-modal training-modal">
+        <div class="modal-head">
+          <h3>{{ isEditingRule ? 'Chỉnh Sửa Kịch Bản Tâm Lý' : 'Thêm Kịch Bản Tâm Lý Mới' }}</h3>
+          <button type="button" class="close-btn" @click="showRuleModal = false">✕</button>
+        </div>
+        <form @submit.prevent="saveRule">
+          <label class="form-field">
+            <span>Tiêu đề kịch bản:</span>
+            <input
+              v-model="ruleForm.title"
+              type="text"
+              placeholder="VD: 1. Khách đau khổ vì hú rít, hát mệt..."
+              required
+            />
+          </label>
+
+          <label class="form-field">
+            <span>Nhóm tâm lý khách hàng (Persona):</span>
+            <select v-model="ruleForm.persona_type" required>
+              <option v-for="pt in PERSONA_TYPES" :key="pt.value" :value="pt.value">
+                {{ pt.label }}
+              </option>
+            </select>
+          </label>
+
+          <label class="form-field">
+            <span>Nỗi đau cốt lõi &amp; Đòn bẩy tâm lý:</span>
+            <textarea
+              v-model="ruleForm.psychological_trigger"
+              rows="3"
+              placeholder="Phân tích tâm lý khách hàng và cách AI bẻ gãy sự phòng thủ..."
+              required
+            ></textarea>
+          </label>
+
+          <label class="form-field">
+            <span>Dấu hiệu nhận diện / Từ khóa khách thường nhắn (cách nhau bởi dấu phẩy):</span>
+            <input
+              v-model="ruleForm.customer_keywords"
+              type="text"
+              placeholder="VD: hú rít, nặng mic, hát mệt, mua đi bán lại, chán..."
+            />
+          </label>
+
+          <label class="form-field">
+            <span>Câu trả lời mẫu chuẩn phong cách anh Tú:</span>
+            <textarea
+              v-model="ruleForm.suggested_response"
+              rows="4"
+              placeholder="Câu trả lời 1-2 câu ngắn, thấu cảm và khéo léo xin số Zalo/điện thoại..."
+              required
+            ></textarea>
+          </label>
+
+          <div class="form-checkbox-row">
+            <label class="checkbox-label">
+              <input v-model="ruleForm.is_active" type="checkbox" />
+              <span>Kích hoạt kịch bản này ngay cho AI (Website, Messenger, Comment)</span>
+            </label>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="adm-btn adm-btn-light" @click="showRuleModal = false">Hủy bỏ</button>
+            <button type="submit" class="adm-btn adm-btn-blue" :disabled="savingRule">
+              {{ savingRule ? 'Đang lưu…' : (isEditingRule ? 'Cập Nhật Kịch Bản' : 'Lưu Kịch Bản Mới') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import AdminIcon from '../../components/admin/AdminIcon.vue'
 import { apiRequest } from '../../utils/api'
 import { useAdminStore } from '../../stores/adminStore'
@@ -331,6 +561,173 @@ const adminStore = useAdminStore()
 const loading = ref(false)
 const inputTest = ref('')
 const testMessagesContainer = ref(null)
+
+const activeTab = ref('training')
+
+const PERSONA_TYPES = [
+  { value: 'HU_RIT_THAT_VONG', label: '1. Đau khổ vì hú rít / mua đi bán lại', class: 'red' },
+  { value: 'NANG_CAP_DO_CU', label: '2. Nâng cấp đồ cũ / Ghép thêm món', class: 'amber' },
+  { value: 'DICH_VU_TAN_NHA', label: '3. Muốn làm tại nhà / Ghép chuyến', class: 'blue' },
+  { value: 'DO_GIA_SO_HO', label: '4. Dò giá / Sợ mua hớ / Sợ hàng nhái', class: 'purple' },
+  { value: 'KHACH_MOI_TRON_BO', label: '5. Khách mới tinh sắm dàn gia đình', class: 'green' },
+  { value: 'CHUYEN_SAU', label: '6. Tình huống kỹ thuật chuyên sâu khác', class: 'slate' }
+]
+
+const trainingRules = ref([])
+const loadingTraining = ref(false)
+const trainingInFlight = ref(false)
+const showRuleModal = ref(false)
+const isEditingRule = ref(false)
+const savingRule = ref(false)
+
+const ruleForm = ref({
+  id: '',
+  title: '',
+  persona_type: 'HU_RIT_THAT_VONG',
+  psychological_trigger: '',
+  customer_keywords: '',
+  suggested_response: '',
+  is_active: true
+})
+
+const activeRulesCount = computed(() => trainingRules.value.filter(r => r.is_active).length)
+
+const getPersonaLabel = (type) => {
+  const p = PERSONA_TYPES.find(item => item.value === type)
+  return p ? p.label : type
+}
+
+const getPersonaClass = (type) => {
+  const p = PERSONA_TYPES.find(item => item.value === type)
+  return p ? p.class : 'slate'
+}
+
+const parseKeywords = (keywords) => {
+  if (!keywords) return []
+  return keywords.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean)
+}
+
+const loadTrainingRules = async () => {
+  loadingTraining.value = true
+  try {
+    const res = await apiRequest('/admin/ai-training')
+    if (res?.data) {
+      trainingRules.value = res.data
+    }
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể tải danh sách kịch bản tâm lý', 'error')
+  } finally {
+    loadingTraining.value = false
+  }
+}
+
+const openCreateRuleModal = () => {
+  isEditingRule.value = false
+  ruleForm.value = {
+    id: '',
+    title: '',
+    persona_type: 'HU_RIT_THAT_VONG',
+    psychological_trigger: '',
+    customer_keywords: '',
+    suggested_response: '',
+    is_active: true
+  }
+  showRuleModal.value = true
+}
+
+const openEditRuleModal = (rule) => {
+  isEditingRule.value = true
+  ruleForm.value = {
+    id: rule.id,
+    title: rule.title,
+    persona_type: rule.persona_type,
+    psychological_trigger: rule.psychological_trigger,
+    customer_keywords: rule.customer_keywords || '',
+    suggested_response: rule.suggested_response,
+    is_active: Boolean(rule.is_active)
+  }
+  showRuleModal.value = true
+}
+
+const saveRule = async () => {
+  savingRule.value = true
+  try {
+    if (isEditingRule.value && ruleForm.value.id) {
+      const res = await apiRequest(`/admin/ai-training/${encodeURIComponent(ruleForm.value.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: ruleForm.value.title,
+          personaType: ruleForm.value.persona_type,
+          psychologicalTrigger: ruleForm.value.psychological_trigger,
+          customerKeywords: ruleForm.value.customer_keywords,
+          suggestedResponse: ruleForm.value.suggested_response,
+          isActive: ruleForm.value.is_active
+        })
+      })
+      adminStore.showNotice(res.message || 'Cập nhật kịch bản thành công!', 'success')
+    } else {
+      const res = await apiRequest('/admin/ai-training', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: ruleForm.value.title,
+          personaType: ruleForm.value.persona_type,
+          psychologicalTrigger: ruleForm.value.psychological_trigger,
+          customerKeywords: ruleForm.value.customer_keywords,
+          suggestedResponse: ruleForm.value.suggested_response,
+          isActive: ruleForm.value.is_active
+        })
+      })
+      adminStore.showNotice(res.message || 'Thêm kịch bản tâm lý mới thành công!', 'success')
+    }
+    showRuleModal.value = false
+    await loadTrainingRules()
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể lưu kịch bản', 'error')
+  } finally {
+    savingRule.value = false
+  }
+}
+
+const toggleRuleActive = async (rule) => {
+  const next = !rule.is_active
+  try {
+    await apiRequest(`/admin/ai-training/${encodeURIComponent(rule.id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive: next })
+    })
+    rule.is_active = next
+    adminStore.showNotice(`Đã ${next ? 'BẬT' : 'TẮT'} kịch bản "${rule.title}"!`, 'success')
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể thay đổi trạng thái', 'error')
+  }
+}
+
+const deleteRule = async (rule) => {
+  if (!confirm(`Anh có chắc chắn muốn xóa kịch bản "${rule.title}" không?`)) return
+  try {
+    await apiRequest(`/admin/ai-training/${encodeURIComponent(rule.id)}`, {
+      method: 'DELETE'
+    })
+    adminStore.showNotice('Đã xóa kịch bản thành công!', 'success')
+    await loadTrainingRules()
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Không thể xóa kịch bản', 'error')
+  }
+}
+
+const triggerRetrainAi = async () => {
+  trainingInFlight.value = true
+  try {
+    const res = await apiRequest('/admin/ai-training/train', {
+      method: 'POST'
+    })
+    adminStore.showNotice(res.message || 'Đã nạp kiến thức tâm lý thành công vào toàn bộ hệ thống AI!', 'success')
+  } catch (err) {
+    adminStore.showNotice(err.message || 'Lỗi nạp kiến thức', 'error')
+  } finally {
+    trainingInFlight.value = false
+  }
+}
 
 const webAiEnabled = ref(true)
 const facebookAiEnabled = ref(true)
@@ -414,6 +811,7 @@ const toggleFacebookAi = async () => {
 
 onMounted(() => {
   loadAiSettings()
+  loadTrainingRules()
 })
 
 const scenarios = [
@@ -1214,6 +1612,378 @@ const sendTestMessage = async () => {
 @media (max-width: 900px) {
   .ai-workspace-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   TABS CHUYỂN ĐỔI CHỨC NĂNG
+========================================================= */
+.ai-tabs-nav {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.ai-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-tab-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.ai-tab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+.tab-badge {
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.ai-tab-btn.active .tab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* =========================================================
+   TRAINING HUB TOOLBAR & CARDS
+========================================================= */
+.training-hub-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.training-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.toolbar-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.toolbar-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.toolbar-title {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.toolbar-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.5;
+  max-width: 720px;
+}
+
+.training-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.stat-pill.active {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.stat-pill.info {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Rules Grid */
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+  gap: 20px;
+}
+
+.training-rule-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.training-rule-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.training-rule-card.inactive {
+  opacity: 0.6;
+  background: #f8fafc;
+}
+
+.rule-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rule-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.persona-tag {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.persona-tag.red { background: #fee2e2; color: #991b1b; }
+.persona-tag.amber { background: #fef3c7; color: #92400e; }
+.persona-tag.blue { background: #e0f2fe; color: #0369a1; }
+.persona-tag.purple { background: #f3e8ff; color: #6b21a8; }
+.persona-tag.green { background: #dcfce7; color: #166534; }
+.persona-tag.slate { background: #f1f5f9; color: #334155; }
+
+.rule-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.rule-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.rule-toggle-btn .toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.rule-toggle-btn.active {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.rule-toggle-btn.active .toggle-dot {
+  background: #10b981;
+}
+
+.rule-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.trigger-text {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #1e293b;
+  line-height: 1.5;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-left: 3px solid #0284c7;
+}
+
+.keywords-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kw-tag {
+  font-size: 0.74rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px dashed #cbd5e1;
+}
+
+.response-box {
+  background: #faf5ff;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border-left: 3px solid #9333ea;
+}
+
+.suggested-quote {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  color: #581c87;
+  font-style: italic;
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+.rule-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.rule-id {
+  font-family: monospace;
+  font-size: 0.74rem;
+  color: #94a3b8;
+}
+
+.rule-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.action-btn.edit-btn {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.action-btn.edit-btn:hover {
+  background: #e2e8f0;
+}
+
+.action-btn.delete-btn {
+  background: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.action-btn.delete-btn:hover {
+  background: #ffe4e6;
+}
+
+/* Training Modal */
+.training-modal {
+  max-width: 680px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-checkbox-row {
+  margin: 10px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.loading-box, .empty-box {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .rules-grid {
+    grid-template-columns: 1fr;
+  }
+  .training-toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>
