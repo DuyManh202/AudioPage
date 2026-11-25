@@ -102,6 +102,7 @@ export const useAdminStore = defineStore('admin', {
     leadFilterStatus: 'ALL',
     leadSearchKeyword: '',
     isSyncing: false,
+    isAutoSyncing: false,
     dbConnected: false,
     lastSyncedAt: '',
     adminNotice: null,
@@ -200,10 +201,37 @@ export const useAdminStore = defineStore('admin', {
       localStorage.setItem('audioshop_orders', JSON.stringify(this.orders))
     },
 
-    async fetchAllAdminData(silent = true) {
-      this.isSyncing = true
+    playNewLeadChime() {
       try {
-        const role = useAuthStore().currentUser.role
+        const AudioCtx = window.AudioContext || window.webkitAudioContext
+        if (!AudioCtx) return
+        const ctx = new AudioCtx()
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {})
+        }
+        const now = ctx.currentTime
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(587.33, now) // D5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12) // A5
+        gain.gain.setValueAtTime(0.08, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now)
+        osc.stop(now + 0.35)
+      } catch {}
+    },
+
+    async fetchAllAdminData(silent = true) {
+      if (!silent) {
+        this.isSyncing = true
+      } else {
+        this.isAutoSyncing = true
+      }
+      try {
+        const role = useAuthStore().currentUser?.role
         const canSales = ['SUPER_ADMIN', 'SALES'].includes(role)
         const requests = [
           ['products', apiRequest('/products')],
@@ -226,7 +254,18 @@ export const useAdminStore = defineStore('admin', {
         const orderRes = responseFor('orders')
 
         if (leadsRes?.success && Array.isArray(leadsRes.data)) {
-          this.leads = leadsRes.data.filter(l => isValidViMobilePhone(l.phone))
+          const incomingValid = leadsRes.data.filter(l => isValidViMobilePhone(l.phone))
+          // Phát hiện có khách hàng mới để lại SĐT
+          if (this.leads && this.leads.length > 0 && incomingValid.length > 0) {
+            const existingIds = new Set(this.leads.map(l => l.id))
+            const newArrivals = incomingValid.filter(l => !existingIds.has(l.id))
+            if (newArrivals.length > 0) {
+              const top = newArrivals[0]
+              this.showNotice(`🔔 Có ${newArrivals.length} khách mới để lại SĐT: ${top.name || 'Khách'} (${top.phone})`, 'success')
+              this.playNewLeadChime()
+            }
+          }
+          this.leads = incomingValid
           this._persistLeads()
         }
         if (prodRes?.success && Array.isArray(prodRes.data) && prodRes.data.length > 0) {
@@ -258,7 +297,7 @@ export const useAdminStore = defineStore('admin', {
 
         const allOk = results.every(result => result.status === 'fulfilled' && result.value?.success)
         this.dbConnected = allOk
-        this.lastSyncedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+        this.lastSyncedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         if (!silent) {
           if (allOk) {
             this.showNotice('Đã đồng bộ dữ liệu mới nhất từ Aiven PostgreSQL.', 'success')
@@ -274,6 +313,7 @@ export const useAdminStore = defineStore('admin', {
         }
       } finally {
         this.isSyncing = false
+        this.isAutoSyncing = false
       }
     },
 

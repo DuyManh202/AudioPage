@@ -256,13 +256,14 @@
 
           <button
             type="button"
-            class="topbar-sync-btn"
+            class="topbar-sync-btn auto-live"
             :disabled="adminStore.isSyncing"
             @click="adminStore.fetchAllAdminData(false)"
-            title="Đồng bộ dữ liệu mới nhất từ Aiven PostgreSQL"
+            :title="`Hệ thống tự động đồng bộ Realtime liên tục (Lần cuối: ${adminStore.lastSyncedAt || 'Vừa xong'}) · Bấm để ép làm mới ngay`"
           >
-            <AdminIcon name="sync" :size="15" :class="{ spinning: adminStore.isSyncing }" />
-            <span>{{ adminStore.isSyncing ? 'Đang tải...' : 'Đồng bộ' }}</span>
+            <span class="live-pulse-dot" title="Tự động đồng bộ Realtime đang chạy"></span>
+            <AdminIcon name="sync" :size="14" :class="{ spinning: adminStore.isSyncing || adminStore.isAutoSyncing }" />
+            <span>{{ adminStore.isSyncing ? 'Đang tải...' : 'Tự Động' }}</span>
           </button>
 
           <!-- Nút Cấu hình Dịp Lễ Hội (TGDD Style) -->
@@ -487,6 +488,7 @@ const roleLabel = computed(() => {
 })
 
 let heartbeatTimer = null
+let autoSyncTimer = null
 let cachedAdminGeo = null
 const isLocatingGps = ref(false)
 const currentGeoLabel = ref('Đang xác định...')
@@ -665,12 +667,29 @@ const sendHeartbeat = async () => {
   }
 }
 
+const handleVisibilityOrFocus = () => {
+  if (document.visibilityState === 'visible' && !adminStore.isSyncing && !adminStore.isAutoSyncing) {
+    adminStore.fetchAllAdminData(true)
+  }
+}
+
 onMounted(async () => {
-  adminStore.fetchAllAdminData()
+  adminStore.fetchAllAdminData(true)
   festiveStore.fetchSettings()
   await getAdminGeo()
   sendHeartbeat()
   heartbeatTimer = setInterval(sendHeartbeat, 30000)
+
+  // Tự động đồng bộ Realtime ngầm mỗi 8 giây (không cần bấm nút đồng bộ)
+  if (autoSyncTimer) clearInterval(autoSyncTimer)
+  autoSyncTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !adminStore.isSyncing && !adminStore.isAutoSyncing) {
+      adminStore.fetchAllAdminData(true)
+    }
+  }, 8000)
+
+  document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+  window.addEventListener('focus', handleVisibilityOrFocus)
 
   // Nếu trình duyệt đã cấp quyền vị trí, tự động lấy GPS chính xác
   if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
@@ -684,6 +703,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (heartbeatTimer) clearInterval(heartbeatTimer)
+  if (autoSyncTimer) clearInterval(autoSyncTimer)
+  document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+  window.removeEventListener('focus', handleVisibilityOrFocus)
 })
 
 watch(() => route.path, () => {
@@ -1163,6 +1185,47 @@ const handleLogout = async () => {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
+}
+
+.topbar-sync-btn.auto-live {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.topbar-sync-btn.auto-live:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: livePulse 2s infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes livePulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
 }
 
 .topbar-sync-btn:hover:not(:disabled) {
