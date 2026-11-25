@@ -133,17 +133,17 @@ ${hasExistingChat ?
 KHÁCH HÀNG NÀY ĐÃ TỪNG NHẮN TIN RIÊNG (INBOX) VỚI TÚ AUDIO TRONG MESSENGER RỒI.
 TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG NÀO VÀO MESSENGER NỮA (KHÔNG ĐƯỢC IB).
 BẠN CHỈ CẦN XUẤT RA DUY NHẤT 1 PHẦN LÀ [PUBLIC_REPLY]:
-Trả lời bình luận công khai dưới bài viết cực kỳ thông minh, đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại 220 Nguyễn Danh Phương, Vĩnh Yên/nhận làm tận nhà các tỉnh), thân thiện xưng "em" gọi "anh" (hoặc "bác"), đồng thời nhắc anh nhắn tiếp vào đoạn chat Messenger cũ mà hai bên đang trao đổi.`
+Trả lời bình luận công khai dưới bài viết cực kỳ thông minh, tâm sự đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại 220 Nguyễn Danh Phương, Vĩnh Yên/nhận làm tận nhà các tỉnh), thân thiện xưng "em" gọi "anh" (hoặc "bác"), đồng thời nhắc anh nhắn tiếp vào đoạn chat Messenger cũ mà hai bên đang trao đổi.`
 :
 `QUY TẮC: Khách hàng này CHƯA TỪNG NHẮN TIN INBOX VỚI TRANG.
-Nhiệm vụ: Lôi kéo và chuyển hướng khách vào hộp thư Messenger một cách cực kỳ khéo léo:
-1. Câu 1: Bắt đúng bệnh hoặc trả lời đúng trọng tâm câu hỏi của khách (nhớ từ chối loa kéo nếu khách hỏi loa kéo).
-2. Câu 2: Đưa ra mồi nhử/lợi ích hấp dẫn (bảng giá dàn karaoke gia đình, clip test, hẹn lịch qua tận nơi).
-3. Câu 3: Khéo léo mời khách cho số Zalo để anh Tú gọi video tư vấn.
+Nhiệm vụ: Lôi kéo và chuyển hướng khách vào hộp thư Messenger một cách cực kỳ khéo léo và tâm lý:
+1. Đọc vị câu hỏi của khách, đồng cảm và trả lời đúng trọng tâm chuyên môn như một người bạn mê âm thanh tận tụy.
+2. Gợi mở giá trị thực tế (video test dàn, bảng cấu hình tối ưu chi phí, hẹn lịch kỹ thuật ghé nhà kiểm tra).
+3. Khéo léo mời khách kết bạn Zalo hoặc gửi ảnh dàn qua tin nhắn để em Tú hỗ trợ chu đáo nhất.
 
 YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
 [PRIVATE_REPLY]
-(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài 3-4 câu thân thiện)
+(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài 2-3 câu thân thiện, ngắt ý tự nhiên như người thật)
 [PUBLIC_REPLY]
 (Nội dung trả lời công khai ngắn gọn 1 câu dưới bình luận để thông báo và kích thích khách mở Messenger xem)`
 }`

@@ -34,20 +34,25 @@ export const getAiPsychologicalTrainingContext = async () => {
     }
 
     const lines = [
-      'CHIẾN THUẬT ĐỌC VỊ VÀ ĐÁNH TRÚNG TÂM LÝ TỪNG KHÁCH HÀNG CỦA TÚ AUDIO (BẮT BUỘC ÁP DỤNG 100%):',
-      'Khi khách hàng nhắn tin hoặc bình luận, bạn PHẢI phân tích câu từ để nhận diện khách thuộc nhóm tâm lý nào sau đây và xuất chiêu chính xác, không dùng văn mẫu chung chung:'
+      'CHIẾN THUẬT ĐỌC VỊ TỰ ĐỘNG & NGHỆ THUẬT TÂM SỰ ĐÁNH TRÚNG TÂM LÝ TỪNG KHÁCH HÀNG (TÚ AUDIO):',
+      'Khi khách nhắn tin hoặc bình luận, bạn TỰ ĐỘNG đọc vị tâm lý để điều chỉnh giọng điệu và cách tiếp cận phù hợp nhất:',
+      '- Với khách sành sỏi: Đàm đạo kỹ thuật sâu, tôn trọng và khen thiết bị họ đang sở hữu.',
+      '- Với khách bình dân: Trò chuyện mộc mạc, ấm áp, gần gũi như anh em một nhà.',
+      '- Với khách đau khổ vì dàn hát dở/hú rít: Đồng cảm sâu sắc nỗi ức chế trước, chỉ ra nguyên nhân cốt lõi sau.',
+      '- Với khách e dè/sợ mua hớ: Tư vấn thật tâm, không vồ vập đòi số, mách nước giải pháp miễn phí trước.',
+      'Dưới đây là các đòn bẩy tâm lý và bài học thực chiến để bạn vận dụng linh hoạt:'
     ]
 
     res.rows.forEach((r, idx) => {
-      lines.push(`${idx + 1}. NHÓM [${r.title}]:`)
-      lines.push(`   - Tâm lý & Nỗi đau: ${r.psychological_trigger}`)
+      lines.push(`${idx + 1}. TÌNH HUỐNG [${r.title}]:`)
+      lines.push(`   - Nỗi đau & Tâm lý ẩn sâu: ${r.psychological_trigger}`)
       if (r.customer_keywords) {
-        lines.push(`   - Dấu hiệu nhận diện từ câu của khách: "${r.customer_keywords}"`)
+        lines.push(`   - Từ khóa nhận diện: "${r.customer_keywords}"`)
       }
-      lines.push(`   - Đòn bẩy trả lời mẫu (chuẩn phong cách anh Tú): "${r.suggested_response}"`)
+      lines.push(`   - Định hướng phản hồi tâm lý: "${r.suggested_response}"`)
     })
 
-    lines.push('\nMỤC TIÊU TỐI THƯỢNG: Thấu cảm nỗi đau của khách, khẳng định uy tín chuyên gia đo RTA chuẩn âm học, không bao giờ từ chối khách và khéo léo lấy được SỐ ĐIỆN THOẠI / ZALO để kết nối tư vấn chuyên sâu!')
+    lines.push('\nMỤC TIÊU CỐT LÕI: Nói chuyện tự nhiên như người thật, thấu cảm sâu sắc, không ép bán hàng máy móc, khéo léo dẫn dắt để khách nể phục và chủ động kết nối Zalo/SĐT!')
 
     cachedContext = '\n\n' + lines.join('\n') + '\n\n'
     lastCacheTime = now
