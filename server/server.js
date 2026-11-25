@@ -385,20 +385,30 @@ const getGeminiModel = async () => {
   return await getSystemSetting('gemini_model', 'gemini-3.8-flash')
 }
 
-let cachedMetaPageAccessToken = process.env.META_PAGE_ACCESS_TOKEN || ''
+let cachedMetaPageAccessToken = ''
 
-const getMetaPageAccessToken = async () => {
-  if (cachedMetaPageAccessToken) return cachedMetaPageAccessToken
-  const dbToken = await getSystemSetting('meta_page_access_token', '')
+const getMetaPageAccessToken = async (forceRefresh = false) => {
+  if (!forceRefresh && cachedMetaPageAccessToken) return cachedMetaPageAccessToken
+  let dbToken = await getSystemSetting('meta_page_access_token', '')
+  if (typeof dbToken === 'string') {
+    try {
+      const parsed = JSON.parse(dbToken)
+      if (typeof parsed === 'string') dbToken = parsed
+    } catch {}
+  }
   if (dbToken && typeof dbToken === 'string' && dbToken.startsWith('EAA')) {
-    cachedMetaPageAccessToken = dbToken
+    cachedMetaPageAccessToken = dbToken.trim()
     return cachedMetaPageAccessToken
   }
-  return process.env.META_PAGE_ACCESS_TOKEN || ''
+  if (process.env.META_PAGE_ACCESS_TOKEN) {
+    cachedMetaPageAccessToken = process.env.META_PAGE_ACCESS_TOKEN.trim()
+    return cachedMetaPageAccessToken
+  }
+  return ''
 }
 
-const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && (cachedMetaPageAccessToken || process.env.META_PAGE_ACCESS_TOKEN) && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
-const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && (cachedMetaPageAccessToken || process.env.META_PAGE_ACCESS_TOKEN) && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+const isFacebookMessengerConfigured = () => Boolean(process.env.META_PAGE_ID && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 const isFacebookAiEnabled = async () => {
   const apiKey = await getGeminiApiKey()
   if (!apiKey) return false
