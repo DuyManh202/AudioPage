@@ -1030,22 +1030,27 @@
         </div>
 
         <!-- Thẻ 4: Doanh Thu & ROAS HOẶC Khách Nét & SĐT khi chưa có đơn -->
-        <div class="cockpit-card card-roas" :class="{ 'card-phone-focus': analyticsSummary.totalClosed === 0 }">
-          <div class="card-glow" :class="analyticsSummary.totalClosed > 0 ? 'glow-purple' : 'glow-gold'"></div>
+        <div class="cockpit-card card-roas" :class="{ 'card-phone-focus': analyticsSummary.totalClosed === 0 && analyticsSummary.totalRevenue === 0 }">
+          <div class="card-glow" :class="(analyticsSummary.totalClosed > 0 || analyticsSummary.totalRevenue > 0) ? 'glow-purple' : 'glow-gold'"></div>
           <div class="card-head">
             <div class="card-title-wrap">
-              <span class="card-icon">{{ analyticsSummary.totalClosed > 0 ? '🚀' : '📱' }}</span>
-              <span class="card-title">{{ analyticsSummary.totalClosed > 0 ? 'DOANH THU & HOÀN VỐN (ROAS)' : 'KHÁCH NÉT & TỶ LỆ RA SĐT' }}</span>
+              <span class="card-icon">{{ (analyticsSummary.totalClosed > 0 || analyticsSummary.totalRevenue > 0) ? '🚀' : '📱' }}</span>
+              <span class="card-title">{{ (analyticsSummary.totalClosed > 0 || analyticsSummary.totalRevenue > 0) ? 'GIÁ TRỊ CHUYỂN ĐỔI & ROAS' : 'KHÁCH NÉT & TỶ LỆ RA SĐT' }}</span>
             </div>
-            <span v-if="analyticsSummary.totalClosed > 0" class="roas-top-badge">{{ analyticsSummary.avgRoas }}x ROAS</span>
+            <span v-if="analyticsSummary.totalClosed > 0 || analyticsSummary.totalRevenue > 0" class="roas-top-badge">{{ analyticsSummary.avgRoas }}x ROAS</span>
             <span v-else class="rate-badge">{{ analyticsSummary.avgPhoneRate || 0 }}% Ra SĐT</span>
           </div>
-          <div v-if="analyticsSummary.totalClosed > 0" class="card-main-val text-neon-gold">{{ formatMoney(analyticsSummary.totalRevenue) }}</div>
+          <div v-if="analyticsSummary.totalClosed > 0 || analyticsSummary.totalRevenue > 0" class="card-main-val text-neon-gold">
+            {{ formatMoney(analyticsSummary.totalRevenue) }}
+            <span class="val-sub" style="font-size: 0.8rem; opacity: 0.85; margin-left: 6px;">(Đã chi: {{ formatMoney(analyticsSummary.totalSpend) }})</span>
+          </div>
           <div v-else class="card-main-val text-neon-gold">
             {{ analyticsSummary.totalPhoneCustomers || 0 }} <span class="val-sub">số điện thoại</span>
           </div>
           <div class="card-foot">
-            <span v-if="analyticsSummary.totalClosed > 0">Đã chốt: <strong class="text-green">{{ analyticsSummary.totalClosed }} đơn</strong> (Tỷ lệ: {{ analyticsSummary.overallCr }}%)</span>
+            <span v-if="analyticsSummary.totalClosed > 0 || analyticsSummary.totalRevenue > 0">
+              Thu về: <strong class="text-green">{{ analyticsSummary.totalClosed }} lượt mua</strong> · Lãi gộp QC: <strong class="text-neon-gold">+{{ formatMoney(Math.max(0, analyticsSummary.totalRevenue - analyticsSummary.totalSpend)) }}</strong> (ROAS: {{ analyticsSummary.avgRoas }}x)
+            </span>
             <span v-else>Giá / 1 SĐT: <strong class="text-amber">{{ (analyticsSummary.avgCpp || 0) > 0 ? formatMoney(analyticsSummary.avgCpp) : '—' }}</strong> (Tỷ lệ: {{ analyticsSummary.avgPhoneRate || 0 }}%)</span>
           </div>
         </div>
@@ -1320,6 +1325,9 @@
                     <div class="cpp-sub-row">
                       <span>Giá/SĐT: <strong class="text-neon-gold">{{ item.cpp > 0 ? formatMoney(item.cpp) : (item.phoneCustomers > 0 ? 'Miễn phí' : '—') }}</strong></span>
                     </div>
+                    <div v-if="(item.closedCustomers || 0) > 0 || (item.effectiveRevenue || 0) > 0" class="sub-conversion-row" style="margin-top: 3px; font-size: 0.73rem;">
+                      <span class="text-green font-bold">🎯 {{ item.closedCustomers || item.metaPurchases || 0 }} lượt mua: {{ formatMoney(item.effectiveRevenue || item.metaConversionValue || 0) }}</span>
+                    </div>
                     <div class="quality-score-bar" :title="'Điểm tiềm năng: ' + (item.qualityScore || 50) + '/100'">
                       <div class="score-progress" :style="{ width: (item.qualityScore || 50) + '%' }" :class="getScoreClass(item.qualityScore)"></div>
                     </div>
@@ -1328,13 +1336,18 @@
                 <td class="col-revenue" v-else>
                   <div class="rev-cell">
                     <div class="orders-row">
-                      <span class="font-bold text-green">{{ item.closedCustomers }} đơn</span>
-                      <span class="text-gold font-bold">({{ formatMoney(item.effectiveRevenue) }})</span>
+                      <span class="font-bold text-green">🎯 {{ item.closedCustomers || item.metaPurchases || 0 }} lượt mua/đơn</span>
+                    </div>
+                    <div class="revenue-val-row" style="margin: 2px 0;">
+                      <strong class="text-gold font-bold" style="font-size: 1.05rem;">{{ formatMoney(item.effectiveRevenue || item.metaConversionValue || 0) }}</strong>
                     </div>
                     <div class="roas-row">
                       <span :class="['roas-pill', item.roas >= 3 ? 'roas-high' : item.roas > 0 ? 'roas-mid' : 'roas-zero']">
                         ROAS: {{ item.roas }}x
                       </span>
+                      <small v-if="item.spend > 0" class="text-muted" style="font-size: 0.72rem; margin-left: 6px;">
+                        (Đã chi: {{ formatMoney(item.spend) }})
+                      </small>
                     </div>
                   </div>
                 </td>

@@ -992,7 +992,12 @@ NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100%):
    - Nếu khách gửi HÌNH ẢNH THẬT ("[Khách gửi hình ảnh / tệp đính kèm]"): Trả lời "Dạ em Tú đã nhận được hình ảnh của anh rồi ạ! Anh cho em xin số Zalo em gọi điện trao đổi tư vấn trực tiếp cho tiện nhé anh!" - TUYỆT ĐỐI KHÔNG TỰ ĐOÁN ĐÂY LÀ ẢNH BỘ DÀN HAY THIẾT BỊ NÀO KHI CHƯA RÕ NỘI DUNG.
 5. PHẠM VI SẢN PHẨM & DỊCH VỤ CỐT LÕI (TUÂN THỦ 100%):
    - TÚ AUDIO CHUYÊN SALE DÀN KARAOKE GIA ĐÌNH & THIẾT BỊ PHÒNG HÁT CAO CẤP (Loa Full, Vang số, Cục đẩy công suất, Loa Sub, Micro không dây).
-   - TUYỆT ĐỐI CẤM: KHÔNG nhận căn chỉnh, KHÔNG nhận sửa chữa, KHÔNG bán loa kéo / loa kẹo kéo di động. TUYỆT ĐỐI KHÔNG BAO GIỜ nhận có "công thức chỉnh loa kéo" hay "chỉ vặn nút loa kéo".
+   - NGUYÊN TẮC CỐT LÕI VỀ CĂN CHỈNH / SETUP DÀN VANG SỐ (BẮT BUỘC NHẬN HẾT 100%):
+     * Khi khách hỏi: "có căn chỉnh không", "có đi chỉnh không", "có qua tận nơi chỉnh không", "có chỉnh vang không", "có setup lại không"...
+     * BẮT BUỘC LUÔN LUÔN NHẬN HẾT 100%! TUYỆT ĐỐI CẤM TỪ CHỐI KHÁCH! TUYỆT ĐỐI KHÔNG BAO GIỜ nói câu: "bên em không nhận đi căn chỉnh dịch vụ lẻ bên ngoài".
+     * Khẳng định rõ bên em CÓ NHẬN căn chỉnh vang số và setup dàn tận nơi cũng như hỗ trợ qua máy tính Ultraviewer, có thợ đi ghép chuyến các tỉnh liên tục nên chi phí rất hợp lý.
+     * Ngay lập tức mời khách cho số điện thoại / kết bạn Zalo để hẹn lịch kỹ thuật qua hỗ trợ hoặc gọi tư vấn, gửi ảnh bộ dàn. Khách lẻ căn chỉnh là phễu khách hàng lớn nhất để tiếp cận và chốt sale nâng cấp thiết bị!
+   - TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo / loa kẹo kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất.
    - NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối dịch vụ loa kéo và giải thích bên em chuyên dàn karaoke phòng hát. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối.
 
 Ví dụ tham khảo cách tư vấn:
@@ -3647,7 +3652,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         const version = process.env.META_GRAPH_VERSION || 'v19.0'
         const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
         const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
-        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},${insightsField}{impressions,reach,clicks,spend,actions,cost_per_action_type}`)
+        url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},${insightsField}{impressions,reach,clicks,spend,actions,action_values,cost_per_action_type}`)
         url.searchParams.set('limit', '100')
         const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
         const payload = await response.json().catch(() => ({}))
@@ -3660,6 +3665,9 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
             const statusLabel = isMetaActive ? '🟢 Đang chạy trên Meta' : (isMetaPaused ? '⏸️ Đã tạm dừng trên Meta' : '📦 Đã tắt / Lưu trữ')
 
             let metaMessages = 0
+            let metaPurchases = 0
+            let metaConversionValue = 0
+
             if (Array.isArray(insight.actions)) {
               const msgAction = insight.actions.find(a =>
                 a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
@@ -3669,6 +3677,26 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
                 a.action_type === 'lead'
               )
               if (msgAction) metaMessages = Number(msgAction.value || 0)
+
+              const purchaseAction = insight.actions.find(a =>
+                a.action_type === 'omni_purchase' ||
+                a.action_type === 'purchase' ||
+                a.action_type === 'onsite_conversion.purchase' ||
+                a.action_type === 'onsite_web_app_purchase' ||
+                a.action_type === 'onsite_web_purchase'
+              )
+              if (purchaseAction) metaPurchases = Number(purchaseAction.value || 0)
+            }
+
+            if (Array.isArray(insight.action_values)) {
+              const valAction = insight.action_values.find(a =>
+                a.action_type === 'omni_purchase' ||
+                a.action_type === 'purchase' ||
+                a.action_type === 'onsite_conversion.purchase' ||
+                a.action_type === 'onsite_web_app_purchase' ||
+                a.action_type === 'onsite_web_purchase'
+              )
+              if (valAction) metaConversionValue = Math.round(Number(valAction.value || 0))
             }
 
             const spend = Number(insight.spend || 0)
@@ -3697,6 +3725,8 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
               clicks: Number(insight.clicks || 0),
               spend,
               metaMessages,
+              metaPurchases,
+              metaConversionValue,
               metaCpl
             }
           })
@@ -3757,18 +3787,19 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         totalOrdersCount: 0
       }
 
+      const effectiveClosed = (stat.closedCustomers > 0) ? stat.closedCustomers : (ad.metaPurchases || 0)
       const effectiveRevenue = stat.totalOrderRevenue > 0
         ? stat.totalOrderRevenue
-        : (stat.closedCustomers * 25000000)
+        : (ad.metaConversionValue > 0 ? ad.metaConversionValue : (stat.closedCustomers * 25000000))
 
       const effectiveCustomers = Math.max(stat.totalCustomers || 0, ad.metaMessages || 0)
       const phoneCustomers = Number(stat.phoneCustomers || 0)
       const phoneRate = effectiveCustomers > 0 ? Number(((phoneCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
       const cpl = ad.metaCpl > 0 ? ad.metaCpl : (ad.spend > 0 && effectiveCustomers > 0 ? Math.round(ad.spend / effectiveCustomers) : 0)
       const cpp = ad.spend > 0 && phoneCustomers > 0 ? Math.round(ad.spend / phoneCustomers) : 0
-      const cpa = ad.spend > 0 && stat.closedCustomers > 0 ? Math.round(ad.spend / stat.closedCustomers) : 0
-      const conversionRate = effectiveCustomers > 0 ? Number(((stat.closedCustomers / effectiveCustomers) * 100).toFixed(1)) : 0
-      const roas = ad.spend > 0 && effectiveRevenue > 0 ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
+      const cpa = ad.spend > 0 && effectiveClosed > 0 ? Math.round(ad.spend / effectiveClosed) : 0
+      const conversionRate = effectiveCustomers > 0 ? Number(((effectiveClosed / effectiveCustomers) * 100).toFixed(1)) : 0
+      const roas = (ad.spend > 0 && effectiveRevenue > 0) ? Number((effectiveRevenue / ad.spend).toFixed(2)) : 0
 
       const impressions = Number(ad.impressions || 0)
       const reach = Number(ad.reach || 0)
@@ -3824,13 +3855,21 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
           disease: 'Chiến dịch đã tắt',
           advice: 'Chiến dịch này hiện đã tạm dừng trong Trình quản lý quảng cáo Meta.'
         }
-      } else if (roas >= 3 || (stat.closedCustomers >= 2 && roas >= 2)) {
+      } else if (roas >= 3 || (effectiveClosed >= 2 && roas >= 2) || (effectiveRevenue >= spend * 2 && spend >= 500000)) {
         diagnosis = {
           action: 'SCALE',
-          actionLabel: '🚀 VÍT NGÂN SÁCH (+20%)',
+          actionLabel: '🚀 SIÊU PHẨM WIN (VÍT MẠNH NGÂN SÁCH)',
           badgeClass: 'badge-scale',
-          disease: '🌟 Chiến Dịch Win (Siêu Lợi Nhuận)',
-          advice: `ROAS đạt ${roas}x, đã chốt ${stat.closedCustomers} đơn thực tế. Áp dụng quy tắc vàng Chu Minh Hạnh: Chỉ tăng 20%-25% ngân sách mỗi 24h để tránh vỡ máy học.`
+          disease: `🔥 Siêu Lợi Nhuận: ROAS ${roas}x (Doanh thu: ${new Intl.NumberFormat('vi-VN').format(effectiveRevenue)} đ)`,
+          advice: `Chiến dịch đỉnh cao! Đã mang về ${effectiveClosed} đơn/lượt mua với tổng giá trị ${new Intl.NumberFormat('vi-VN').format(effectiveRevenue)} đ trên chi phí ${new Intl.NumberFormat('vi-VN').format(spend)} đ. ROAS đạt ${roas}x (1 đồng chi tiêu thu về ${roas} đồng doanh thu). Đề xuất anh Tú tăng 30-50% ngân sách để gom trọn thị trường!`
+        }
+      } else if (effectiveClosed > 0 && roas >= 1.5) {
+        diagnosis = {
+          action: 'POTENTIAL_WIN',
+          actionLabel: '⭐ CHIẾN DỊCH HIỆU QUẢ (GIỮ & VÍT)',
+          badgeClass: 'badge-win',
+          disease: `Lãi Tốt: ROAS ${roas}x (${effectiveClosed} đơn / ${new Intl.NumberFormat('vi-VN').format(effectiveRevenue)} đ)`,
+          advice: `Chiến dịch hoạt động hiệu quả, thu về ${effectiveClosed} lượt mua với giá trị ${new Intl.NumberFormat('vi-VN').format(effectiveRevenue)} đ trên chi phí ${new Intl.NumberFormat('vi-VN').format(spend)} đ (ROAS: ${roas}x). Tiếp tục duy trì và mở rộng nhóm tệp tương tự!`
         }
       } else if (phoneCustomers >= 3 && phoneRate >= 22 && (cpp <= 90000 || cpl <= 38000)) {
         diagnosis = {
@@ -3925,10 +3964,14 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         cpp,
         clickToMessRate,
         metaMessages: ad.metaMessages || 0,
+        metaPurchases: ad.metaPurchases || 0,
+        metaConversionValue: ad.metaConversionValue || 0,
         metaCpl: ad.metaCpl || 0,
         ...stat,
+        closedCustomers: effectiveClosed,
         totalCustomers: effectiveCustomers,
         effectiveRevenue,
+        conversionValue: effectiveRevenue,
         cpl,
         cpa,
         conversionRate,

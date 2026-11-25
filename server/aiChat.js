@@ -101,6 +101,7 @@ export const checkDeterministicAiResponse = (message) => {
   // 4. Khách hỏi dịch vụ Căn chỉnh / Setup tận nhà / Chi phí đi lại
   if (
     norm.includes('setup') || norm.includes('can chinh') || norm.includes('chinh giup') ||
+    norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh vang') ||
     norm.includes('qua nha') || norm.includes('ve nha') || norm.includes('den nha') ||
     norm.includes('tai nha') || norm.includes('chinh dan') || norm.includes('set up') ||
     norm.includes('chinh ho') || norm.includes('can giup')

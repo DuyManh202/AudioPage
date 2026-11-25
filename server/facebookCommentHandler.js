@@ -116,8 +116,13 @@ Bình luận: "${cleanMsg}"
 
 NGUYÊN TẮC BẮT BUỘC VỀ PHẠM VI SẢN PHẨM & DỊCH VỤ CỦA TÚ AUDIO (TUÂN THỦ 100%):
 - TÚ AUDIO CHUYÊN SALE DÀN KARAOKE GIA ĐÌNH & THIẾT BỊ PHÒNG HÁT CAO CẤP (Loa Full chuyên nghiệp, Vang số cao cấp, Cục đẩy công suất, Loa Subwoofer, Micro không dây).
-- TUYỆT ĐỐI CẤM: KHÔNG nhận căn chỉnh, KHÔNG nhận sửa chữa, KHÔNG bán loa kéo / loa kẹo kéo di động. TUYỆT ĐỐI KHÔNG BAO GIỜ tự bịa ra là có "công thức căn chỉnh loa kéo" hay "chỉ vặn nút loa kéo".
-- NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối và giải thích rõ bên em chuyên dàn karaoke gia đình và thiết bị phòng hát. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối, xin số Zalo để tư vấn.
+- NGUYÊN TẮC CỐT LÕI VỀ CĂN CHỈNH / SETUP DÀN VANG SỐ (BẮT BUỘC NHẬN HẾT 100%):
+  * Khi khách hỏi: "có căn chỉnh không", "có đi chỉnh không", "có qua tận nơi chỉnh không", "có chỉnh vang không", "có setup lại không"...
+  * BẮT BUỘC LUÔN LUÔN NHẬN HẾT 100%! TUYỆT ĐỐI CẤM TỪ CHỐI KHÁCH! TUYỆT ĐỐI KHÔNG BAO GIỜ nói câu: "bên em không nhận đi căn chỉnh dịch vụ lẻ bên ngoài".
+  * Khẳng định rõ bên em CÓ NHẬN căn chỉnh vang số và setup dàn tận nơi cũng như hỗ trợ qua máy tính Ultraviewer, có thợ đi ghép chuyến các tỉnh liên tục nên chi phí rất hợp lý.
+  * Ngay lập tức mời khách cho số điện thoại / kết bạn Zalo để hẹn lịch kỹ thuật qua hỗ trợ hoặc gọi tư vấn, gửi ảnh bộ dàn. Khách lẻ căn chỉnh là phễu khách hàng lớn nhất để tiếp cận và chốt sale nâng cấp thiết bị!
+- TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo / loa kẹo kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất.
+- NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối dịch vụ loa kéo và giải thích rõ bên em chuyên dàn karaoke gia đình và thiết bị phòng hát chuẩn. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối, xin số Zalo để tư vấn.
 
 ${hasExistingChat ? 
 `QUY TẮC CỐT LÕI (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
@@ -328,6 +333,13 @@ function generateSalesResponse({ customerName = 'bác', commentText = '', hasExi
         publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát, không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
       }
     }
+    // Khách hỏi có đi chỉnh / căn chỉnh dàn không
+    if (norm.includes('can chinh') || norm.includes('chinh vang') || norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh giup') || norm.includes('setup') || norm.includes('chinh giup')) {
+      return {
+        privateReply: null,
+        publicReply: `Dạ bên em CÓ nhận căn chỉnh vang số và setup dàn tận nơi anh nhé! Em thấy trước đó em với anh đang có đoạn chat trong Messenger rồi, anh nhắn tiếp vào tin nhắn cũ gửi ảnh bộ dàn hiện tại để em xem và hẹn lịch hỗ trợ cho anh nhé anh!`
+      }
+    }
     if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
       return {
         privateReply: null,
@@ -358,6 +370,14 @@ function generateSalesResponse({ customerName = 'bác', commentText = '', hasExi
     return {
       privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em chuyên cung cấp các bộ dàn karaoke gia đình và thiết bị phòng hát chuyên nghiệp, bên em không làm dịch vụ chỉnh loa kéo anh ạ. Loa kéo mạch công suất nhỏ hát rất dễ bị bí tiếng và mệt, nếu anh muốn nâng cấp sang dàn karaoke phòng khách hát nhẹ và chống hú tuyệt đối, anh nhắn em xin số Zalo em tư vấn cho anh nhé!`,
       publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát cao cấp, bên em không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
+    }
+  }
+
+  // 0.5. Khách hỏi có đi chỉnh không / căn chỉnh vang số tận nhà
+  if (norm.includes('can chinh') || norm.includes('chinh vang') || norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh giup') || norm.includes('setup')) {
+    return {
+      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận căn chỉnh vang số và setup dàn tận nhà cũng như chỉnh từ xa qua máy tính cho anh nhé. Đội kỹ thuật bên em đi các tỉnh liên tục nên chi phí ghép chuyến rất hợp lý. Anh cho em xin số Zalo để em trao đổi cụ thể và hẹn lịch kỹ thuật tiện chuyến qua hỗ trợ cho dàn nhà mình hát nhẹ và chống hú tốt nhất nhé anh!`,
+      publicReply: `Dạ bên em CÓ nhận căn chỉnh tại nhà anh nhé! Em Tú vừa nhắn tin riêng qua Messenger xin số Zalo để hẹn lịch hỗ trợ anh rồi ạ, anh xem giúp em nhé!`
     }
   }
 
