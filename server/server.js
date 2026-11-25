@@ -985,6 +985,54 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
         "UPDATE facebook_care_customers SET phone=COALESCE(phone, $1), status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2",
         [newlyProvidedPhone, customerId]
       ).catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
+
+      // =========================================================================
+      // ĐẨY TỨC THÌ SANG BẢNG LEADS (KHÁCH TƯ VẤN & LỊCH THỬ DÀN) - NỔI LÊN TOP 1 NGAY LẬP TỨC
+      // =========================================================================
+      try {
+        const leadId = `FB-${customerId.replace(/^FB-/, '')}`.slice(0, 50)
+        const leadName = customer.customer_name || ('Khách Facebook ' + newlyProvidedPhone.slice(-4))
+        const leadAddress = (customer.address || customer.province || '').trim()
+        const leadAdName = (customer.source_ad_name || '').trim()
+        const leadNote = [
+          leadAdName ? `QC: ${leadAdName}` : '',
+          `SĐT/Zalo: ${newlyProvidedPhone}`,
+          `Tin nhắn: "${latestText}"`
+        ].filter(Boolean).join(' · ')
+
+        // Kiểm tra xem số điện thoại đã có trong leads chưa để tránh trùng lặp
+        const existingLead = await query('SELECT id, notes FROM leads WHERE phone = $1 LIMIT 1', [newlyProvidedPhone])
+        if (existingLead.rows.length > 0) {
+          const curId = existingLead.rows[0].id
+          const curNotes = existingLead.rows[0].notes || ''
+          const updatedNotes = curNotes.includes(latestText) ? curNotes : (curNotes ? curNotes + ' · ' + leadNote : leadNote).slice(0, 2000)
+          await query(`
+            UPDATE leads SET
+              name = CASE WHEN name IS NULL OR name = '' OR name LIKE 'Khách Facebook %' THEN $1 ELSE name END,
+              notes = $2,
+              status = 'MOI',
+              created_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = $3
+          `, [leadName, updatedNotes, curId])
+          console.log(`[Facebook AI] Đã cập nhật và đẩy SĐT ${newlyProvidedPhone} (${leadName}) lên đầu bảng Leads (Rank 1).`)
+        } else {
+          await query(`
+            INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, 'Tư vấn âm thanh qua Facebook', '', 'MOI', 0, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              phone = EXCLUDED.phone,
+              notes = EXCLUDED.notes,
+              status = 'MOI',
+              created_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+          `, [leadId, leadName, newlyProvidedPhone, leadAddress, leadNote])
+          console.log(`[Facebook AI] Đã thêm mới SĐT ${newlyProvidedPhone} (${leadName}) vào đầu bảng Leads (Rank 1).`)
+        }
+      } catch (leadPushErr) {
+        console.error('[Facebook AI] Lỗi đẩy tức thì SĐT vào Leads:', leadPushErr.message)
+      }
     } else if (isShortAcknowledgement(latestText)) {
       // Khách chỉ xác nhận "Vâng", "Dạ", "Ok", "Cảm ơn" -> Không gửi tin nhắn tự động lặp lại
       console.log(`[Facebook AI] Khách ${customerId} gửi xác nhận ngắn "${latestText}" -> Bỏ qua không gửi tin nhắn tự động trùng lặp.`)
@@ -2779,7 +2827,7 @@ const syncFbCustomersToLeads = async () => {
           leadInterest,
           leadStatus,
           leadNote,
-          c.created_at || new Date(),
+          c.updated_at || c.created_at || new Date(),
           c.updated_at || new Date()
         ]).catch(() => {})
       }

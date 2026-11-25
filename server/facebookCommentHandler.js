@@ -440,11 +440,11 @@ async function saveCustomerToCrm({ customerId, name, phone, message, province, a
         const currentNotes = existing.rows[0].notes || ''
         const newNote = 'Khách bình luận trên Fanpage: ' + message
         const updatedNotes = currentNotes.includes(message) ? currentNotes : (currentNotes ? currentNotes + ' · ' + newNote : newNote).slice(0, 2000)
-        await query(`UPDATE leads SET notes = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [updatedNotes, existing.rows[0].id])
+        await query(`UPDATE leads SET notes = $1, created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [updatedNotes, existing.rows[0].id])
       } else {
         await query(`
-          INSERT INTO leads (id, name, phone, address, interest, status, notes)
-          VALUES ($1, $2, $3, $4, $5, 'MOI', $6)
+          INSERT INTO leads (id, name, phone, address, interest, status, notes, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, 'MOI', $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `, [
           'LD-' + randomUUID(),
           name,
