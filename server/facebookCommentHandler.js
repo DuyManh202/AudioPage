@@ -3,7 +3,7 @@ import { query } from './db.js'
 import { phoneFromMessage, addressFromMessage } from './aiChat.js'
 import { findProvince } from './vietnamProvinces.js'
 import { getAiPsychologicalTrainingContext } from './aiPsychologicalTraining.js'
-import { matchFastHybridResponse, verifyAndCleanOutput, TEMPLATES } from './aiConsultantV2.js'
+import { verifyAndCleanOutput, TEMPLATES } from './aiConsultantV2.js'
 
 /**
  * Xử lý bình luận từ Facebook Webhook (Tự động kéo khách vào Messenger, trả lời cmt và ẩn SĐT)
@@ -91,8 +91,19 @@ export const handleFacebookComment = async ({
     }
 
     // 4. Nếu KHÔNG có SĐT: Áp dụng Kịch bản 2.0 (Chế độ A - Trả lời công khai 1-2 câu, dưới 40 từ)
-    const fastMatched = matchFastHybridResponse({ message: cleanMsg, isComment: true })
-    let publicReplyText = fastMatched.matched ? fastMatched.reply : null
+    let publicReplyText = null
+
+    // Nhận diện nhanh các ý định phổ biến trên bình luận (Địa chỉ, Giá, Tận nhà, Khen)
+    const lower = cleanMsg.toLowerCase()
+    if (lower.includes('ở đâu') || lower.includes('địa chỉ') || lower.includes('chỗ nào')) {
+      publicReplyText = TEMPLATES.C01_DIA_CHI
+    } else if (lower.includes('giá') || lower.includes('bao nhiêu') || lower.includes('nhiêu tiền') || lower.includes('báo giá')) {
+      publicReplyText = TEMPLATES.C02_HOI_GIA
+    } else if (lower.includes('tận nhà') || lower.includes('tận nơi') || lower.includes('về nhà')) {
+      publicReplyText = TEMPLATES.C03_TAN_NHA
+    } else if (lower === 'hay quá' || lower === 'cảm ơn' || lower === 'tuyệt vời' || lower === 'đẹp quá') {
+      publicReplyText = TEMPLATES.C04_KHEN_CAM_ON
+    }
 
     // Nếu chưa khớp mẫu nhanh, tạo câu trả lời dự phòng chuẩn từ generateSalesResponse
     if (!publicReplyText) {
@@ -105,7 +116,7 @@ export const handleFacebookComment = async ({
     }
 
     // Nếu có Gemini API Key và chưa khớp mẫu nhanh, dùng Gemini sinh câu trả lời đúng chuẩn Bản 2.0
-    if (!fastMatched.matched && apiKey) {
+    if (!publicReplyText && apiKey) {
       try {
         const aiPrompt = `Bạn là trợ lý tự động của Tú Audio (Showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898).
 Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Facebook của anh Tú:
