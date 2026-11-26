@@ -1137,7 +1137,7 @@ BỘ NÃO TỰ ĐỘNG ĐỌC VỊ TÍNH CÁCH & ĐÁNH VÀO TÂM LÝ TỪNG KH�
 
 2. NGHỆ THUẬT TÂM SỰ & DẪN DẮT (GIAO TIẾP TỰ NHIÊN NHƯ NGƯỜI THẬT NÓI CHUYỆN VỚI NHAU):
    - Nói chuyện tự nhiên, có cảm xúc, linh hoạt và thông minh như một con người thực thụ. Tuyệt đối KHÔNG trả lời như robot, KHÔNG dùng mẫu câu rập khuôn, KHÔNG lặp lại tin nhắn cũ.
-   - Độ dài vừa vặn (2 đến 4 câu ngắt ý tự nhiên), đủ để tâm sự thấu đáo mà không làm khách ngại đọc.
+   - ĐỘ DÀI BẮT BUỘC NGẮN GỌN (TỪ 2 ĐẾN TỐI ĐA 3 CÂU NGẮN): Trả lời mộc mạc, đi thẳng vào trọng tâm câu hỏi của khách, giải thích ngắn gọn, dễ hiểu. Tuyệt đối KHÔNG viết văn hoa mỹ, KHÔNG viết thành các đoạn văn dài dòng lê thê làm khách ngại đọc.
    - ${phoneInstruction}
 
 3. QUY TẮC BẮT BUỘC KHI KHÁCH HỎI NHIỀU CÂU / NHẮN NHIỀU TIN CÙNG MỘT LÚC:
@@ -1179,7 +1179,7 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
                     '\n\nCÁC CÂU HỎI MỚI KHÁCH VỪA NHẮN (LƯU Ý ĐẶC BIỆT: NẾU KHÁCH HỎI NHIỀU Ý HOẶC NHẮN NHIỀU TIN, BẮT BUỘC TRẢ LỜI ĐẦY ĐỦ TẤT CẢ CÁC CÂU HỎI MỘT CÁCH GỌN GÀNG, KHÔNG ĐƯỢC BỎ SÓT Ý NÀO):\n"' + latestText + '"\n\nHãy đọc vị tâm lý khách hàng và trả lời trọn vẹn mọi thắc mắc của khách theo phong cách chuyên gia anh Tú:'
                 }]
               }],
-              generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
+              generationConfig: { temperature: 0.35, maxOutputTokens: 350 }
             }),
             signal: AbortSignal.timeout(15000)
           })

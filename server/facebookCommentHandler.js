@@ -135,20 +135,20 @@ ${hasExistingChat ?
 KHÁCH HÀNG NÀY ĐÃ TỪNG NHẮN TIN RIÊNG (INBOX) VỚI TÚ AUDIO TRONG MESSENGER RỒI.
 TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG NÀO VÀO MESSENGER NỮA (KHÔNG ĐƯỢC IB).
 BẠN CHỈ CẦN XUẤT RA DUY NHẤT 1 PHẦN LÀ [PUBLIC_REPLY]:
-Trả lời bình luận công khai dưới bài viết cực kỳ thông minh, tâm sự đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại 220 Nguyễn Danh Phương, Vĩnh Yên/nhận làm tận nhà các tỉnh), thân thiện xưng "em" gọi "anh" (hoặc "bác"), đồng thời nhắc anh nhắn tiếp vào đoạn chat Messenger cũ mà hai bên đang trao đổi.`
+QUY TẮC ĐỘ DÀI: CHỈ VIẾT TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
+- Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại 220 Nguyễn Danh Phương, Vĩnh Yên/nhận căn chỉnh gửi hàng toàn quốc).
+- Xưng "em", gọi "anh" hoặc "bác", nhắc anh nhắn tiếp vào Messenger hoặc Zalo 0984.259.898 để em hỗ trợ tiện nhất.
+- TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG VIẾT THÀNH ĐOẠN VĂN LÊ THÊ.`
 :
 `QUY TẮC: Khách hàng này CHƯA TỪNG NHẮN TIN INBOX VỚI TRANG.
-Nhiệm vụ: Lôi kéo và chuyển hướng khách vào hộp thư Messenger một cách cực kỳ khéo léo và tâm lý:
-1. Đọc vị câu hỏi của khách, đồng cảm và trả lời đúng trọng tâm chuyên môn như một người bạn mê âm thanh tận tụy.
-2. Gợi mở giá trị thực tế (video test dàn, bảng cấu hình tối ưu chi phí, hẹn lịch kỹ thuật ghé nhà kiểm tra).
-3. Khéo léo mời khách kết bạn Zalo hoặc gửi ảnh dàn qua tin nhắn để em Tú hỗ trợ chu đáo nhất.
-
-YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
+YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN, NGẮN GỌN SÚC TÍCH):
 [PRIVATE_REPLY]
-(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài 2-3 câu thân thiện, ngắt ý tự nhiên như người thật)
+(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài CHỈ TỪ 1 ĐẾN 2 CÂU NGẮN GỌN, giải đáp thấu đáo và xin số Zalo/điện thoại để tư vấn)
 [PUBLIC_REPLY]
-(Nội dung trả lời công khai ngắn gọn 1 câu dưới bình luận để thông báo và kích thích khách mở Messenger xem)`
-}`
+(Nội dung trả lời công khai DUY NHẤT 1 CÂU NGẮN dưới bình luận, ví dụ: "Dạ em Tú đã nhắn tin tư vấn chi tiết qua Messenger cho anh/bác rồi ạ, anh/bác kiểm tra tin nhắn giúp em nhé!")`
+}
+
+QUY TẮC TUYỆT ĐỐI: KHÔNG dùng từ ngữ dài dòng, KHÔNG hứa hẹn lịch qua nhà, KHÔNG tự ý hẹn giờ trước.`
 
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const aiRes = await fetch(geminiUrl, {
@@ -156,23 +156,26 @@ YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN):
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: aiPrompt }] }],
-            generationConfig: { temperature: 0.35, maxOutputTokens: 1024 }
+            generationConfig: { temperature: 0.35, maxOutputTokens: 250 }
           }),
           signal: AbortSignal.timeout(10000)
         })
 
         const aiData = await aiRes.json().catch(() => ({}))
         const rawAiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        const cleanReply = (txt) => (txt || '').replace(/^\[(PUBLIC|PRIVATE)_REPLY\]\s*:?\s*/gi, '').replace(/^[:\-\s]+/, '').trim()
         if (rawAiText) {
           if (hasExistingChat) {
             privateReplyText = null
-            publicReplyText = rawAiText.replace('[PUBLIC_REPLY]', '').replace('[PRIVATE_REPLY]', '').trim()
+            publicReplyText = cleanReply(rawAiText)
           } else if (rawAiText.includes('[PRIVATE_REPLY]')) {
             const parts = rawAiText.split('[PUBLIC_REPLY]')
-            const privPart = parts[0].replace('[PRIVATE_REPLY]', '').trim()
-            const pubPart = parts[1] ? parts[1].trim() : ''
+            const privPart = cleanReply(parts[0])
+            const pubPart = parts[1] ? cleanReply(parts[1]) : ''
             if (privPart) privateReplyText = privPart
             if (pubPart) publicReplyText = pubPart
+          } else {
+            publicReplyText = cleanReply(rawAiText)
           }
         }
       } catch (aiErr) {
