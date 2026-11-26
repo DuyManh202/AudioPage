@@ -385,15 +385,20 @@ ${JSON.stringify(catalogContext)}`
           ],
           generationConfig: {
             temperature: 0.35,
-            maxOutputTokens: 350
+            maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 }
           }
         }),
         signal: AbortSignal.timeout(15000)
       })
 
       const geminiData = await geminiRes.json().catch(() => ({}))
-      reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      if (reply) isAiGenerated = true
+      const cand = geminiData.candidates?.[0]
+      const rawText = cand?.content?.parts?.[0]?.text?.trim()
+      if (rawText && (cand?.finishReason === 'STOP' || /[.!?…ạa]$/i.test(rawText))) {
+        reply = rawText
+        isAiGenerated = true
+      }
     } catch (aiErr) {
       console.warn('[Gemini AI Fetch Warning]:', aiErr.message)
     }

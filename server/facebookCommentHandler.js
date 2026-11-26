@@ -124,15 +124,22 @@ NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: aiPrompt }] }],
-            generationConfig: { temperature: 0.35, maxOutputTokens: 250 }
+            generationConfig: {
+              temperature: 0.35,
+              maxOutputTokens: 2048,
+              thinkingConfig: { thinkingBudget: 0 }
+            }
           }),
           signal: AbortSignal.timeout(10000)
         })
 
         const aiData = await aiRes.json().catch(() => ({}))
-        const rawAiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        const cand = aiData.candidates?.[0]
+        const rawAiText = cand?.content?.parts?.[0]?.text?.trim()
         const cleanReply = (txt) => (txt || '').replace(/^\[(PUBLIC|PRIVATE)_REPLY\]\s*:?\s*/gi, '').replace(/^[:\-\s]+/, '').trim()
-        if (rawAiText) {
+        if (rawAiText && (cand?.finishReason === 'STOP' || /[.!?…ạa]$/i.test(rawAiText))) {
+          publicReplyText = cleanReply(rawAiText)
+        } else if (rawAiText && cand?.finishReason !== 'MAX_TOKENS') {
           publicReplyText = cleanReply(rawAiText)
         }
       } catch (aiErr) {

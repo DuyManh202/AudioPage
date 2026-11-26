@@ -1226,13 +1226,23 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
                     '\n\nCÁC CÂU HỎI MỚI KHÁCH VỪA NHẮN (LƯU Ý ĐẶC BIỆT: NẾU KHÁCH HỎI NHIỀU Ý HOẶC NHẮN NHIỀU TIN, BẮT BUỘC TRẢ LỜI ĐẦY ĐỦ TẤT CẢ CÁC CÂU HỎI MỘT CÁCH GỌN GÀNG, KHÔNG ĐƯỢC BỎ SÓT Ý NÀO):\n"' + latestText + '"\n\nHãy đọc vị tâm lý khách hàng và trả lời trọn vẹn mọi thắc mắc của khách theo phong cách chuyên gia anh Tú:'
                 }]
               }],
-              generationConfig: { temperature: 0.35, maxOutputTokens: 350 }
+              generationConfig: {
+                temperature: 0.35,
+                maxOutputTokens: 2048,
+                thinkingConfig: { thinkingBudget: 0 }
+              }
             }),
             signal: AbortSignal.timeout(15000)
           })
 
           const geminiData = await geminiRes.json().catch(() => ({}))
-          reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+          const cand = geminiData.candidates?.[0]
+          const rawReply = cand?.content?.parts?.[0]?.text?.trim()
+          if (rawReply && (cand?.finishReason === 'STOP' || /[.!?…ạa]$/i.test(rawReply))) {
+            reply = rawReply
+          } else if (rawReply && cand?.finishReason !== 'MAX_TOKENS') {
+            reply = rawReply
+          }
         }
       } catch (aiErr) {
         console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
