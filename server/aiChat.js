@@ -99,6 +99,21 @@ export const checkDeterministicAiResponse = (message) => {
     }
   }
 
+  // 3.9 Khách hỏi có xuống luôn / qua ngay / hôm nay có qua được không (Tránh hẹn bừa, khéo léo giải thích lịch công tác & xin số)
+  if (
+    norm.includes('xuong luon') || norm.includes('qua luon') || norm.includes('den luon') ||
+    norm.includes('xuong ngay') || norm.includes('qua ngay') || norm.includes('den ngay') ||
+    (norm.includes('hom nay') && (norm.includes('qua') || norm.includes('xuong') || norm.includes('den') || norm.includes('chinh') || norm.includes('ban khong'))) ||
+    (norm.includes('chieu nay') && (norm.includes('qua') || norm.includes('xuong') || norm.includes('den') || norm.includes('chinh'))) ||
+    norm.includes('co xuong duoc khong') || norm.includes('co qua duoc khong') || norm.includes('co den duoc khong') ||
+    norm.includes('xuong duoc khong') || norm.includes('qua duoc khong') || norm.includes('den duoc khong')
+  ) {
+    return {
+      type: 'IMMEDIATE_VISIT_CHECK',
+      reply: 'Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác, đi hỗ trợ theo tuyến các bác khách đã đặt lịch từ trước rồi ạ. Bác cứ yên tâm nhé, bên em luôn ưu tiên sắp xếp thời gian tiện nhất cho bác. Bác cho em xin số điện thoại hoặc Zalo để lát nữa em Tú gọi điện trao đổi cụ thể và hẹn khung giờ tiện nhất cho bác nhé ạ!'
+    }
+  }
+
   // 4. Khách hỏi dịch vụ Căn chỉnh / Setup tận nhà / Chi phí đi lại
   if (
     norm.includes('setup') || norm.includes('can chinh') || norm.includes('chinh giup') ||
@@ -317,7 +332,11 @@ BỘ NÃO TỰ ĐỘNG ĐỌC VỊ TÍNH CÁCH & ĐÁNH VÀO TÂM LÝ TỪNG KH�
 
 2. NGHỆ THUẬT TÂM SỰ & XIN SỐ ĐIỆN THOẠI (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
    - Nói chuyện tự nhiên, có cảm xúc, linh hoạt và thông minh như một con người thực thụ. Tuyệt đối KHÔNG trả lời như robot, KHÔNG dùng mẫu câu rập khuôn, KHÔNG lặp lại tin nhắn cũ.
-   - TUYỆT ĐỐI KHÔNG HẸN KHÁCH TRƯỚC: CẤM tự ý hẹn ngày giờ, CẤM hẹn chạy qua nhà, CẤM hứa mang máy tính mic đo RTA qua nhà, CẤM nói về "ghép chuyến" hay "sổ lịch trình". Việc hẹn lịch là do anh Tú hoặc th kỹ thuật gọi điện thoại trực tiếp chốt với khách, bot tuyệt đối không được tự ý hẹn trước!
+   - TUYỆT ĐỐI KHÔNG HẸN KHÁCH TRƯỚC: CẤM tự ý hẹn ngày giờ, CẤM hẹn chạy qua nhà, CẤM hứa mang máy tính mic đo RTA qua nhà, CẤM nói về "ghép chuyến" hay "sổ lịch trình". Việc hẹn lịch là do anh Tú hoặc thợ kỹ thuật gọi điện thoại trực tiếp chốt với khách, bot tuyệt đối không được tự ý hẹn trước!
+   - KHI KHÁCH HỎI CÓ XUỐNG LUÔN / QUA NGAY ĐƯỢC KHÔNG (Ví dụ: "thế cháu có xuống luôn được không", "chiều qua luôn được không"):
+     + Hoàn cảnh: Anh Tú và kỹ thuật thường xuyên đi công tác xa, đi tuyến lắp dàn đã có lịch hẹn trước của các bác khách khác.
+     + Nguyên tắc giữ chân khách: TUYỆT ĐỐI KHÔNG HẸN BỪA (không nhận lời qua luôn), KHÔNG TỪ CHỐI CỘC LỐC (không nói bận/không qua được).
+     + Cách trả lời chuẩn (ngắn gọn 2-3 câu): Khéo léo giải thích hôm nay em Tú và anh em đang có chuyến công tác/hỗ trợ lắp đặt theo tuyến các bác khách đặt trước; cam kết bên em luôn ưu tiên sắp xếp lịch thuận tiện nhất; xin số điện thoại/Zalo để lát nữa em Tú gọi điện trao đổi về dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em ghé qua hỗ trợ nhé ạ!
    - KHI KHÁCH CHƯA CHO SỐ: Giải đáp ngắn gọn, đúng trọng tâm và xin số điện thoại/Zalo để bên em gọi điện tư vấn trực tiếp cho tiện (Ví dụ: "Bác cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn cụ thể cho bác nhé ạ!").
    - KHI KHÁCH ĐÃ CHO SỐ: CHỈ CẢM ƠN KHÁCH VÀ BÁO ĐÃ NHẬN ĐƯỢC SỐ, LÁT NỮA BÊN EM SẼ GỌI ĐIỆN LẠI! (Ví dụ: "Dạ em Tú cảm ơn anh/bác ạ! Em đã lưu số rồi, lát nữa bên em sẽ gọi điện trao đổi trực tiếp với anh/bác nhé ạ!").
 
@@ -366,7 +385,7 @@ ${JSON.stringify(catalogContext)}`
           ],
           generationConfig: {
             temperature: 0.35,
-            maxOutputTokens: 2048
+            maxOutputTokens: 350
           }
         }),
         signal: AbortSignal.timeout(15000)

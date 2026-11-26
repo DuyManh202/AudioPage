@@ -1091,11 +1091,13 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
         }
       }
 
-      // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline, Xin địa chỉ...) để phản hồi chính xác 100%, không bị ảo giác
+      // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline, Xin địa chỉ, Hỏi qua ngay...) để phản hồi chính xác 100%, không bị ảo giác
       const fastDeterministic = checkDeterministicAiResponse(latestText)
-      if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE', 'ADDRESS'].includes(fastDeterministic.type)) {
+      if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE', 'ADDRESS', 'IMMEDIATE_VISIT_CHECK'].includes(fastDeterministic.type)) {
         if (fastDeterministic.type === 'ICON_STICKER' && (customer.phone || alreadyConfirmedPhone)) {
           reply = 'Dạ em Tú Audio xin chào anh ạ! Em/kỹ thuật bên em đang chuẩn bị liên hệ hỗ trợ trực tiếp cho anh ngay đây ạ!'
+        } else if (fastDeterministic.type === 'IMMEDIATE_VISIT_CHECK' && (customer.phone || alreadyConfirmedPhone)) {
+          reply = 'Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác, đi hỗ trợ theo tuyến các bác khách đã đặt lịch từ trước rồi ạ. Bác cứ yên tâm nhé, lát nữa em Tú sẽ trực tiếp gọi điện lại trao đổi về bộ dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em nhé ạ!'
         } else {
           reply = fastDeterministic.reply
         }
@@ -1163,7 +1165,18 @@ BỘ NÃO TỰ ĐỘNG ĐỌC VỊ TÍNH CÁCH & ĐÁNH VÀO TÂM LÝ TỪNG KH�
    - NÂNG CẤP ĐỒ CŨ: Luôn ưu tiên giữ lại món đồ nào còn tốt để tiết kiệm tiền cho khách, chỉ tư vấn nâng cấp món thực sự cần thiết.
    - TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất cháy nổ. Lịch sự định hướng khách sang dàn karaoke gia đình.
 
-5. XỬ LÝ ICON & ẢNH GỬI (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI):
+5. NGUYÊN TẮC XỬ LÝ KHI KHÁCH HỎI CÓ XUỐNG LUÔN / QUA NGAY ĐƯỢC KHÔNG (GIỮ CHÂN KHÁCH & TUYỆT ĐỐI KHÔNG HẸN BỪA):
+   - TÌNH HUỐNG: Khách nhắn: "thế cháu có xuống luôn được không", "hôm nay có qua chỉnh được không", "bây giờ qua luôn được không", "chiều nay qua được không"...
+   - HOÀN CẢNH THỰC TẾ: Anh Tú và đội ngũ kỹ thuật thường xuyên có lịch đi công tác xa, đi lắp đặt công trình hoặc đã kín lịch hẹn trước theo tuyến với các bác khách khác từ trước.
+   - NGHỆ THUẬT GIỮ CHÂN KHÁCH ĐỈNH CAO (ĐỌC KỸ TIN NHẮN, KHÔNG HẸN BỪA, KHÔNG ĐỂ MẤT KHÁCH):
+     + ĐỌC KỸ TIN NHẮN TRƯỚC, TUYỆT ĐỐI KHÔNG ĐƯỢC HẸN BỪA (Cấm nhận lời qua luôn, cấm tự chốt ngày giờ cụ thể trên tin nhắn).
+     + TUYỆT ĐỐI KHÔNG TỪ CHỐI CỘC LỐC (Cấm nói "cháu không qua được", "hôm nay bận").
+     + BỘ KHUNG TRẢ LỜI MẪU MỰC (NGẮN GỌN 2-3 CÂU, ẤM ÁP & THUYẾT PHỤC):
+       1. Khéo léo giải thích lịch trình công tác: "Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác / hỗ trợ theo tuyến cho các bác khách đã đặt lịch từ trước rồi ạ."
+       2. Giữ chân & Cam kết ưu tiên: "Nhưng bác/anh cứ yên tâm nhé, bên em luôn ưu tiên sắp xếp thời gian tiện nhất cho anh em."
+       3. Xin số điện thoại/Zalo để anh Tú gọi trực tiếp chốt lịch: "Bác/anh cho em xin số điện thoại hoặc Zalo để lát nữa em Tú trực tiếp gọi điện lại trao đổi về bộ dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em ghé qua hỗ trợ nhé ạ!"
+
+6. XỬ LÝ ICON & ẢNH GỬI (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI):
    - Khách gửi 👍 hoặc icon: Chào hỏi thân thiện, hỏi thăm nhu cầu âm thanh của anh em một cách gần gũi.
    - Khách gửi ảnh thật: Báo đã nhận ảnh, hỏi thăm về cấu hình dàn trong ảnh để trao đổi sâu hơn.
 
