@@ -82,73 +82,41 @@ export const handleFacebookComment = async ({
         source: 'FACEBOOK_COMMENT_PHONE'
       })
 
-      // Chỉ gửi tin nhắn riêng nếu khách CHƯA TỪNG IB
-      if (!hasExistingChat) {
-        const privateText = `Dạ em Tú Audio xin chào anh ${userName} ạ! Em đã nhận được số điện thoại ${detectedPhone} của anh rồi ạ. Em sẽ kết bạn Zalo và gọi điện tư vấn trực tiếp cho anh ngay bây giờ nhé anh!`
-        await sendPrivateReply({ commentId, userId, pageId, pageToken, graphVersion, text: privateText }).catch(console.warn)
-      }
-
       // Trả lời công khai dưới comment
-      const publicText = hasExistingChat
-        ? `Dạ em Tú đã nhận được số điện thoại của anh rồi ạ, em sẽ kết bạn Zalo và gọi điện tư vấn trực tiếp cho anh ngay nhé anh!`
-        : `Dạ em Tú đã nhận được thông tin và nhắn riêng qua Messenger cho anh rồi ạ, anh kiểm tra tin nhắn giúp em nhé!`
+      const publicText = `Dạ em Tú đã nhận được số điện thoại của anh/bác rồi ạ, lát nữa bên em sẽ chủ động gọi điện tư vấn trực tiếp cho anh/bác nhé ạ!`
       await sendPublicCommentReply({ commentId, pageToken, graphVersion, text: publicText }).catch(console.warn)
 
       return { success: true, action: 'PHONE_CAPTURED_AND_HIDDEN', phone: detectedPhone, hasExistingChat }
     }
 
-    // 4. Nếu KHÔNG có SĐT: Tạo câu trả lời thông minh
+    // 4. Nếu KHÔNG có SĐT: Tạo câu trả lời công khai thông minh lôi kéo khách vào Messenger/Zalo
     const salesMessages = generateSalesResponse({
       customerName: userName,
       commentText: cleanMsg,
       hasExistingChat
     })
 
-    let privateReplyText = salesMessages.privateReply
     let publicReplyText = salesMessages.publicReply
 
     // Nếu có Gemini API Key, tối ưu câu trả lời thông minh đúng 100% ngữ cảnh
     if (apiKey) {
       try {
         const psychologicalContext = await getAiPsychologicalTrainingContext()
-        const aiPrompt = `Bạn là một Chuyên Viên Bán Hàng & Chuyên Gia Âm Thanh đỉnh cao của Tú Audio (Hotline/Zalo: 0984.259.898 tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc).
+        const aiPrompt = `Bạn là một Chuyên Viên Bán Hàng & Chuyên Gia Âm Thanh của Tú Audio (Hotline/Zalo: 0984.259.898 tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc).
 Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Facebook của anh Tú:
 Tên khách: "${userName}"
 Bình luận: "${cleanMsg}"
 
 ${psychologicalContext}
 
-NGUYÊN TẮC BẮT BUỘC VỀ PHẠM VI SẢN PHẨM & DỊCH VỤ CỦA TÚ AUDIO (TUÂN THỦ 100%):
-- TÚ AUDIO CHUYÊN SALE DÀN KARAOKE GIA ĐÌNH & THIẾT BỊ PHÒNG HÁT CAO CẤP (Loa Full chuyên nghiệp, Vang số cao cấp, Cục đẩy công suất, Loa Subwoofer, Micro không dây).
-- NGUYÊN TẮC CỐT LÕI VỀ CĂN CHỈNH / SETUP DÀN VANG SỐ (BẮT BUỘC NHẬN HẾT 100%):
-  * Khi khách hỏi: "có căn chỉnh không", "có đi chỉnh không", "có qua tận nơi chỉnh không", "có chỉnh vang không", "có setup lại không"...
-  * BẮT BUỘC LUÔN LUÔN NHẬN HẾT 100%! TUYỆT ĐỐI CẤM TỪ CHỐI KHÁCH! TUYỆT ĐỐI KHÔNG BAO GIỜ nói câu: "bên em không nhận đi căn chỉnh dịch vụ lẻ bên ngoài".
-  * Khẳng định rõ bên em CÓ NHẬN hỗ trợ kỹ thuật căn chỉnh vang số và setup dàn.
-  * TUYỆT ĐỐI KHÔNG HẸN KHÁCH TRƯỚC TRÊN TIN NHẮN (không hẹn ngày giờ, không tự hẹn chạy qua nhà, không hứa thợ mang mic đo RTA sang nhà). CHỈ XIN SỐ ĐIỆN THOẠI ĐỂ GỌI ĐIỆN TRAO ĐỔI TRỰC TIẾP.
-  * KHI KHÁCH CHO SỐ: CHỈ CẢM ƠN KHÁCH VÀ BÁO LÁT NỮA BÊN EM SẼ LIÊN HỆ LẠI.
-  * Mời khách cho số điện thoại / kết bạn Zalo để bên em gọi điện tư vấn trực tiếp cho tiện.
-- TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo / loa kẹo kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất.
-- NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối dịch vụ loa kéo và giải thích rõ bên em chuyên dàn karaoke gia đình và thiết bị phòng hát chuẩn. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối, xin số Zalo để tư vấn.
-
-${hasExistingChat ? 
-`QUY TẮC CỐT LÕI (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
-KHÁCH HÀNG NÀY ĐÃ TỪNG NHẮN TIN RIÊNG (INBOX) VỚI TÚ AUDIO TRONG MESSENGER RỒI.
-TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG NÀO VÀO MESSENGER NỮA (KHÔNG ĐƯỢC IB).
-BẠN CHỈ CẦN XUẤT RA DUY NHẤT 1 PHẦN LÀ [PUBLIC_REPLY]:
-QUY TẮC ĐỘ DÀI: CHỈ VIẾT TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
-- Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc/nhận căn chỉnh gửi hàng toàn quốc).
-- Xưng "em", gọi "anh" hoặc "bác", nhắc anh nhắn tiếp vào Messenger hoặc Zalo 0984.259.898 để em hỗ trợ tiện nhất.
-- TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG VIẾT THÀNH ĐOẠN VĂN LÊ THÊ.`
-:
-`QUY TẮC: Khách hàng này CHƯA TỪNG NHẮN TIN INBOX VỚI TRANG.
-YÊU CẦU ĐỊNH DẠNG XUẤT RA (BẮT BUỘC ĐÚNG 2 PHẦN, NGẮN GỌN SÚC TÍCH):
-[PRIVATE_REPLY]
-(Nội dung tin nhắn riêng gửi thẳng vào hộp thư Messenger của khách, độ dài CHỈ TỪ 1 ĐẾN 2 CÂU NGẮN GỌN, giải đáp thấu đáo và xin số Zalo/điện thoại để tư vấn)
-[PUBLIC_REPLY]
-(Nội dung trả lời công khai DUY NHẤT 1 CÂU NGẮN dưới bình luận, ví dụ: "Dạ em Tú đã nhắn tin tư vấn chi tiết qua Messenger cho anh/bác rồi ạ, anh/bác kiểm tra tin nhắn giúp em nhé!")`
-}
-
-QUY TẮC TUYỆT ĐỐI: KHÔNG dùng từ ngữ dài dòng, KHÔNG hứa hẹn lịch qua nhà, KHÔNG tự ý hẹn giờ trước.`
+NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
+1. BẠN CHỈ VIẾT DUY NHẤT 1 CÂU TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (PUBLIC REPLY). TUYỆT ĐỐI KHÔNG GỬI TIN NHẮN RIÊNG.
+2. ĐỘ DÀI: CHỈ VIẾT TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
+3. NỘI DUNG:
+   - Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (CÓ nhận hỗ trợ căn chỉnh vang số / địa chỉ showroom tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc / có thu cũ đổi mới / báo giá dàn).
+   - Xưng "em", gọi "bác" hoặc "anh".
+   - KẾT CÂU LÔI KÉO VÀO TIN NHẮN: Mời bác/anh nhắn tin qua Messenger cho Trang hoặc kết bạn Zalo 0984.259.898 để em Tú gửi chi tiết cấu hình và tư vấn hỗ trợ nhé ạ!
+4. TUYỆT ĐỐI KHÔNG DÙNG TỪ NGỮ DÀI DÒNG, KHÔNG TỰ HẸN GIỜ QUA NHÀ.`
 
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const aiRes = await fetch(geminiUrl, {
@@ -165,40 +133,14 @@ QUY TẮC TUYỆT ĐỐI: KHÔNG dùng từ ngữ dài dòng, KHÔNG hứa hẹn
         const rawAiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
         const cleanReply = (txt) => (txt || '').replace(/^\[(PUBLIC|PRIVATE)_REPLY\]\s*:?\s*/gi, '').replace(/^[:\-\s]+/, '').trim()
         if (rawAiText) {
-          if (hasExistingChat) {
-            privateReplyText = null
-            publicReplyText = cleanReply(rawAiText)
-          } else if (rawAiText.includes('[PRIVATE_REPLY]')) {
-            const parts = rawAiText.split('[PUBLIC_REPLY]')
-            const privPart = cleanReply(parts[0])
-            const pubPart = parts[1] ? cleanReply(parts[1]) : ''
-            if (privPart) privateReplyText = privPart
-            if (pubPart) publicReplyText = pubPart
-          } else {
-            publicReplyText = cleanReply(rawAiText)
-          }
+          publicReplyText = cleanReply(rawAiText)
         }
       } catch (aiErr) {
         console.warn('[AI Comment Gen Warning]:', aiErr.message)
       }
     }
 
-    // 5. GỬI TIN NHẮN RIÊNG VÀO MESSENGER (CHỈ GỬI KHI KHÁCH CHƯA TỪNG INBOX)
-    let privateResult = null
-    if (!hasExistingChat && privateReplyText) {
-      privateResult = await sendPrivateReply({
-        commentId,
-        userId,
-        pageId,
-        pageToken,
-        graphVersion,
-        text: privateReplyText
-      })
-    } else {
-      console.log(`[FB Comment] Khách ${userName} (userId: ${userId}) ĐÃ TỪNG IB TRƯỚC ĐÂY -> Bỏ qua tin nhắn riêng (không ib), chỉ trả lời bình luận công khai.`)
-    }
-
-    // 6. TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (Luôn luôn thực hiện 100%)
+    // 5. TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (TUYỆT ĐỐI KHÔNG BẮN TIN NHẮN RIÊNG VÀO MESSENGER)
     const publicResult = await sendPublicCommentReply({
       commentId,
       pageToken,
@@ -206,7 +148,7 @@ QUY TẮC TUYỆT ĐỐI: KHÔNG dùng từ ngữ dài dòng, KHÔNG hứa hẹn
       text: publicReplyText
     })
 
-    // 7. Ghi nhận vào CRM để nhân viên biết khách này đến từ bình luận
+    // 6. Ghi nhận vào CRM để nhân viên biết khách này đến từ bình luận
     const tempCustomerId = `FB-CMT-${userId || randomUUID().slice(0, 8)}`
     await saveCustomerToCrm({
       customerId: tempCustomerId,
@@ -222,9 +164,9 @@ QUY TẮC TUYỆT ĐỐI: KHÔNG dùng từ ngữ dài dòng, KHÔNG hứa hẹn
       success: Boolean(publicResult?.success),
       replyId: publicResult?.id || null,
       error: publicResult?.error || null,
-      action: 'SALES_PULL_COMPLETED',
+      action: 'PUBLIC_REPLY_AND_PULL_MESSENGER',
       hasExistingChat,
-      privateSent: Boolean(privateResult?.success),
+      privateSent: false,
       publicReplyText
     }
   } catch (err) {
@@ -326,6 +268,7 @@ export const hideFacebookComment = async ({ commentId, pageToken, graphVersion }
 
 /**
  * Kịch bản bán hàng thực chiến kéo khách vào Messenger (Sales Pull Fallback)
+ * CHỈ TRẢ LỜI CÔNG KHAI DƯỚI COMMENT, TUYỆT ĐỐI KHÔNG GỬI TIN NHẮN RIÊNG TỰ ĐỘNG
  */
 function generateSalesResponse({ customerName = 'bác', commentText = '', hasExistingChat = false }) {
   const norm = commentText
@@ -334,90 +277,44 @@ function generateSalesResponse({ customerName = 'bác', commentText = '', hasExi
     .replace(/đ/g, 'd').replace(/Đ/g, 'D')
     .toLowerCase()
 
-  // NẾU KHÁCH ĐÃ TỪNG INBOX: TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG (privateReply: null), CHỈ TRẢ LỜI CÔNG KHAI
-  if (hasExistingChat) {
-    if (norm.includes('loa keo') || norm.includes('lo keo')) {
-      return {
-        privateReply: null,
-        publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát, không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
-      }
-    }
-    // Khách hỏi có đi chỉnh / căn chỉnh dàn không
-    if (norm.includes('can chinh') || norm.includes('chinh vang') || norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh giup') || norm.includes('setup') || norm.includes('chinh giup')) {
-      return {
-        privateReply: null,
-        publicReply: `Dạ bên em CÓ nhận căn chỉnh vang số và setup dàn tận nơi anh nhé! Em thấy trước đó em với anh đang có đoạn chat trong Messenger rồi, anh nhắn tiếp vào tin nhắn cũ gửi ảnh bộ dàn hiện tại để em xem và hẹn lịch hỗ trợ cho anh nhé anh!`
-      }
-    }
-    if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
-      return {
-        privateReply: null,
-        publicReply: `Dạ em Tú chào anh ${customerName} ạ! Bệnh này do rò mass hoặc tụ nguồn tiền khuếch đại. Em với anh đang nhắn tin trong Messenger rồi, anh mở hộp thư xem hướng dẫn chi tiết nhé anh!`
-      }
-    }
-    if (norm.includes('nam dinh') || norm.includes('ha noi') || norm.includes('phu tho') || norm.includes('o dau') || norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('ve nha')) {
-      return {
-        privateReply: null,
-        publicReply: `Dạ showroom Tú Audio ở 220 đường Nguyễn Danh Phương, Vĩnh Yên và bên em CÓ nhận làm tại nhà anh nhé! Em với anh đang nhắn tin trong Messenger rồi, anh kiểm tra hộp thư giúp em nhé!`
-      }
-    }
-    if (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('karaoke') || norm.includes('bo') || norm.includes('dan')) {
-      return {
-        privateReply: null,
-        publicReply: `Dạ dàn karaoke gia đình bên em đang có gói từ 19tr đến 29tr bảo hành tận nhà. Em với anh đang trao đổi trong Messenger rồi, anh mở hộp thư xem chi tiết nhé anh!`
-      }
-    }
-    return {
-      privateReply: null,
-      publicReply: `Dạ em Tú chào anh ${customerName} ạ! Em vừa đọc bình luận của anh, em với anh đang nhắn tin trong Messenger rồi, anh mở hộp thư trao đổi tiếp cho tiện nhé anh!`
-    }
-  }
-
-  // NẾU KHÁCH MỚI TINH (CHƯA TỪNG INBOX): Gửi tin nhắn riêng kéo khách vào Messenger + Trả lời công khai
-  // 0. Khách hỏi về loa kéo / sửa chỉnh loa kéo (Tú Audio chuyên dàn karaoke gia đình, TUYỆT ĐỐI không làm loa kéo)
+  // 1. Khách hỏi về loa kéo / sửa loa kéo
   if (norm.includes('loa keo') || norm.includes('lo keo')) {
     return {
-      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em chuyên cung cấp các bộ dàn karaoke gia đình và thiết bị phòng hát chuyên nghiệp, bên em không làm dịch vụ chỉnh loa kéo anh ạ. Loa kéo mạch công suất nhỏ hát rất dễ bị bí tiếng và mệt, nếu anh muốn nâng cấp sang dàn karaoke phòng khách hát nhẹ và chống hú tuyệt đối, anh nhắn em xin số Zalo em tư vấn cho anh nhé!`,
-      publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát cao cấp, bên em không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
+      publicReply: `Dạ bên em chuyên phân phối dàn karaoke gia đình và thiết bị phòng hát, bên em không nhận chỉnh loa kéo anh nhé! Em Tú chào anh ạ.`
     }
   }
 
-  // 0.5. Khách hỏi có đi chỉnh không / căn chỉnh vang số tận nhà
-  if (norm.includes('can chinh') || norm.includes('chinh vang') || norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh giup') || norm.includes('setup')) {
+  // 2. Khách hỏi có đi căn chỉnh không / chỉnh vang số
+  if (norm.includes('can chinh') || norm.includes('chinh vang') || norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh giup') || norm.includes('setup') || norm.includes('chinh dan')) {
     return {
-      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận hỗ trợ kỹ thuật căn chỉnh vang số và setup dàn nhé anh. Anh cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn chi tiết hỗ trợ cho dàn nhà mình hát nhẹ và chống hú tốt nhất nhé anh!`,
-      publicReply: `Dạ bên em CÓ nhận hỗ trợ kỹ thuật anh nhé! Em Tú vừa nhắn tin riêng qua Messenger xin số Zalo để tư vấn cho anh rồi ạ, anh xem giúp em nhé!`
+      publicReply: `Dạ bên em CÓ nhận hỗ trợ kỹ thuật căn chỉnh vang số và setup dàn tận nhà anh nhé! Anh nhắn tin qua Messenger cho em hoặc kết bạn Zalo 0984.259.898 để em Tú tư vấn chi tiết cho anh nhé ạ!`
     }
   }
 
-  // 1. Khách hỏi sửa amply rè / hú rít
-  if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
+  // 3. Khách hỏi địa chỉ / làm tận nhà ở các tỉnh (Phú Thọ, Hà Nội, Vĩnh Phúc...)
+  if (norm.includes('nam dinh') || norm.includes('ha noi') || norm.includes('phu tho') || norm.includes('o dau') || norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('ve nha') || norm.includes('dia chi')) {
     return {
-      privateReply: `Dạ em Tú Audio xin chào anh ${customerName} ạ! Em vừa đọc bình luận của anh về bộ amply/dàn âm thanh bị réo ù. Bệnh này thường do dải tần EQ hoặc dây mass, anh cho em xin số điện thoại/Zalo để bên em gọi điện hướng dẫn kiểm tra bắt bệnh cho anh nhé!`,
-      publicReply: `Dạ em Tú đã nhắn tin chi tiết qua Messenger cho anh rồi ạ, anh mở hộp thư xem giúp em nhé!`
+      publicReply: `Dạ showroom Tú Audio ở tại số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc và bên em CÓ nhận hỗ trợ tận nhà ạ. Bác nhắn tin qua Messenger hoặc Zalo 0984.259.898 em gửi định vị chi tiết nhé ạ!`
     }
   }
 
-  // 2. Khách hỏi làm tận nhà ở các tỉnh (Nam Định, Thái Bình, Hà Nội, Phú Thọ...)
-  if (norm.includes('nam dinh') || norm.includes('ha noi') || norm.includes('phu tho') || norm.includes('o dau') || norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('ve nha')) {
-    return {
-      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận hỗ trợ kỹ thuật căn chỉnh và setup cho anh em ở khu vực của anh nhé. Anh cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn trực tiếp cho anh nhé anh!`,
-      publicReply: `Dạ bên em CÓ nhận hỗ trợ anh nhé! Em Tú vừa nhắn tin riêng qua Messenger xin số để liên hệ trao đổi với anh rồi ạ, anh xem giúp em nhé!`
-    }
-  }
-
-  // 3. Khách xin giá dàn karaoke gia đình
+  // 4. Khách hỏi giá dàn karaoke / vang số
   if (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('karaoke') || norm.includes('bo') || norm.includes('dan')) {
     return {
-      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Cảm ơn anh đã quan tâm đến dàn âm thanh Tú Audio. Bên em đang có các gói cấu hình phòng khách gia đình từ 19tr đến 29tr cực kỳ chất lượng, bao hát thử 7 ngày ưng mới thanh toán. Anh cho em xin số Zalo em gửi clip test tiếng thực tế và tư vấn bộ vừa vặn nhất với phòng nhà mình nhé anh!`,
-      publicReply: `Dạ em Tú đã gửi bảng giá chi tiết và clip test qua Messenger cho anh rồi ạ, anh mở tin nhắn xem giúp em nhé!`
+      publicReply: `Dạ dàn karaoke gia đình bên em có các gói từ 19tr đến 29tr bảo hành tận nhà rất hợp túi tiền ạ. Bác nhắn tin qua Messenger hoặc Zalo 0984.259.898 em gửi chi tiết bảng giá và clip test máy nhé bác!`
     }
   }
 
-  // Mặc định: Chào hỏi thân thiện và lôi kéo
+  // 5. Khách hỏi réo / amply rè / hú rít
+  if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
+    return {
+      publicReply: `Dạ em Tú chào anh ạ! Bệnh này do rò mass hoặc dải tần EQ, anh nhắn tin qua Messenger cho em hoặc kết bạn Zalo 0984.259.898 em hướng dẫn xử lý dứt điểm nhé anh!`
+    }
+  }
+
+  // Mặc định: Chào hỏi thân thiện và lôi kéo vào Messenger/Zalo
   return {
-    privateReply: `Dạ em Tú Audio xin chào anh ${customerName} ạ! Em vừa đọc bình luận của anh trên bài viết. Anh đang quan tâm đến nâng cấp vang số chống hú hay tìm bộ dàn karaoke gia đình ạ? Anh nhắn em xin số Zalo em tư vấn trực tiếp và gửi clip test thực tế cho anh tham khảo nhé!`,
-    publicReply: `Dạ em Tú đã nhắn tin trao đổi chi tiết qua Messenger cho anh rồi ạ, anh mở hộp thư xem giúp em nhé!`
+    publicReply: `Dạ em Tú Audio xin chào anh ạ! Anh nhắn tin qua hộp thư Messenger cho Trang hoặc kết bạn Zalo 0984.259.898 để em Tú tư vấn chi tiết cấu hình và hỗ trợ cho mình nhé ạ!`
   }
 }
 
