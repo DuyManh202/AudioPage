@@ -794,19 +794,27 @@ const syncFacebookPageComments = async () => {
     for (const post of allPosts) {
       const comments = Array.isArray(post.comments?.data) ? post.comments.data : []
       for (const c of comments) {
-        if (!c.id || !c.message || !c.from?.id) continue
-        if (String(c.from.id) === String(pageId)) continue // Bỏ qua bình luận của chính Trang
+        if (!c.id || !c.message) continue
+        if (c.from?.id && String(c.from.id) === String(pageId)) continue // Bỏ qua bình luận của chính Trang
 
+        // 1. Bỏ qua nếu bình luận này đã có câu trả lời từ Trang trên Facebook
+        const isAlreadyRepliedOnFb = comments.some(other => other.parent?.id === c.id && String(other.from?.id) === String(pageId))
+        if (isAlreadyRepliedOnFb) continue
+
+        // 2. Bỏ qua nếu đã ghi nhận trả lời thành công trong database
         const already = await query('SELECT comment_id FROM facebook_comment_replies WHERE comment_id=$1 AND status=\'SUCCESS\'', [c.id]).catch(() => ({ rows: [] }))
         if (already.rows.length > 0) continue
 
-        console.log(`[Page Comment Sync] Đang tự động trả lời bình luận c.id=${c.id} từ ${c.from.name}: "${c.message}"`)
+        const commentUserId = c.from?.id || null
+        const commentUserName = c.from?.name || 'Khách Facebook'
+
+        console.log(`[Page Comment Sync] Đang tự động trả lời bình luận c.id=${c.id} từ ${commentUserName}: "${c.message}"`)
         const cmtRes = await handleFacebookComment({
           commentId: c.id,
           postId: post.id,
           parentId: c.parent?.id || null,
-          userId: c.from.id,
-          userName: c.from.name || 'Khách Facebook',
+          userId: commentUserId,
+          userName: commentUserName,
           message: c.message,
           pageId,
           pageToken,
@@ -815,16 +823,17 @@ const syncFacebookPageComments = async () => {
           model
         })
 
+        const cmtCustomerId = `FB-CMT-${commentUserId || c.id}`
         if (cmtRes?.success) {
           await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text, status, meta_reply_id)
             VALUES ($1, $2, $3, $4, $5, 'SUCCESS', $6)
             ON CONFLICT (comment_id) DO UPDATE SET status='SUCCESS', public_reply_text=EXCLUDED.public_reply_text, meta_reply_id=EXCLUDED.meta_reply_id`,
-            [c.id, `FB-CMT-${c.from.id}`, c.from.name, c.message, cmtRes.publicReplyText || '', cmtRes.replyId || null]).catch(() => {})
+            [c.id, cmtCustomerId, commentUserName, c.message, cmtRes.publicReplyText || '', cmtRes.replyId || null]).catch(() => {})
         } else {
           await query(`INSERT INTO facebook_comment_replies (comment_id, customer_id, user_name, comment_text, public_reply_text, status, error)
             VALUES ($1, $2, $3, $4, $5, 'FAILED', $6)
             ON CONFLICT (comment_id) DO UPDATE SET status='FAILED', error=EXCLUDED.error`,
-            [c.id, `FB-CMT-${c.from.id}`, c.from.name, c.message, cmtRes?.publicReplyText || '', cmtRes?.error || 'Lỗi API Meta']).catch(() => {})
+            [c.id, cmtCustomerId, commentUserName, c.message, cmtRes?.publicReplyText || '', cmtRes?.error || 'Lỗi API Meta']).catch(() => {})
         }
       }
     }
