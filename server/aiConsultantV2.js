@@ -50,11 +50,14 @@ export const TEMPLATES = {
 }
 
 /**
- * Trích xuất SĐT Việt Nam chuẩn xác
+ * Trích xuất SĐT Việt Nam chuẩn xác (hỗ trợ dấu chấm, dấu cách, dấu gạch ngang, +84, 84)
  */
 export function extractPhoneNumber(text = '') {
   if (!text) return null
-  const cleaned = text.replace(/[\s.\-_/()]/g, '')
+  const cleaned = text
+    .replace(/[\s.\-_/()]/g, '')
+    .replace(/^\+84/, '0')
+    .replace(/^84/, '0')
   const match = cleaned.match(/(0[3|5|7|8|9][0-9]{8})/g)
   return match ? match[0] : null
 }
@@ -102,7 +105,7 @@ export function extractProvinceName(text = '') {
  * BỘ KHỚP MẪU NHANH HYBRID (HYBRID PATTERN MATCHER)
  * Khớp siêu tốc bằng code, phản hồi < 0.1 giây, 100% không lỗi mạng
  */
-export function matchFastHybridResponse({ message = '', hasPhone = false, isComment = false }) {
+export function matchFastHybridResponse({ message = '', hasPhone = false, hasSentM20 = false, isComment = false }) {
   const raw = (message || '').trim()
   const norm = normalizeText(raw)
   const phone = extractPhoneNumber(raw)
@@ -117,11 +120,11 @@ export function matchFastHybridResponse({ message = '', hasPhone = false, isComm
       return { matched: true, reply: TEMPLATES.C01_DIA_CHI, ask_phone: true }
     }
     // Hỏi giá
-    if (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('nhieu tien') || norm.includes('bao gia') || norm.includes('gia sao')) {
+    if (norm.includes('gia') || norm.includes('bao nhieu') || norm.includes('nhieu tien') || norm.includes('bao gia') || norm.includes('gia sao') || norm.includes('sin gia') || norm.includes('xin gia')) {
       return { matched: true, reply: TEMPLATES.C02_HOI_GIA, ask_phone: true }
     }
     // Hỏi làm tận nhà
-    if (norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('den nha') || norm.includes('tan noi') || norm.includes('ve nha')) {
+    if (norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('den nha') || norm.includes('tan noi') || norm.includes('ve nha') || norm.includes('xuong nha')) {
       return { matched: true, reply: TEMPLATES.C03_TAN_NHA, ask_phone: true }
     }
     // Khen, cảm ơn
@@ -136,11 +139,14 @@ export function matchFastHybridResponse({ message = '', hasPhone = false, isComm
   }
 
   if (hasPhone) {
-    // Nếu khách đã cho số trước đó và chỉ hỏi thăm lại
-    if (norm.includes('o dau') || norm.includes('dia chi')) {
-      return { matched: true, reply: `Dạ showroom bên em ở Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc ạ. Anh Tú sẽ chủ động gọi điện trao đổi thêm với bác nhé ạ!`, ask_phone: false }
+    // LỰA CHỌN (a): Bot trả lời đúng 1 lần bằng M-20 rồi im, chuyển người thật
+    if (hasSentM20) {
+      return { matched: true, silence: true, reply: '', ask_phone: false, handoff: true }
     }
-    return { matched: true, reply: TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP, ask_phone: false }
+    if (norm.includes('o dau') || norm.includes('dia chi')) {
+      return { matched: true, reply: `Dạ showroom bên em ở Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc ạ. Anh Tú sẽ chủ động gọi điện trao đổi thêm với bác nhé ạ!`, ask_phone: false, sendM20: true }
+    }
+    return { matched: true, reply: TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP, ask_phone: false, sendM20: true, handoff: true }
   }
 
   // Khách hỏi người hay bot
@@ -153,8 +159,8 @@ export function matchFastHybridResponse({ message = '', hasPhone = false, isComm
     return { matched: true, reply: TEMPLATES.M21_KHIEU_NAI, ask_phone: false, handoff: true }
   }
 
-  // Khách chào ngắn gọn "Alo", "Chào shop"
-  if (norm === 'alo' || norm === 'chao' || norm === 'chao em' || norm === 'chao shop' || norm === 'hi' || norm === 'hello' || norm === 'e oi') {
+  // Khách chào ngắn gọn "Alo", "Chào shop", "ib", "inbox", "tư vấn giúp", "tư vấn cho mình"
+  if (norm === 'alo' || norm === 'chao' || norm === 'chao em' || norm === 'chao shop' || norm === 'hi' || norm === 'hello' || norm === 'e oi' || norm === 'ib' || norm === 'inbox' || norm.includes('tu van giup') || norm.includes('tu van cho') || norm.includes('tu van ho') || norm.includes('can tu van')) {
     return { matched: true, reply: TEMPLATES.M01_CHAO, ask_phone: false }
   }
 
@@ -174,7 +180,7 @@ export function matchFastHybridResponse({ message = '', hasPhone = false, isComm
   }
 
   // Khách hỏi giá công căn chỉnh / xử lý
-  if (norm.includes('gia xu ly') || norm.includes('tien cong') || norm.includes('chinh het bao nhieu') || norm.includes('gia chinh') || norm.includes('phi chinh')) {
+  if (norm.includes('gia xu ly') || norm.includes('tien cong') || norm.includes('chinh het bao nhieu') || norm.includes('gia chinh') || norm.includes('phi chinh') || norm.includes('chinh giup') || norm.includes('chinh vang')) {
     return { matched: true, reply: TEMPLATES.M05_GIA_XU_LY, ask_phone: true }
   }
 
@@ -297,13 +303,20 @@ export function verifyAndCleanOutput({ rawReply = '', finishReason = 'STOP', has
 
   const trimmed = rawReply.trim()
 
-  // 1. Kiểm tra câu bị cắt / chưa kết thúc
-  if (finishReason === 'MAX_TOKENS') {
-    return { ok: false, reason: 'TRUNCATED_MAX_TOKENS', fallback: TEMPLATES.M23_DU_PHONG_LOI }
+  // 1. Kiểm tra câu bị cắt / chưa kết thúc: finishReason khác STOP thì chặn ngay
+  if (finishReason && finishReason !== 'STOP') {
+    return { ok: false, reason: 'FINISH_REASON_' + finishReason, fallback: TEMPLATES.M23_DU_PHONG_LOI }
   }
 
-  // Câu phải kết thúc bằng dấu câu chuẩn
-  if (!/[.!?…ạa]$/i.test(trimmed)) {
+  // 2. Kiểm tra địa chỉ cụt / sai lệch so với KHO_THONG_TIN (VD: câu kết thúc bằng "TP.", thiếu Vĩnh Phúc/Vĩnh Yên)
+  if (/nguyễn danh phương/i.test(trimmed) || /showroom/i.test(trimmed)) {
+    if (!/vĩnh yên/i.test(trimmed) || !/vĩnh phúc/i.test(trimmed) || /tp\.?\s*$/i.test(trimmed)) {
+      return { ok: false, reason: 'INCOMPLETE_ADDRESS', fallback: TEMPLATES.M02_DIA_CHI }
+    }
+  }
+
+  // 3. Câu phải kết thúc bằng dấu câu chuẩn (. ! ? … ạ nha nhé)
+  if (!/[.!?…ạa]|(nha|nhé|nhe)\s*[.!?]?$/i.test(trimmed)) {
     return { ok: false, reason: 'INCOMPLETE_PUNCTUATION', fallback: TEMPLATES.M23_DU_PHONG_LOI }
   }
 

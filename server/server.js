@@ -1294,7 +1294,17 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [reply, customerId])
   } catch (err) {
     console.error('[Facebook AI] Auto reply failed:', err.message)
-    await query("UPDATE facebook_care_customers SET status='CHO_PHAN_HOI', notes=CONCAT(COALESCE(notes,''), CASE WHEN COALESCE(notes,'')='' THEN '' ELSE E'\\n' END, '[AI chưa trả lời được; cần nhân viên xử lý]'), updated_at=CURRENT_TIMESTAMP WHERE id=$1", [customerId]).catch(() => {})
+    await query(`
+      UPDATE facebook_care_customers 
+      SET status='CHO_PHAN_HOI', 
+          notes = CASE 
+            WHEN COALESCE(notes,'') LIKE '%[AI chưa trả lời được; cần nhân viên xử lý]%' THEN notes
+            WHEN COALESCE(notes,'') = '' THEN '[AI chưa trả lời được; cần nhân viên xử lý]'
+            ELSE CONCAT(notes, E'\n[AI chưa trả lời được; cần nhân viên xử lý]')
+          END, 
+          updated_at=CURRENT_TIMESTAMP 
+      WHERE id=$1
+    `, [customerId]).catch(() => {})
   } finally {
     fbAutoReplyInFlight.delete(customerId)
   }
