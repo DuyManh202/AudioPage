@@ -816,7 +816,7 @@ const syncFacebookPageComments = async () => {
 }
 
 const fetchMetaAdDetails = async (adId) => {
-  const token = process.env.META_ADS_ACCESS_TOKEN || process.env.META_PAGE_ACCESS_TOKEN
+  const token = (await getMetaAdsAccessToken()) || (await getMetaPageAccessToken())
   const version = process.env.META_GRAPH_VERSION
   if (!adId || !token || !version) return {}
   try {
@@ -833,14 +833,16 @@ const fetchMetaAdDetails = async (adId) => {
 }
 
 const sendFacebookText = async (psid, text, tag = null) => {
-  const { META_PAGE_ID: pageId, META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+  const pageToken = await getMetaPageAccessToken()
+  const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
+  if (!pageToken || !pageId) throw new Error('Chưa cấu hình Meta Page Token hoặc Page ID trên backend.')
   const body = {
     recipient: { id: psid },
     messaging_type: tag ? 'MESSAGE_TAG' : 'RESPONSE',
     message: { text }
   }
   if (tag) body.tag = tag
-  const response = await fetch(`https://graph.facebook.com/${graphVersion}/${pageId}/messages`, {
+  const response = await fetch(`https://graph.facebook.com/${graphVersion || 'v19.0'}/${pageId}/messages`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pageToken}` },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20000)
@@ -4368,7 +4370,8 @@ app.get('/api/v1/admin/facebook-care/:id', authenticateAdmin, authorizeRoles('SU
 // Tải hình ảnh / tệp đính kèm tươi từ Meta Graph API theo messageId khi xem chi tiết
 app.post('/api/v1/admin/facebook-care/clear-menu', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
-    const { META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    const pageToken = await getMetaPageAccessToken()
+    const { META_GRAPH_VERSION: graphVersion } = process.env
     if (!pageToken || !graphVersion) return res.status(503).json({ success: false, message: 'Chưa cấu hình Meta Page Access Token trên máy chủ.' })
     const url = `https://graph.facebook.com/${graphVersion}/me/messenger_profile`
     const response = await fetch(url, {
@@ -4393,7 +4396,8 @@ app.post('/api/v1/admin/facebook-care/clear-menu', authenticateAdmin, authorizeR
 app.get('/api/v1/admin/facebook-care/message-media/:platformMessageId', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
   try {
     const { platformMessageId } = req.params
-    const { META_PAGE_ACCESS_TOKEN: pageToken, META_GRAPH_VERSION: graphVersion } = process.env
+    const pageToken = await getMetaPageAccessToken()
+    const { META_GRAPH_VERSION: graphVersion } = process.env
     if (!pageToken || !graphVersion) {
       return res.status(503).json({ success: false, message: 'Chưa cấu hình Meta Page Token trên máy chủ.' })
     }
