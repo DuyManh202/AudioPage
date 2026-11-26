@@ -3,6 +3,7 @@ import { query } from './db.js'
 import { phoneFromMessage, addressFromMessage } from './aiChat.js'
 import { findProvince } from './vietnamProvinces.js'
 import { getAiPsychologicalTrainingContext } from './aiPsychologicalTraining.js'
+import { matchFastHybridResponse, verifyAndCleanOutput, TEMPLATES } from './aiConsultantV2.js'
 
 /**
  * Xử lý bình luận từ Facebook Webhook (Tự động kéo khách vào Messenger, trả lời cmt và ẩn SĐT)
@@ -89,34 +90,36 @@ export const handleFacebookComment = async ({
       return { success: true, action: 'PHONE_CAPTURED_AND_HIDDEN', phone: detectedPhone, hasExistingChat }
     }
 
-    // 4. Nếu KHÔNG có SĐT: Tạo câu trả lời công khai thông minh lôi kéo khách vào Messenger/Zalo
-    const salesMessages = generateSalesResponse({
-      customerName: userName,
-      commentText: cleanMsg,
-      hasExistingChat
-    })
+    // 4. Nếu KHÔNG có SĐT: Áp dụng Kịch bản 2.0 (Chế độ A - Trả lời công khai 1-2 câu, dưới 40 từ)
+    const fastMatched = matchFastHybridResponse({ message: cleanMsg, isComment: true })
+    let publicReplyText = fastMatched.matched ? fastMatched.reply : null
 
-    let publicReplyText = salesMessages.publicReply
+    // Nếu chưa khớp mẫu nhanh, tạo câu trả lời dự phòng chuẩn từ generateSalesResponse
+    if (!publicReplyText) {
+      const salesMessages = generateSalesResponse({
+        customerName: userName,
+        commentText: cleanMsg,
+        hasExistingChat
+      })
+      publicReplyText = salesMessages.publicReply
+    }
 
-    // Nếu có Gemini API Key, tối ưu câu trả lời thông minh đúng 100% ngữ cảnh
-    if (apiKey) {
+    // Nếu có Gemini API Key và chưa khớp mẫu nhanh, dùng Gemini sinh câu trả lời đúng chuẩn Bản 2.0
+    if (!fastMatched.matched && apiKey) {
       try {
-        const psychologicalContext = await getAiPsychologicalTrainingContext()
-        const aiPrompt = `Bạn là một Chuyên Viên Bán Hàng & Chuyên Gia Âm Thanh của Tú Audio (Hotline/Zalo: 0984.259.898 tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc).
+        const aiPrompt = `Bạn là trợ lý tự động của Tú Audio (Showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898).
 Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Facebook của anh Tú:
 Tên khách: "${userName}"
 Bình luận: "${cleanMsg}"
 
-${psychologicalContext}
-
-NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
-1. BẠN CHỈ VIẾT DUY NHẤT 1 CÂU TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN (PUBLIC REPLY). TUYỆT ĐỐI KHÔNG GỬI TIN NHẮN RIÊNG.
-2. ĐỘ DÀI: CHỈ VIẾT TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
+NGUYÊN TẮC BẢN 2.0 (CHẾ ĐỘ A - BẮT BUỘC):
+1. BẠN CHỈ VIẾT DUY NHẤT 1 CÂU TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN. TUYỆT ĐỐI KHÔNG GỬI TIN NHẮN RIÊNG.
+2. ĐỘ DÀI: TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
 3. NỘI DUNG:
-   - Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (CÓ nhận hỗ trợ căn chỉnh vang số / địa chỉ showroom tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc / có thu cũ đổi mới / báo giá dàn).
-   - Xưng "em", gọi "bác" hoặc "anh".
-   - KẾT CÂU LÔI KÉO VÀO TIN NHẮN: Mời bác/anh nhắn tin qua Messenger cho Trang hoặc kết bạn Zalo 0984.259.898 để em Tú gửi chi tiết cấu hình và tư vấn hỗ trợ nhé ạ!
-4. TUYỆT ĐỐI KHÔNG DÙNG TỪ NGỮ DÀI DÒNG, KHÔNG TỰ HẸN GIỜ QUA NHÀ.`
+   - Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (Showroom ở Số 220 Nguyễn Danh Phương, Vĩnh Yên / có nhận căn chỉnh tận nhà tùy khu vực / có thu cũ đổi mới / gói dàn 19tr và 29tr).
+   - Xưng "em", gọi "bác" hoặc "anh". CẤM dùng từ "Khách Facebook".
+   - KẾT CÂU LÔI KÉO: Mời bác/anh nhắn tin qua Messenger hoặc kết bạn Zalo 0984.259.898 để em gửi chi tiết nhé ạ!
+4. TUYỆT ĐỐI KHÔNG DÙNG TỪ NGỮ DÀI DÒNG, KHÔNG TỰ HẸN GIỜ QUA NHÀ, KHÔNG HỨA XỬ LÝ DỨT ĐIỂM.`
 
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const aiRes = await fetch(geminiUrl, {
@@ -125,7 +128,7 @@ NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: aiPrompt }] }],
             generationConfig: {
-              temperature: 0.35,
+              temperature: 0.25,
               maxOutputTokens: 2048,
               thinkingConfig: { thinkingBudget: 0 }
             }
@@ -137,10 +140,10 @@ NGUYÊN TẮC BẮT BUỘC (TUÂN THỦ 100% THEO CHỈ THỊ ANH TÚ):
         const cand = aiData.candidates?.[0]
         const rawAiText = cand?.content?.parts?.[0]?.text?.trim()
         const cleanReply = (txt) => (txt || '').replace(/^\[(PUBLIC|PRIVATE)_REPLY\]\s*:?\s*/gi, '').replace(/^[:\-\s]+/, '').trim()
-        if (rawAiText && (cand?.finishReason === 'STOP' || /[.!?…ạa]$/i.test(rawAiText))) {
-          publicReplyText = cleanReply(rawAiText)
-        } else if (rawAiText && cand?.finishReason !== 'MAX_TOKENS') {
-          publicReplyText = cleanReply(rawAiText)
+        const cleaned = cleanReply(rawAiText)
+        const verified = verifyAndCleanOutput({ rawReply: cleaned, finishReason: cand?.finishReason, isComment: true })
+        if (verified.ok) {
+          publicReplyText = verified.cleanedReply
         }
       } catch (aiErr) {
         console.warn('[AI Comment Gen Warning]:', aiErr.message)

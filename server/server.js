@@ -11,6 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
+import { matchFastHybridResponse, verifyAndCleanOutput, TEMPLATES } from './aiConsultantV2.js'
 import { getAiPsychologicalTrainingContext, clearAiPsychologicalTrainingCache } from './aiPsychologicalTraining.js'
 import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
@@ -1111,22 +1112,31 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
           new Date(latestInbound.created_at).getTime() > new Date(lastHumanMsg.created_at).getTime() ||
           (new Date(latestInbound.created_at).getTime() === new Date(lastHumanMsg.created_at).getTime() && latestRealMsg?.direction === 'IN')
         )
-        if (humanAgeMinutes >= 0 && (humanAgeMinutes < 5 || !inboundAfterHuman)) {
+        if (humanAgeMinutes >= 0 && (humanAgeMinutes < 30 || !inboundAfterHuman)) {
           const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
-          console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp -> AI nhường quyền.`)
+          console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp trong 30 phút qua -> AI nhường quyền.`)
           return
         }
       }
 
+      // Kịch bản AI Bản 2.0 (Chế độ A): Kiểm tra nhanh bằng bộ khớp Hybrid siêu tốc
+      const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
+      const v2Fast = matchFastHybridResponse({ message: latestText, hasPhone: hasKnownPhone, isComment: false })
+      if (v2Fast.matched && v2Fast.reply) {
+        reply = v2Fast.reply
+      }
+
       // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline, Xin địa chỉ, Hỏi qua ngay...) để phản hồi chính xác 100%, không bị ảo giác
-      const fastDeterministic = checkDeterministicAiResponse(latestText)
-      if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE', 'ADDRESS', 'IMMEDIATE_VISIT_CHECK'].includes(fastDeterministic.type)) {
-        if (fastDeterministic.type === 'ICON_STICKER' && (customer.phone || alreadyConfirmedPhone)) {
-          reply = 'Dạ em Tú Audio xin chào anh ạ! Em/kỹ thuật bên em đang chuẩn bị liên hệ hỗ trợ trực tiếp cho anh ngay đây ạ!'
-        } else if (fastDeterministic.type === 'IMMEDIATE_VISIT_CHECK' && (customer.phone || alreadyConfirmedPhone)) {
-          reply = 'Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác, đi hỗ trợ theo tuyến các bác khách đã đặt lịch từ trước rồi ạ. Bác cứ yên tâm nhé, lát nữa em Tú sẽ trực tiếp gọi điện lại trao đổi về bộ dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em nhé ạ!'
-        } else {
-          reply = fastDeterministic.reply
+      if (!reply) {
+        const fastDeterministic = checkDeterministicAiResponse(latestText)
+        if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE', 'ADDRESS', 'IMMEDIATE_VISIT_CHECK'].includes(fastDeterministic.type)) {
+          if (fastDeterministic.type === 'ICON_STICKER' && hasKnownPhone) {
+            reply = 'Dạ em Tú Audio xin chào anh ạ! Em/kỹ thuật bên em đang chuẩn bị liên hệ hỗ trợ trực tiếp cho anh ngay đây ạ!'
+          } else if (fastDeterministic.type === 'IMMEDIATE_VISIT_CHECK' && hasKnownPhone) {
+            reply = 'Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác, đi hỗ trợ theo tuyến các bác khách đã đặt lịch từ trước rồi ạ. Bác cứ yên tâm nhé, lát nữa em Tú sẽ trực tiếp gọi điện lại trao đổi về bộ dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em nhé ạ!'
+          } else {
+            reply = fastDeterministic.reply
+          }
         }
       }
     }
@@ -1238,10 +1248,17 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
           const geminiData = await geminiRes.json().catch(() => ({}))
           const cand = geminiData.candidates?.[0]
           const rawReply = cand?.content?.parts?.[0]?.text?.trim()
-          if (rawReply && (cand?.finishReason === 'STOP' || /[.!?…ạa]$/i.test(rawReply))) {
-            reply = rawReply
-          } else if (rawReply && cand?.finishReason !== 'MAX_TOKENS') {
-            reply = rawReply
+          const verified = verifyAndCleanOutput({
+            rawReply,
+            finishReason: cand?.finishReason,
+            hasPhone: hasKnownPhone,
+            isComment: false,
+            recentOuts: realMsgs.filter(m => m.direction === 'OUT').slice(-5).map(m => m.body || '')
+          })
+          if (verified.ok) {
+            reply = verified.cleanedReply
+          } else if (verified.fallback) {
+            reply = verified.fallback
           }
         }
       } catch (aiErr) {
