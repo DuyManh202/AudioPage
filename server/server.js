@@ -425,7 +425,27 @@ const isWebAiEnabled = async () => {
   const enabled = await getSystemSetting('web_ai_enabled', true)
   return Boolean(enabled)
 }
-const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && process.env.META_ADS_ACCESS_TOKEN && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
+let cachedMetaAdsAccessToken = ''
+const getMetaAdsAccessToken = async (forceRefresh = false) => {
+  if (!forceRefresh && cachedMetaAdsAccessToken) return cachedMetaAdsAccessToken
+  let dbToken = await getSystemSetting('meta_ads_access_token', '')
+  if (typeof dbToken === 'string') {
+    try {
+      const parsed = JSON.parse(dbToken)
+      if (typeof parsed === 'string') dbToken = parsed
+    } catch {}
+  }
+  if (dbToken && typeof dbToken === 'string' && dbToken.startsWith('EAA')) {
+    cachedMetaAdsAccessToken = dbToken.trim()
+    return cachedMetaAdsAccessToken
+  }
+  if (process.env.META_ADS_ACCESS_TOKEN) {
+    cachedMetaAdsAccessToken = process.env.META_ADS_ACCESS_TOKEN.trim()
+    return cachedMetaAdsAccessToken
+  }
+  return ''
+}
+const isFacebookAdsConfigured = () => Boolean(process.env.META_AD_ACCOUNT_ID && /^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION || ''))
 
 const fetchFacebookProfileName = async (psid) => {
   const pageToken = await getMetaPageAccessToken()
@@ -3727,16 +3747,19 @@ const mapFbCare = row => ({
   }))
 })
 
+const adsAnalyticsCache = new Map()
+
 app.get('/api/v1/admin/facebook-ads', authenticateAdmin, authorizeRoles('SUPER_ADMIN', 'SALES'), async (req, res) => {
-  if (!isFacebookAdsConfigured()) return res.status(503).json({ success: false, configured: false, message: 'Chưa cấu hình META_AD_ACCOUNT_ID và META_ADS_ACCESS_TOKEN trên backend.' })
+  const adsToken = await getMetaAdsAccessToken()
+  if (!isFacebookAdsConfigured() || !adsToken) return res.status(503).json({ success: false, configured: false, message: 'Chưa cấu hình META_AD_ACCOUNT_ID và META_ADS_ACCESS_TOKEN trên backend.' })
   try {
-    const version = process.env.META_GRAPH_VERSION
+    const version = process.env.META_GRAPH_VERSION || 'v19.0'
     const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
     const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
     url.searchParams.set('fields', 'id,name,status,effective_status,campaign{id,name},adset{id,name},insights.date_preset(last_30d){impressions,reach,clicks,spend}')
     url.searchParams.set('filtering', JSON.stringify([{ field: 'effective_status', operator: 'IN', value: ['ACTIVE'] }]))
     url.searchParams.set('limit', '100')
-    const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
+    const response = await fetch(url, { headers: { Authorization: 'Bearer ' + adsToken }, signal: AbortSignal.timeout(15000) })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) return res.status(502).json({ success: false, configured: true, message: payload.error?.message || `Meta Marketing API (${response.status})` })
     const ads = (payload.data || []).map(ad => {
@@ -3754,6 +3777,14 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
     const periodParam = String(req.query.period || 'today').toLowerCase()
     const fromParam = String(req.query.from || '').trim()
     const toParam = String(req.query.to || '').trim()
+
+    const cacheKey = `${periodParam}_${fromParam}_${toParam}`
+    if (req.query.force !== 'true') {
+      const cached = adsAnalyticsCache.get(cacheKey)
+      if (cached && Date.now() - cached.ts < 60000) {
+        return res.json(cached.data)
+      }
+    }
 
     let period = 'today'
     let periodLabel = 'Hôm nay'
@@ -3810,14 +3841,15 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
         AND created_at < '2026-11-19 00:00:00+07:00'
     `).catch(() => {})
 
-    if (isFacebookAdsConfigured()) {
+    const adsToken = await getMetaAdsAccessToken()
+    if (isFacebookAdsConfigured() && adsToken) {
       try {
         const version = process.env.META_GRAPH_VERSION || 'v19.0'
         const accountId = process.env.META_AD_ACCOUNT_ID.replace(/^act_/, '')
         const url = new URL(`https://graph.facebook.com/${version}/act_${encodeURIComponent(accountId)}/ads`)
         url.searchParams.set('fields', `id,name,status,effective_status,campaign{id,name},adset{id,name},${insightsField}{impressions,reach,clicks,spend,actions,action_values,cost_per_action_type}`)
         url.searchParams.set('limit', '100')
-        const response = await fetch(url, { headers: { Authorization: 'Bearer ' + process.env.META_ADS_ACCESS_TOKEN }, signal: AbortSignal.timeout(20000) })
+        const response = await fetch(url, { headers: { Authorization: 'Bearer ' + adsToken }, signal: AbortSignal.timeout(15000) })
         const payload = await response.json().catch(() => ({}))
         if (response.ok && Array.isArray(payload.data)) {
           ads = payload.data.map(ad => {
@@ -4250,7 +4282,7 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
     const scaleCount = combinedAds.filter(a => a.diagnosis?.action === 'SCALE' || a.diagnosis?.action === 'POTENTIAL_WIN').length
     const optimizeSaleCount = combinedAds.filter(a => a.diagnosis?.action === 'OPTIMIZE_SALE').length
 
-    res.json({
+    const responsePayload = {
       success: true,
       summary: {
         totalSpend,
@@ -4277,7 +4309,9 @@ app.get('/api/v1/admin/facebook-ads/analytics', authenticateAdmin, authorizeRole
       },
       data: combinedAds,
       period
-    })
+    }
+    adsAnalyticsCache.set(cacheKey, { ts: Date.now(), data: responsePayload })
+    res.json(responsePayload)
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -4287,10 +4321,15 @@ app.get('/api/v1/admin/facebook-care', authenticateAdmin, authorizeRoles('SUPER_
   try {
     const forceSync = req.query.sync === 'force'
     if (canReadFacebookPageInbox() && (forceSync || Date.now() - fbLastSyncMs >= FB_SYNC_INTERVAL_MS)) {
-      await Promise.race([
-        syncFacebookConversations({ force: forceSync }),
-        new Promise(resolve => setTimeout(resolve, 10000))
-      ])
+      if (forceSync) {
+        await Promise.race([
+          syncFacebookConversations({ force: true }),
+          new Promise(resolve => setTimeout(resolve, 5000))
+        ])
+      } else {
+        // Tối ưu tốc độ cao: Đồng bộ ngầm trong nền không chặn phản hồi HTTP, trả dữ liệu tức thì!
+        syncFacebookConversations({ force: false }).catch(() => {})
+      }
     }
     const result = await query(`SELECT c.*, COALESCE(json_agg(json_build_object('id', m.id, 'body', m.body, 'direction', m.direction, 'createdAt', m.created_at, 'platformMessageId', m.platform_message_id, 'createdBy', m.created_by, 'attachments', COALESCE(m.attachments, '[]'::jsonb)) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]') AS messages
       FROM facebook_care_customers c LEFT JOIN facebook_care_messages m ON m.customer_id = c.id
