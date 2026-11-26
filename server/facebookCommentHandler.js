@@ -111,7 +111,7 @@ export const handleFacebookComment = async ({
     if (apiKey) {
       try {
         const psychologicalContext = await getAiPsychologicalTrainingContext()
-        const aiPrompt = `Bạn là một Chuyên Viên Bán Hàng & Chuyên Gia Âm Thanh đỉnh cao của Tú Audio (Hotline/Zalo: 0984.259.898 tại Vĩnh Yên, Vĩnh Phúc).
+        const aiPrompt = `Bạn là một Chuyên Viên Bán Hàng & Chuyên Gia Âm Thanh đỉnh cao của Tú Audio (Hotline/Zalo: 0984.259.898 tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc).
 Khách hàng vừa để lại BÌNH LUẬN CÔNG KHAI trên bài viết Facebook của anh Tú:
 Tên khách: "${userName}"
 Bình luận: "${cleanMsg}"
@@ -136,7 +136,7 @@ KHÁCH HÀNG NÀY ĐÃ TỪNG NHẮN TIN RIÊNG (INBOX) VỚI TÚ AUDIO TRONG ME
 TUYỆT ĐỐI KHÔNG GỬI THÊM TIN NHẮN RIÊNG NÀO VÀO MESSENGER NỮA (KHÔNG ĐƯỢC IB).
 BẠN CHỈ CẦN XUẤT RA DUY NHẤT 1 PHẦN LÀ [PUBLIC_REPLY]:
 QUY TẮC ĐỘ DÀI: CHỈ VIẾT TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
-- Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại 220 Nguyễn Danh Phương, Vĩnh Yên/nhận căn chỉnh gửi hàng toàn quốc).
+- Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (báo giá/địa chỉ showroom tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc/nhận căn chỉnh gửi hàng toàn quốc).
 - Xưng "em", gọi "anh" hoặc "bác", nhắc anh nhắn tiếp vào Messenger hoặc Zalo 0984.259.898 để em hỗ trợ tiện nhất.
 - TUYỆT ĐỐI KHÔNG VIẾT DÀI DÒNG, KHÔNG VIẾT THÀNH ĐOẠN VĂN LÊ THÊ.`
 :

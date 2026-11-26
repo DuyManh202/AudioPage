@@ -1091,9 +1091,9 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
         }
       }
 
-      // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline...) để phản hồi chính xác 100%, không bị ảo giác
+      // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline, Xin địa chỉ...) để phản hồi chính xác 100%, không bị ảo giác
       const fastDeterministic = checkDeterministicAiResponse(latestText)
-      if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE'].includes(fastDeterministic.type)) {
+      if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE', 'ADDRESS'].includes(fastDeterministic.type)) {
         if (fastDeterministic.type === 'ICON_STICKER' && (customer.phone || alreadyConfirmedPhone)) {
           reply = 'Dạ em Tú Audio xin chào anh ạ! Em/kỹ thuật bên em đang chuẩn bị liên hệ hỗ trợ trực tiếp cho anh ngay đây ạ!'
         } else {
@@ -1121,8 +1121,13 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 - Khéo léo xin số điện thoại/Zalo để bên em gọi điện hoặc nhắn tin tư vấn trực tiếp cho tiện (Ví dụ: "Bác cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn cụ thể cho bác nhé ạ!").
 - TUYỆT ĐỐI KHÔNG tự ý hẹn lịch qua nhà khách trước trên tin nhắn! Mọi lịch trình sẽ do anh Tú gọi điện thống nhất sau.`
 
-      const systemInstruction = `BẠN LÀ ANH PHÙNG VĂN TÚ (TÚ AUDIO - Hotline/Zalo: 0984.259.898 tại Phố Nguyễn Danh Phương, Vĩnh Yên, Vĩnh Phúc).
+      const systemInstruction = `BẠN LÀ ANH PHÙNG VĂN TÚ (TÚ AUDIO - Hotline/Zalo: 0984.259.898 tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc).
 BẠN ĐANG TRỰC TIẾP TRÒ CHUYỆN, TÂM SỰ VÀ TƯ VẤN CHO KHÁCH HÀNG TRÊN FACEBOOK MESSENGER NHƯ MỘT NGƯỜI BẠN MÊ ÂM THANH TRI KỶ.
+
+QUY TẮC BẮT BUỘC VỀ ĐỊA CHỈ SHOWROOM (GHI RÕ RÀNG, CỤ THỂ 100%):
+- Khi khách hỏi showroom ở đâu, shop ở đâu, cửa hàng ở đâu, địa chỉ ở đâu, qua đâu xem dàn...
+- BẮT BUỘC PHẢI TRẢ LỜI ĐẦY ĐỦ ĐỊA CHỈ CỤ THỂ 100%: "Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc (có chỗ đỗ ô tô thoải mái)".
+- TUYỆT ĐỐI KHÔNG ĐƯỢC trả lời lửng lơ hoặc chung chung như "ở Phố Nguyễn Danh Phương" hay "ở TP.", BẮT BUỘC PHẢI CÓ SỐ NHÀ 220, PHƯỜNG HỘI HỢP, TP. VĨNH YÊN, TỈNH VĨNH PHÚC!
 
 ${psychologicalContext}
 

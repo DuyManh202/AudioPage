@@ -84,7 +84,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'ADDRESS',
-      reply: 'Dạ showroom bên em ở tại số 220 đường Nguyễn Danh Phương, Vĩnh Yên, Vĩnh Phúc ạ. Anh nhắn em xin số Zalo em gửi vị trí định vị qua cho tiện đi nhé anh!'
+      reply: 'Dạ showroom Tú Audio bên em ở tại số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc ạ (gần ngã tư Quán Tiên, có chỗ đỗ ô tô thoải mái). Anh/bác nhắn em xin số Zalo em gửi định vị chi tiết qua cho tiện nhé ạ!'
     }
   }
 
