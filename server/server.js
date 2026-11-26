@@ -1119,25 +1119,14 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
         }
       }
 
-      // Kịch bản AI Bản 2.0 (Chế độ A): Kiểm tra nhanh bằng bộ khớp Hybrid siêu tốc
+      // 1. Chỉ nhận diện SĐT để kích hoạt M-19 hoặc chuyển người nếu khách đã có số
       const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
-      const v2Fast = matchFastHybridResponse({ message: latestText, hasPhone: hasKnownPhone, isComment: false })
-      if (v2Fast.matched && v2Fast.reply) {
-        reply = v2Fast.reply
-      }
-
-      // Kiểm tra nhanh các trường hợp định danh (Icon/Sticker, Lời chào, Xin hotline, Xin địa chỉ, Hỏi qua ngay...) để phản hồi chính xác 100%, không bị ảo giác
-      if (!reply) {
-        const fastDeterministic = checkDeterministicAiResponse(latestText)
-        if (fastDeterministic && ['ICON_STICKER', 'GREETING', 'HOTLINE', 'ADDRESS', 'IMMEDIATE_VISIT_CHECK'].includes(fastDeterministic.type)) {
-          if (fastDeterministic.type === 'ICON_STICKER' && hasKnownPhone) {
-            reply = 'Dạ em Tú Audio xin chào anh ạ! Em/kỹ thuật bên em đang chuẩn bị liên hệ hỗ trợ trực tiếp cho anh ngay đây ạ!'
-          } else if (fastDeterministic.type === 'IMMEDIATE_VISIT_CHECK' && hasKnownPhone) {
-            reply = 'Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác, đi hỗ trợ theo tuyến các bác khách đã đặt lịch từ trước rồi ạ. Bác cứ yên tâm nhé, lát nữa em Tú sẽ trực tiếp gọi điện lại trao đổi về bộ dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em nhé ạ!'
-          } else {
-            reply = fastDeterministic.reply
-          }
-        }
+      const extractedPhone = extractPhoneNumber(latestText)
+      if (extractedPhone) {
+        reply = TEMPLATES.M19_DA_NHAN_SDT(extractedPhone)
+      } else if (hasKnownPhone) {
+        // Khách đã có số: Trả lời 1 lần xác nhận rồi nhường người thật
+        reply = TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP
       }
     }
 
