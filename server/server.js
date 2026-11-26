@@ -764,14 +764,32 @@ const syncFacebookPageComments = async () => {
     const apiKey = await getGeminiApiKey()
     const model = await getGeminiModel()
 
-    // Quét bình luận trên các bài viết Feed của Fanpage
-    const feedUrl = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(pageId)}/feed`)
-    feedUrl.searchParams.set('fields', 'id,comments.limit(30){id,from,message,created_time,parent}')
-    feedUrl.searchParams.set('limit', '10')
-    const feedRes = await fetch(feedUrl, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(15000) })
-    const feedData = await feedRes.json().catch(() => ({}))
+    // Quét bình luận trên các bài viết Feed, Published Posts và Videos của Fanpage (quét cả video reels / bài đăng quảng cáo)
+    const fetchPostsFromEndpoint = async (endpoint) => {
+      try {
+        const u = new URL(`https://graph.facebook.com/${graphVersion}/${encodeURIComponent(pageId)}/${endpoint}`)
+        u.searchParams.set('fields', 'id,comments.order(reverse_chronological).limit(50){id,from,message,created_time,parent}')
+        u.searchParams.set('limit', '15')
+        const r = await fetch(u, { headers: { Authorization: `Bearer ${pageToken}` }, signal: AbortSignal.timeout(15000) })
+        const d = await r.json().catch(() => ({}))
+        return Array.isArray(d.data) ? d.data : []
+      } catch {
+        return []
+      }
+    }
 
-    const allPosts = Array.isArray(feedData.data) ? feedData.data : []
+    const [publishedPosts, videoPosts, feedPosts] = await Promise.all([
+      fetchPostsFromEndpoint('published_posts'),
+      fetchPostsFromEndpoint('videos'),
+      fetchPostsFromEndpoint('feed')
+    ])
+
+    // Ghép và lọc trùng lặp post
+    const postMap = new Map()
+    for (const p of [...publishedPosts, ...videoPosts, ...feedPosts]) {
+      if (p?.id && !postMap.has(p.id)) postMap.set(p.id, p)
+    }
+    const allPosts = Array.from(postMap.values())
 
     for (const post of allPosts) {
       const comments = Array.isArray(post.comments?.data) ? post.comments.data : []
