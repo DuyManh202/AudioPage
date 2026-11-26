@@ -123,8 +123,10 @@ NGUYÊN TẮC BẮT BUỘC VỀ PHẠM VI SẢN PHẨM & DỊCH VỤ CỦA TÚ A
 - NGUYÊN TẮC CỐT LÕI VỀ CĂN CHỈNH / SETUP DÀN VANG SỐ (BẮT BUỘC NHẬN HẾT 100%):
   * Khi khách hỏi: "có căn chỉnh không", "có đi chỉnh không", "có qua tận nơi chỉnh không", "có chỉnh vang không", "có setup lại không"...
   * BẮT BUỘC LUÔN LUÔN NHẬN HẾT 100%! TUYỆT ĐỐI CẤM TỪ CHỐI KHÁCH! TUYỆT ĐỐI KHÔNG BAO GIỜ nói câu: "bên em không nhận đi căn chỉnh dịch vụ lẻ bên ngoài".
-  * Khẳng định rõ bên em CÓ NHẬN căn chỉnh vang số và setup dàn tận nơi cũng như hỗ trợ qua máy tính Ultraviewer, có thợ đi ghép chuyến các tỉnh liên tục nên chi phí rất hợp lý.
-  * Ngay lập tức mời khách cho số điện thoại / kết bạn Zalo để hẹn lịch kỹ thuật qua hỗ trợ hoặc gọi tư vấn, gửi ảnh bộ dàn. Khách lẻ căn chỉnh là phễu khách hàng lớn nhất để tiếp cận và chốt sale nâng cấp thiết bị!
+  * Khẳng định rõ bên em CÓ NHẬN hỗ trợ kỹ thuật căn chỉnh vang số và setup dàn.
+  * TUYỆT ĐỐI KHÔNG HẸN KHÁCH TRƯỚC TRÊN TIN NHẮN (không hẹn ngày giờ, không tự hẹn chạy qua nhà, không hứa thợ mang mic đo RTA sang nhà). CHỈ XIN SỐ ĐIỆN THOẠI ĐỂ GỌI ĐIỆN TRAO ĐỔI TRỰC TIẾP.
+  * KHI KHÁCH CHO SỐ: CHỈ CẢM ƠN KHÁCH VÀ BÁO LÁT NỮA BÊN EM SẼ LIÊN HỆ LẠI.
+  * Mời khách cho số điện thoại / kết bạn Zalo để bên em gọi điện tư vấn trực tiếp cho tiện.
 - TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo / loa kẹo kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất.
 - NẾU KHÁCH HỎI VỀ LOA KÉO: Lịch sự từ chối dịch vụ loa kéo và giải thích rõ bên em chuyên dàn karaoke gia đình và thiết bị phòng hát chuẩn. Khéo léo định hướng khách nâng cấp lên dàn karaoke gia đình chuẩn (các gói 19tr - 29tr) hát nhẹ tiếng và chống hú tuyệt đối, xin số Zalo để tư vấn.
 
@@ -380,24 +382,24 @@ function generateSalesResponse({ customerName = 'bác', commentText = '', hasExi
   // 0.5. Khách hỏi có đi chỉnh không / căn chỉnh vang số tận nhà
   if (norm.includes('can chinh') || norm.includes('chinh vang') || norm.includes('di chinh') || norm.includes('chinh khong') || norm.includes('chinh giup') || norm.includes('setup')) {
     return {
-      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận căn chỉnh vang số và setup dàn tận nhà cũng như chỉnh từ xa qua máy tính cho anh nhé. Đội kỹ thuật bên em đi các tỉnh liên tục nên chi phí ghép chuyến rất hợp lý. Anh cho em xin số Zalo để em trao đổi cụ thể và hẹn lịch kỹ thuật tiện chuyến qua hỗ trợ cho dàn nhà mình hát nhẹ và chống hú tốt nhất nhé anh!`,
-      publicReply: `Dạ bên em CÓ nhận căn chỉnh tại nhà anh nhé! Em Tú vừa nhắn tin riêng qua Messenger xin số Zalo để hẹn lịch hỗ trợ anh rồi ạ, anh xem giúp em nhé!`
+      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận hỗ trợ kỹ thuật căn chỉnh vang số và setup dàn nhé anh. Anh cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn chi tiết hỗ trợ cho dàn nhà mình hát nhẹ và chống hú tốt nhất nhé anh!`,
+      publicReply: `Dạ bên em CÓ nhận hỗ trợ kỹ thuật anh nhé! Em Tú vừa nhắn tin riêng qua Messenger xin số Zalo để tư vấn cho anh rồi ạ, anh xem giúp em nhé!`
     }
   }
 
   // 1. Khách hỏi sửa amply rè / hú rít
   if (norm.includes('reo') || norm.includes('amply') || norm.includes('am ly') || norm.includes('hu rit') || norm.includes('re')) {
     return {
-      privateReply: `Dạ em Tú Audio xin chào anh ${customerName} ạ! Em vừa đọc bình luận của anh về bộ amply/dàn âm thanh bị réo ù. Bệnh này thường do rò tụ nguồn hoặc dây mass tiền khuếch đại, để lâu rất dễ cháy củ treble loa. Anh nhắn em xin số Zalo em gọi video hướng dẫn anh kiểm tra bắt bệnh miễn phí, hoặc tiện chuyến em ghé xử lý dứt điểm cho anh nhé!`,
-      publicReply: `Dạ em Tú đã nhắn tin chi tiết cách xử lý qua Messenger cho anh rồi ạ, anh mở hộp thư xem giúp em nhé!`
+      privateReply: `Dạ em Tú Audio xin chào anh ${customerName} ạ! Em vừa đọc bình luận của anh về bộ amply/dàn âm thanh bị réo ù. Bệnh này thường do dải tần EQ hoặc dây mass, anh cho em xin số điện thoại/Zalo để bên em gọi điện hướng dẫn kiểm tra bắt bệnh cho anh nhé!`,
+      publicReply: `Dạ em Tú đã nhắn tin chi tiết qua Messenger cho anh rồi ạ, anh mở hộp thư xem giúp em nhé!`
     }
   }
 
   // 2. Khách hỏi làm tận nhà ở các tỉnh (Nam Định, Thái Bình, Hà Nội, Phú Thọ...)
   if (norm.includes('nam dinh') || norm.includes('ha noi') || norm.includes('phu tho') || norm.includes('o dau') || norm.includes('tan nha') || norm.includes('qua nha') || norm.includes('ve nha')) {
     return {
-      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận căn chỉnh và setup tận nhà cho anh em ở khu vực của anh nhé. Đội kỹ thuật bên em đi các tỉnh liên tục nên chi phí ghép chuyến rất hợp lý. Anh cho em xin số Zalo để em tiện đường ghép chuyến ghé qua đo đạc xử lý cho dàn nhà mình hát nhẹ và không bị hú rít nhé anh!`,
-      publicReply: `Dạ bên em CÓ nhận làm tại nhà anh nhé! Em Tú vừa nhắn tin riêng qua Messenger trao đổi lịch hẹn với anh rồi ạ, anh xem giúp em nhé!`
+      privateReply: `Dạ em Tú chào anh ${customerName} ạ! Bên em CÓ nhận hỗ trợ kỹ thuật căn chỉnh và setup cho anh em ở khu vực của anh nhé. Anh cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn trực tiếp cho anh nhé anh!`,
+      publicReply: `Dạ bên em CÓ nhận hỗ trợ anh nhé! Em Tú vừa nhắn tin riêng qua Messenger xin số để liên hệ trao đổi với anh rồi ạ, anh xem giúp em nhé!`
     }
   }
 
