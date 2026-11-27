@@ -220,7 +220,6 @@ export const createWafMiddleware = (recordLogFn) => {
       })
     }
 
-    const rawUrl = req.originalUrl || req.url || ''
     let decodedUrl = rawUrl
     try {
       decodedUrl = decodeURIComponent(rawUrl)
