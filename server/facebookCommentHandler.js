@@ -95,24 +95,14 @@ export const handleFacebookComment = async ({
 
     // Nhận diện nhanh các ý định phổ biến trên bình luận (Địa chỉ, Giá, Tận nhà, Khen)
     const lower = cleanMsg.toLowerCase()
-    if (lower.includes('ở đâu') || lower.includes('địa chỉ') || lower.includes('chỗ nào')) {
+    if (lower.includes('ở đâu') || lower.includes('địa chỉ') || lower.includes('chỗ nào') || lower.includes('o dau') || lower.includes('dia chi')) {
       publicReplyText = TEMPLATES.C01_DIA_CHI
-    } else if (lower.includes('giá') || lower.includes('bao nhiêu') || lower.includes('nhiêu tiền') || lower.includes('báo giá')) {
+    } else if (lower.includes('giá') || lower.includes('bao nhiêu') || lower.includes('nhiêu tiền') || lower.includes('báo giá') || lower.includes('gia') || lower.includes('bao nhieu')) {
       publicReplyText = TEMPLATES.C02_HOI_GIA
-    } else if (lower.includes('tận nhà') || lower.includes('tận nơi') || lower.includes('về nhà')) {
+    } else if (lower.includes('tận nhà') || lower.includes('tận nơi') || lower.includes('về nhà') || lower.includes('xuống nhà') || lower.includes('đến nhà') || lower.includes('có chỉnh không') || lower.includes('có làm không') || lower.includes('có đi không')) {
       publicReplyText = TEMPLATES.C03_TAN_NHA
-    } else if (lower === 'hay quá' || lower === 'cảm ơn' || lower === 'tuyệt vời' || lower === 'đẹp quá') {
+    } else if (lower === 'hay quá' || lower === 'cảm ơn' || lower === 'tuyệt vời' || lower === 'đẹp quá' || lower === 'ok shop') {
       publicReplyText = TEMPLATES.C04_KHEN_CAM_ON
-    }
-
-    // Nếu chưa khớp mẫu nhanh, tạo câu trả lời dự phòng chuẩn từ generateSalesResponse
-    if (!publicReplyText) {
-      const salesMessages = generateSalesResponse({
-        customerName: userName,
-        commentText: cleanMsg,
-        hasExistingChat
-      })
-      publicReplyText = salesMessages.publicReply
     }
 
     // Nếu có Gemini API Key và chưa khớp mẫu nhanh, dùng Gemini sinh câu trả lời đúng chuẩn Bản 2.0
@@ -127,9 +117,9 @@ NGUYÊN TẮC BẢN 2.0 (CHẾ ĐỘ A - BẮT BUỘC):
 1. BẠN CHỈ VIẾT DUY NHẤT 1 CÂU TRẢ LỜI CÔNG KHAI DƯỚI BÌNH LUẬN. TUYỆT ĐỐI KHÔNG GỬI TIN NHẮN RIÊNG.
 2. ĐỘ DÀI: TỐI ĐA 1 ĐẾN 2 CÂU NGẮN GỌN (DƯỚI 40 TỪ).
 3. NỘI DUNG:
-   - Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (Showroom ở Số 220 Nguyễn Danh Phương, Vĩnh Yên / có nhận căn chỉnh tận nhà tùy khu vực / có thu cũ đổi mới / gói dàn 19tr và 29tr).
+   - Trả lời thẳng thắn, đúng trọng tâm câu hỏi của khách (Khách hỏi chỉnh tận nơi thì trả lời bên em có nhận căn chỉnh tận nhà tùy khu vực, TUYỆT ĐỐI KHÔNG tự bịa gói dàn 19tr/29tr khi khách chỉ hỏi chỉnh dàn).
    - Xưng "em", gọi "bác" hoặc "anh". CẤM dùng từ "Khách Facebook".
-   - KẾT CÂU LÔI KÉO: Mời bác/anh nhắn tin qua Messenger hoặc kết bạn Zalo 0984.259.898 để em gửi chi tiết nhé ạ!
+   - KẾT CÂU LÔI KÉO: Mời bác/anh nhắn tin qua Messenger hoặc kết bạn Zalo 0984.259.898 để em Tú xếp lịch nhé ạ!
 4. TUYỆT ĐỐI KHÔNG DÙNG TỪ NGỮ DÀI DÒNG, KHÔNG TỰ HẸN GIỜ QUA NHÀ, KHÔNG HỨA XỬ LÝ DỨT ĐIỂM.`
 
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
@@ -158,6 +148,15 @@ NGUYÊN TẮC BẢN 2.0 (CHẾ ĐỘ A - BẮT BUỘC):
         }
       } catch (aiErr) {
         console.warn('[AI Comment Gen Warning]:', aiErr.message)
+      }
+    }
+
+    // Nếu lỗi mạng hoặc chưa có câu trả lời, dùng mẫu dự phòng chuẩn Kịch bản 2.0 (C-03 hoặc C-01)
+    if (!publicReplyText) {
+      if (lower.includes('chỉnh') || lower.includes('setup') || lower.includes('vang') || lower.includes('phú thọ') || lower.includes('sông lô')) {
+        publicReplyText = TEMPLATES.C03_TAN_NHA
+      } else {
+        publicReplyText = TEMPLATES.C01_DIA_CHI
       }
     }
 
