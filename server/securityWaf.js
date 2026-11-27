@@ -200,6 +200,12 @@ export const registerSecurityStrike = (ip, reason, recordLogFn = null, req = nul
  */
 export const createWafMiddleware = (recordLogFn) => {
   return (req, res, next) => {
+    // Bỏ qua kiểm tra WAF cho webhook từ các nền tảng chính thức (Facebook / Meta Webhook)
+    const rawUrl = req.originalUrl || req.url || ''
+    if (rawUrl.startsWith('/api/v1/facebook/webhook')) {
+      return next()
+    }
+
     const ip = getClientIp(req)
     const now = Date.now()
 
