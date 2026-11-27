@@ -413,17 +413,17 @@ const canReadFacebookPageInbox = () => Boolean(process.env.META_PAGE_ID && /^v\d
 const isFacebookAiEnabled = async () => {
   const apiKey = await getGeminiApiKey()
   if (!apiKey) return false
-  const enabled = await getSystemSetting('facebook_ai_enabled', true)
+  const enabled = await getSystemSetting('facebook_ai_enabled', false)
   return Boolean(enabled)
 }
 const isFacebookCommentAiEnabled = async () => {
   const apiKey = await getGeminiApiKey()
   if (!apiKey) return false
-  const enabled = await getSystemSetting('facebook_comment_ai_enabled', true)
+  const enabled = await getSystemSetting('facebook_comment_ai_enabled', false)
   return Boolean(enabled)
 }
 const isWebAiEnabled = async () => {
-  const enabled = await getSystemSetting('web_ai_enabled', true)
+  const enabled = await getSystemSetting('web_ai_enabled', false)
   return Boolean(enabled)
 }
 let cachedMetaAdsAccessToken = ''
@@ -476,7 +476,8 @@ const isSystemFacebookNotice = (body) => {
     str.includes('Đã đặt giai đoạn của khách hàng tiềm năng') ||
     str.includes('Đoạn chat này chưa dùng được tính năng phản hồi bằng AI') ||
     str.includes('Bạn có muốn được chỉ định cho cuộc trò chuyện này') ||
-    str.includes('Bạn đã được chỉ định cho cuộc trò chuyện này')
+    str.includes('Bạn đã được chỉ định cho cuộc trò chuyện này') ||
+    str.includes('Dạ em chào bác') && str.includes('Em là trợ lý âm thanh của Tú Audio')
   )
 }
 
@@ -494,6 +495,17 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
   if (fbSyncInFlight) return fbSyncInFlight
 
   fbSyncInFlight = (async () => {
+    let hasClusterSyncLock = false
+    try {
+      const lockRes = await query("SELECT pg_try_advisory_lock(hashtext('meta_fb_sync_cluster_lock')) as locked")
+      hasClusterSyncLock = Boolean(lockRes?.rows?.[0]?.locked)
+      if (!hasClusterSyncLock) {
+        return { synced: false, cached: true, reason: 'another_node_process_syncing' }
+      }
+    } catch (e) {
+      console.warn('[Facebook Sync] Lock error:', e.message)
+    }
+
     const pageToken = await getMetaPageAccessToken()
     const { META_PAGE_ID: pageId, META_GRAPH_VERSION: graphVersion } = process.env
     try {
@@ -571,7 +583,11 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
             // Cùng giây: tin nhắn chào mừng (OUT) luôn đứng trước tin nhắn của khách (IN)
             if (a.direction === 'OUT' && b.direction === 'IN') return -1
             if (a.direction === 'IN' && b.direction === 'OUT') return 1
-            return b.rawIndex - a.rawIndex
+            // Tiêu chí phụ: so sánh platformMessageId hoặc rawIndex
+            if (a.platformMessageId && b.platformMessageId && a.platformMessageId !== b.platformMessageId) {
+              return a.platformMessageId.localeCompare(b.platformMessageId)
+            }
+            return (a.rawIndex || 0) - (b.rawIndex || 0)
           })
 
         const latestMsg = normalizedMessages[normalizedMessages.length - 1] || null
@@ -747,6 +763,9 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
       console.warn('[Facebook Sync] Failed:', fbLastSyncError)
       return { synced: false, lastSyncedAt: fbLastSyncedAt, error: fbLastSyncError }
     } finally {
+      if (hasClusterSyncLock) {
+        await query("SELECT pg_advisory_unlock(hashtext('meta_fb_sync_cluster_lock'))").catch(() => {})
+      }
       fbSyncInFlight = null
     }
   })()
@@ -886,28 +905,49 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
   if (fbAutoReplyInFlight.has(customerId)) return
   if (!(await isFacebookAiEnabled()) || !isFacebookMessengerConfigured()) return
 
+  // Khóa Advisory Lock ở mức CSDL theo customerId để ngăn ngừa 2 tiến trình Node hoặc đồng bộ chạy song song
+  let hasDbLock = false
+  try {
+    const lockCheck = await query('SELECT pg_try_advisory_lock(hashtext($1)) as locked', [customerId])
+    hasDbLock = Boolean(lockCheck?.rows?.[0]?.locked)
+    if (!hasDbLock) {
+      console.log(`[Facebook AI] Khách ${customerId} đang được tiến trình khác xử lý (advisory lock) -> Bỏ qua.`)
+      return
+    }
+  } catch (lockErr) {
+    console.warn('[Facebook AI] Lỗi kiểm tra advisory lock:', lockErr.message)
+  }
+
   fbAutoReplyInFlight.add(customerId)
   try {
     const [customerResult, humanCheckResult, historyResult, productsResult, combosResult] = await Promise.all([
-      query('SELECT customer_name, phone, interest, notes, status, assigned_to FROM facebook_care_customers WHERE id=$1', [customerId]),
+      query('SELECT customer_name, phone, interest, notes, status, assigned_to, ai_enabled FROM facebook_care_customers WHERE id=$1', [customerId]),
       query(`
         SELECT id, created_by, created_at, body 
         FROM facebook_care_messages 
         WHERE customer_id=$1 
           AND direction='OUT' 
-          AND (created_by IS NULL OR created_by NOT LIKE '%AI%')
+          AND (created_by IS NULL OR (created_by NOT LIKE '%AI%' AND created_by NOT LIKE '%Tú Audio Page%'))
           AND body NOT ILIKE '%trợ lý âm thanh%'
           AND body NOT ILIKE '%tin nhắn chào mừng%'
           AND body NOT ILIKE '%Đã đặt giai đoạn%'
           AND body NOT ILIKE '%Đã thêm nhãn%'
-        ORDER BY created_at DESC LIMIT 1
+          AND body NOT ILIKE '%Facebook tạo đoạn chat%'
+          AND body NOT ILIKE '%Để thay đổi hoặc gỡ lời chào này%'
+        ORDER BY created_at DESC, id DESC LIMIT 1
       `, [customerId]),
-      query('SELECT direction, body, created_by, created_at FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC LIMIT 20', [customerId]),
+      query('SELECT id, direction, body, created_by, created_at, platform_message_id FROM facebook_care_messages WHERE customer_id=$1 ORDER BY created_at DESC, id DESC LIMIT 25', [customerId]),
       query('SELECT name, price, original_price, room_size, bass_size, power_rms, short_desc, specs FROM products WHERE in_stock=TRUE ORDER BY price ASC LIMIT 24'),
       query('SELECT name, price, fast_action_price, room_size, tagline FROM combos ORDER BY price ASC')
     ])
     const customer = customerResult.rows[0]
     if (!customer) return
+
+    // Kiểm tra cờ ai_enabled theo từng khách hàng
+    if (customer.ai_enabled === false) {
+      console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã bị tắt AI riêng lẻ -> Dừng.`)
+      return
+    }
 
     // 1. DỪNG NẾU KHÁCH ĐÃ CÓ NHÂN SỰ PHỤ TRÁCH HOẶC ĐANG Ở CÁC TRẠNG THÁI HOÀN THÀNH / HỦY
     if (customer.assigned_to && customer.assigned_to.trim()) {
@@ -924,10 +964,11 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       if (diff !== 0) return diff
       if (a.direction === 'OUT' && b.direction === 'IN') return -1
       if (a.direction === 'IN' && b.direction === 'OUT') return 1
+      if (a.id && b.id && a.id !== b.id) return String(a.id).localeCompare(String(b.id))
       return 0
     })
 
-    // Lọc bỏ toàn bộ các thông báo hệ thống / nhãn tự động Facebook để lấy đúng tin nhắn trao đổi thực
+    // Lọc bỏ toàn bộ các thông báo hệ thống / nhãn tự động Facebook và lời chào tự động Meta
     const realMsgs = msgs.filter(m => !isSystemFacebookNotice(m.body))
     if (!realMsgs.length) return
 
@@ -996,60 +1037,33 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       return shortAcks.has(clean)
     }
 
+    // KIỂM TRA NHÂN SỰ THẬT ĐANG TRỰC TIẾP CHAT (ĐẶT TRƯỚC M-19 ĐỂ TRÁNH CHEN TIN KHI NGƯỜI THẬT ĐANG NHẮN)
+    let isHumanStaffActive = false
+    if (!isCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
+      const lastHumanMsg = humanCheckResult.rows[0]
+      const humanAgeMinutes = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60)
+      const inboundAfterHuman = latestInbound?.created_at && (
+        new Date(latestInbound.created_at).getTime() > new Date(lastHumanMsg.created_at).getTime() ||
+        (new Date(latestInbound.created_at).getTime() === new Date(lastHumanMsg.created_at).getTime() && latestRealMsg?.direction === 'IN')
+      )
+      if (humanAgeMinutes >= 0 && (humanAgeMinutes < 30 || !inboundAfterHuman)) {
+        isHumanStaffActive = true
+        const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
+        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp trong 30 phút qua.`)
+      }
+    }
+
     let reply = ''
 
-    // =========================================================================
-    // YÊU CẦU ANH TÚ: NẾU KHÁCH CHO SỐ THÌ NẾU CHƯA AI NHẮN THÌ SẼ BẢO NGƯỜI TA ĐỢI
-    // Chỉ kích hoạt khi khách THỰC SỰ ĐƯA SỐ MỚI trong tin nhắn này (tránh lặp lại nếu đã có SĐT từ trước)
-    // =========================================================================
-    const newlyProvidedPhone = phoneFromMessage(latestText)
-    const alreadyConfirmedPhone = realMsgs.some(m =>
-      m.direction === 'OUT' &&
-      (
-        (newlyProvidedPhone && m.body?.includes(newlyProvidedPhone)) ||
-        (customer.phone && m.body?.includes(customer.phone)) ||
-        m.body?.includes('đã nhận được số điện thoại/Zalo') ||
-        m.body?.includes('đã nhận được số Zalo')
-      )
-    )
-
-    if (newlyProvidedPhone && !alreadyConfirmedPhone) {
-      // Kiểm tra xem sau tin nhắn này của khách, đã có nhân sự thật nào nhắn lại chưa:
-      const humanMsgsAfterInbound = realMsgs.filter(m =>
-        m.direction === 'OUT' &&
-        (m.created_by == null || !String(m.created_by).includes('AI')) &&
-        new Date(m.created_at).getTime() > new Date(latestInbound.created_at).getTime()
-      )
-
-      if (humanMsgsAfterInbound.length > 0) {
-        console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã có nhân sự thật nhắn sau khi cho SĐT -> AI nhường quyền.`)
-        return
-      }
-
-      // Kiểm tra xem AI đã từng gửi tin xác nhận bảo khách đợi sau tin nhắn mới nhất này chưa (tránh spam lặp):
-      const aiMsgsAfterInbound = realMsgs.filter(m =>
-        m.direction === 'OUT' &&
-        String(m.created_by || '').includes('AI') &&
-        new Date(m.created_at).getTime() >= new Date(latestInbound.created_at).getTime()
-      )
-      if (aiMsgsAfterInbound.length > 0) {
-        return
-      }
-
-      const nameParts = (customer.customer_name || '').trim().split(/\s+/)
-      const callName = nameParts.length > 0 ? nameParts[nameParts.length - 1] : 'anh'
-      const callTitle = (customer.customer_name || '').toLowerCase().includes('bác') || latestText.toLowerCase().includes('bác') ? 'bác' : 'anh'
-
-      reply = `Dạ em Tú cảm ơn ${callTitle} ${callName} ạ! Em đã nhận được số điện thoại rồi, lát nữa bên em sẽ chủ động gọi điện tư vấn chi tiết cho ${callTitle} nhé ạ!`
-
+    // TRÍCH XUẤT SĐT NẾU KHÁCH CHO SỐ
+    const newlyProvidedPhone = extractPhoneNumber(latestText) || phoneFromMessage(latestText)
+    if (newlyProvidedPhone) {
+      // 1. Luôn lưu SĐT vào khách hàng và bảng Leads
       await query(
         "UPDATE facebook_care_customers SET phone=COALESCE(phone, $1), status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2",
         [newlyProvidedPhone, customerId]
       ).catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
 
-      // =========================================================================
-      // ĐẨY TỨC THÌ SANG BẢNG LEADS (KHÁCH TƯ VẤN & LỊCH THỬ DÀN) - NỔI LÊN TOP 1 NGAY LẬP TỨC
-      // =========================================================================
       try {
         const leadId = `FB-${customerId.replace(/^FB-/, '')}`.slice(0, 50)
         const leadName = customer.customer_name || ('Khách Facebook ' + newlyProvidedPhone.slice(-4))
@@ -1061,7 +1075,6 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
           `Tin nhắn: "${latestText}"`
         ].filter(Boolean).join(' · ')
 
-        // Kiểm tra xem số điện thoại đã có trong leads chưa để tránh trùng lặp
         const existingLead = await query('SELECT id, notes FROM leads WHERE phone = $1 LIMIT 1', [newlyProvidedPhone])
         if (existingLead.rows.length > 0) {
           const curId = existingLead.rows[0].id
@@ -1076,7 +1089,6 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
               updated_at = CURRENT_TIMESTAMP
             WHERE id = $3
           `, [leadName, updatedNotes, curId])
-          console.log(`[Facebook AI] Đã cập nhật và đẩy SĐT ${newlyProvidedPhone} (${leadName}) lên đầu bảng Leads (Rank 1).`)
         } else {
           await query(`
             INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
@@ -1089,153 +1101,124 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
               created_at = CURRENT_TIMESTAMP,
               updated_at = CURRENT_TIMESTAMP
           `, [leadId, leadName, newlyProvidedPhone, leadAddress, leadNote])
-          console.log(`[Facebook AI] Đã thêm mới SĐT ${newlyProvidedPhone} (${leadName}) vào đầu bảng Leads (Rank 1).`)
         }
       } catch (leadPushErr) {
-        console.error('[Facebook AI] Lỗi đẩy tức thì SĐT vào Leads:', leadPushErr.message)
+        console.error('[Facebook AI] Lỗi đẩy SĐT vào Leads:', leadPushErr.message)
       }
+
+      // 2. Nếu nhân viên đang chat -> AI NHƯỜNG QUYỀN, KHÔNG CHEN TIN
+      if (isHumanStaffActive) {
+        console.log(`[Facebook AI] Khách ${customerId} cho SĐT nhưng nhân sự thật đang chat -> Đã lưu SĐT vào Leads và nhường quyền.`)
+        return
+      }
+
+      // 3. Nếu chưa có nhân viên nào nhắn -> Gửi câu M-19 chuẩn
+      const alreadyConfirmedPhone = realMsgs.some(m =>
+        m.direction === 'OUT' &&
+        (
+          m.body?.includes(newlyProvidedPhone) ||
+          (customer.phone && m.body?.includes(customer.phone)) ||
+          m.body?.includes('đã nhận số') ||
+          m.body?.includes('đã nhận được số')
+        )
+      )
+
+      if (!alreadyConfirmedPhone) {
+        reply = TEMPLATES.M19_DA_NHAN_SDT(newlyProvidedPhone)
+      } else {
+        reply = TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP
+      }
+    } else if (isHumanStaffActive) {
+      // Nhân viên thật đang chat -> Nhường quyền hoàn toàn
+      return
     } else if (isShortAcknowledgement(latestText)) {
-      // Khách chỉ xác nhận "Vâng", "Dạ", "Ok", "Cảm ơn" -> Không gửi tin nhắn tự động lặp lại
-      console.log(`[Facebook AI] Khách ${customerId} gửi xác nhận ngắn "${latestText}" -> Bỏ qua không gửi tin nhắn tự động trùng lặp.`)
+      console.log(`[Facebook AI] Khách ${customerId} gửi xác nhận ngắn "${latestText}" -> Bỏ qua.`)
       return
     }
 
-    // =========================================================================
-    // NẾU KHÁCH CHƯA CHO SỐ HOẶC HỎI TIẾP: KIỂM TRA NHÂN SỰ VÀ TƯ VẤN GEMINI FLASH
-    // =========================================================================
-    if (!reply) {
-      // Kiểm tra nhân sự thật tư vấn: Chỉ dừng nếu người thật vừa chat trong vòng 5 phút (đang trực tiếp gõ phím) hoặc khách chưa gửi câu hỏi nào mới sau tin của nhân viên.
-      if (!isCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
-        const lastHumanMsg = humanCheckResult.rows[0]
-        const humanAgeMinutes = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60)
-        const inboundAfterHuman = latestInbound?.created_at && (
-          new Date(latestInbound.created_at).getTime() > new Date(lastHumanMsg.created_at).getTime() ||
-          (new Date(latestInbound.created_at).getTime() === new Date(lastHumanMsg.created_at).getTime() && latestRealMsg?.direction === 'IN')
-        )
-        if (humanAgeMinutes >= 0 && (humanAgeMinutes < 30 || !inboundAfterHuman)) {
-          const humanStaffName = lastHumanMsg.created_by || 'Nhân sự Tú Audio'
-          console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đang được người thật (${humanStaffName}) tư vấn trực tiếp trong 30 phút qua -> AI nhường quyền.`)
-          return
-        }
-      }
+    const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9)
 
-      // 1. Chỉ nhận diện SĐT để kích hoạt M-19 hoặc chuyển người nếu khách đã có số
-      const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
-      const extractedPhone = extractPhoneNumber(latestText)
-      if (extractedPhone) {
-        reply = TEMPLATES.M19_DA_NHAN_SDT(extractedPhone)
-      } else if (hasKnownPhone) {
-        // Khách đã có số: Trả lời 1 lần xác nhận rồi nhường người thật
-        reply = TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP
+    // Nếu khách đã có số từ trước và nhắn tin tiếp (không phải đưa số mới)
+    if (!reply && hasKnownPhone) {
+      const alreadyAnsweredAfterPhone = realMsgs.some(m =>
+        m.direction === 'OUT' &&
+        m.body?.includes('đã chuyển tin của bác cho anh Tú')
+      )
+      if (alreadyAnsweredAfterPhone) {
+        // Đã gửi M-20 rồi, không spam lại
+        return
       }
+      reply = TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP
     }
 
-    // 3. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng ngữ cảnh câu hỏi của khách
+    // 3. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng Kịch bản 2.0 (Chế độ A)
     if (!reply) {
-      // Lịch sử trao đổi trước cụm tin nhắn mới này của khách
       const priorMsgs = lastOutIndex >= 0 ? realMsgs.slice(0, lastOutIndex + 1) : []
       const historyFormatted = priorMsgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
-      const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9) || alreadyConfirmedPhone
-      const psychologicalContext = await getAiPsychologicalTrainingContext()
 
-      const phoneInstruction = hasKnownPhone
-        ? `CHỈ THỊ CỐT LÕI (TUÂN THỦ 100% THEO YÊU CẦU ANH TÚ): KHÁCH HÀNG NÀY ĐÃ CÓ SỐ ĐIỆN THOẠI/ZALO (${customer.phone || 'đã có số'}).
-- TUYỆT ĐỐI KHÔNG HỎI HAY XIN LẠI SỐ ĐIỆN THOẠI/ZALO NỮA!
-- TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý HẸN KHÁCH TRƯỚC: CẤM tự ý hẹn ngày giờ, CẤM hẹn chạy qua nhà, CẤM hứa mang máy tính mic đo RTA qua nhà, CẤM nói về "sổ lịch trình" hay "ghép chuyến"! Việc hẹn lịch đi đâu, bao giờ đi là do người thật (anh Tú hoặc kỹ thuật) gọi điện thoại trực tiếp chốt với khách, bot tuyệt đối không được tự ý hẹn trước trên tin nhắn!
-- KHI KHÁCH VỪA CHO SỐ HOẶC NHẮN THÊM TÊN/THÔNG TIN: CHỈ CẢM ƠN KHÁCH VÀ BÁO ĐÃ NHẬN SỐ, LÁT NỮA BÊN EM SẼ GỌI ĐIỆN LẠI! (Ví dụ: "Dạ em Tú cảm ơn anh/bác ạ! Em đã lưu thông tin rồi, lát nữa bên em sẽ gọi điện trao đổi trực tiếp với anh/bác nhé ạ!").
-- NẾU KHÁCH CÓ CÂU HỎI KỸ THUẬT MỚI: Trả lời ngắn gọn 1-2 câu giải đáp chuyên môn rồi chốt: "Lát nữa bên em gọi điện hỗ trợ trực tiếp cho anh/bác nhé ạ, em cảm ơn anh/bác!".`
-        : `QUY TẮC TƯ VẤN & XIN SỐ ĐIỆN THOẠI (CHỈ XIN SỐ, TUYỆT ĐỐI KHÔNG HẸN TRƯỚC):
-- Giải đáp thấu đáo, mộc mạc và đúng trọng tâm câu hỏi của khách (ngắn gọn 1-2 câu).
-- Khéo léo xin số điện thoại/Zalo để bên em gọi điện hoặc nhắn tin tư vấn trực tiếp cho tiện (Ví dụ: "Bác cho em xin số điện thoại/Zalo để bên em gọi điện tư vấn cụ thể cho bác nhé ạ!").
-- TUYỆT ĐỐI KHÔNG tự ý hẹn lịch qua nhà khách trước trên tin nhắn! Mọi lịch trình sẽ do anh Tú gọi điện thống nhất sau.`
+      const { systemInstruction, userContent } = buildGeminiPromptV2({
+        customerName: customer.customer_name || 'bác',
+        messageText: latestText,
+        historyText: historyFormatted,
+        hasPhone: hasKnownPhone,
+        isComment: false
+      })
 
-      const systemInstruction = `BẠN LÀ ANH PHÙNG VĂN TÚ (TÚ AUDIO - Hotline/Zalo: 0984.259.898 tại Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc).
-BẠN ĐANG TRỰC TIẾP TRÒ CHUYỆN, TÂM SỰ VÀ TƯ VẤN CHO KHÁCH HÀNG TRÊN FACEBOOK MESSENGER NHƯ MỘT NGƯỜI BẠN MÊ ÂM THANH TRI KỶ.
+      const apiKey = await getGeminiApiKey()
+      const primaryModel = await getGeminiModel() || 'gemini-3.8-flash'
+      const fallbackModel = 'gemini-2.5-flash'
 
-QUY TẮC BẮT BUỘC VỀ ĐỊA CHỈ SHOWROOM (GHI RÕ RÀNG, CỤ THỂ 100%):
-- Khi khách hỏi showroom ở đâu, shop ở đâu, cửa hàng ở đâu, địa chỉ ở đâu, qua đâu xem dàn...
-- BẮT BUỘC PHẢI TRẢ LỜI ĐẦY ĐỦ ĐỊA CHỈ CỤ THỂ 100%: "Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc (có chỗ đỗ ô tô thoải mái)".
-- TUYỆT ĐỐI KHÔNG ĐƯỢC trả lời lửng lơ hoặc chung chung như "ở Phố Nguyễn Danh Phương" hay "ở TP.", BẮT BUỘC PHẢI CÓ SỐ NHÀ 220, PHƯỜNG HỘI HỢP, TP. VĨNH YÊN, TỈNH VĨNH PHÚC!
+      // Gọi Gemini có cơ chế thử lại (exponential backoff) và model dự phòng khi 429/503
+      const callGeminiWithRetry = async (targetModel, maxRetries = 2) => {
+        let lastErr = null
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          if (attempt > 0) {
+            const delay = Math.pow(2, attempt) * 1000
+            await new Promise(r => setTimeout(r, delay))
+          }
+          try {
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`
+            const res = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  role: 'user',
+                  parts: [{ text: systemInstruction + '\n\n' + userContent }]
+                }],
+                generationConfig: {
+                  temperature: 0.25,
+                  maxOutputTokens: 2048,
+                  thinkingConfig: { thinkingBudget: 0 }
+                }
+              }),
+              signal: AbortSignal.timeout(12000)
+            })
 
-${psychologicalContext}
+            if (res.status === 429 || res.status === 503) {
+              lastErr = new Error(`Gemini HTTP ${res.status}`)
+              continue
+            }
+            const data = await res.json().catch(() => ({}))
+            return data
+          } catch (fetchErr) {
+            lastErr = fetchErr
+          }
+        }
+        throw lastErr
+      }
 
-BỘ NÃO TỰ ĐỘNG ĐỌC VỊ TÍNH CÁCH & ĐÁNH VÀO TÂM LÝ TỪNG KHÁCH HÀNG:
-1. ĐỌC VỊ TÍNH CÁCH TỪNG NGƯỜI (TỰ ĐỘNG THÍCH ỨNG 100%):
-   - KHÁCH SÀNH SỎI / KỸ TÍNH (Nhắc tên vang số X5, loa bass 30 bãi Mỹ, cục đẩy, tần số...):
-     -> Nói chuyện ngang tầm kỹ sư âm thanh chuyên nghiệp. Khen thiết bị khách đang có, giải thích cặn kẽ nguyên lý âm học (vì sao loa full bass 30 giải phóng tiếng trung rất sáng nhưng thiếu dải trầm sâu 40-70Hz, vì sao thêm sub tiếng hát sẽ dày ấm và đầm hơn hẳn).
-   - KHÁCH BÌNH DÂN, MỘC MẠC (Hỏi ngắn, dùng từ ngữ chân chất: "bác có đi chỉnh ko", "chỉnh vang ko em", "bao tiền"):
-     -> Trò chuyện gần gũi, ấm áp như anh em một nhà. Xưng "em" hoặc "em Tú", gọi "bác" hoặc "anh". Tuyệt đối không dùng từ ngữ cao siêu khó hiểu.
-   - KHÁCH BỨC XÚC / ĐAU KHỔ VÌ HÚ RÍT, HÁT NẶNG, MUA ĐỒ VỀ HÁT KHÔNG HAY:
-     -> Lập tức đồng cảm sâu sắc, "chia lửa" cùng khách: Em hiểu cái cảm giác bỏ tiền triệu ra sắm dàn về mà hát bí tiếng, rú ré lên điếc tai nó ức chế thế nào... Khẳng định ngay 90% là do vang số chưa cắt đúng dải tần triệt tiêu chứ không phải tại giọng anh.
-   - KHÁCH DÈ DẶT, SỢ BỊ LỪA, SỢ HÀNG NHÁI / SỢ MUA HỚ:
-     -> Không vồ vập bán hàng. Chia sẻ thẳng thắn, tâm sự thật lòng kinh nghiệm làm nghề và mách nước cách tự kiểm tra trước để khách thấy sự tử tế và uy tín tuyệt đối của Tú Audio.
+      if (apiKey) {
+        try {
+          let geminiData = null
+          try {
+            geminiData = await callGeminiWithRetry(primaryModel, 1)
+          } catch (priErr) {
+            console.warn(`[Facebook AI] Model chính ${primaryModel} lỗi (${priErr.message}), thử model dự phòng ${fallbackModel}...`)
+            geminiData = await callGeminiWithRetry(fallbackModel, 1)
+          }
 
-2. NGHỆ THUẬT TÂM SỰ & DẪN DẮT (GIAO TIẾP TỰ NHIÊN NHƯ NGƯỜI THẬT NÓI CHUYỆN VỚI NHAU):
-   - Nói chuyện tự nhiên, có cảm xúc, linh hoạt và thông minh như một con người thực thụ. Tuyệt đối KHÔNG trả lời như robot, KHÔNG dùng mẫu câu rập khuôn, KHÔNG lặp lại tin nhắn cũ.
-   - ĐỘ DÀI BẮT BUỘC NGẮN GỌN (TỪ 2 ĐẾN TỐI ĐA 3 CÂU NGẮN): Trả lời mộc mạc, đi thẳng vào trọng tâm câu hỏi của khách, giải thích ngắn gọn, dễ hiểu. Tuyệt đối KHÔNG viết văn hoa mỹ, KHÔNG viết thành các đoạn văn dài dòng lê thê làm khách ngại đọc.
-   - ${phoneInstruction}
-
-3. QUY TẮC BẮT BUỘC KHI KHÁCH HỎI NHIỀU CÂU / NHẮN NHIỀU TIN CÙNG MỘT LÚC:
-   - Khách hàng thường gửi 2-3 tin nhắn liên tiếp hỏi các ý khác nhau (Ví dụ: tin 1 hỏi địa chỉ showroom, tin 2 hỏi bên mình có đi căn chỉnh tận nhà không và xem có cần bổ sung thêm đồ gì không).
-   - TUYỆT ĐỐI KHÔNG ĐƯỢC CHỈ TRẢ LỜI MỖI MỘT Ý RỒI BỎ QUÊN CÁC Ý CÒN LẠI!
-   - BẠN PHẢI TRẢ LỜI ĐẦY ĐỦ, TRỌN VẸN VÀ LIỀN MẠCH TẤT CẢ CÁC CÂU HỎI CỦA KHÁCH:
-     + Trả lời câu hỏi 1 (ví dụ chỉ rõ showroom ở 220 Nguyễn Danh Phương, Vĩnh Yên).
-     + Trả lời câu hỏi 2 (ví dụ khẳng định bên em có nhận hỗ trợ kỹ thuật căn chỉnh cho anh em, thiết bị nào còn tốt thì giữ lại để tiết kiệm chi phí).
-     + Khéo léo mời bác cho xin số điện thoại/Zalo để bên em gọi điện trao đổi trực tiếp.
-
-4. NGUYÊN TẮC CỐT LÕI VỀ DỊCH VỤ & SẢN PHẨM:
-   - DỊCH VỤ CĂN CHỈNH / TƯ VẤN KỸ THUẬT:
-     + Khẳng định rõ bên em CÓ nhận hỗ trợ kỹ thuật căn chỉnh vang số và setup dàn âm thanh (cả hỗ trợ từ xa qua máy tính lẫn kỹ thuật trực tiếp).
-     + TUYỆT ĐỐI KHÔNG HẸN KHÁCH TRƯỚC TRÊN TIN NHẮN (không hẹn ngày giờ, không tự hẹn chạy qua nhà, không hứa thợ mang mic đo RTA sang nhà, không nói về ghép chuyến hay sổ lịch trình). CHỈ TƯ VẤN VÀ XIN SỐ ĐIỆN THOẠI ĐỂ GỌI ĐIỆN TRAO ĐỔI TRỰC TIẾP.
-     + KHI KHÁCH CHO SỐ: CHỈ CẢM ƠN KHÁCH VÀ BÁO LÁT NỮA BÊN EM SẼ GỌI ĐIỆN LẠI.
-   - NÂNG CẤP ĐỒ CŨ: Luôn ưu tiên giữ lại món đồ nào còn tốt để tiết kiệm tiền cho khách, chỉ tư vấn nâng cấp món thực sự cần thiết.
-   - TUYỆT ĐỐI CẤM DUY NHẤT: KHÔNG bán loa kéo di động, KHÔNG nhận sửa chữa đồ điện tử hư hỏng mạch công suất cháy nổ. Lịch sự định hướng khách sang dàn karaoke gia đình.
-
-5. NGUYÊN TẮC XỬ LÝ KHI KHÁCH HỎI CÓ XUỐNG LUÔN / QUA NGAY ĐƯỢC KHÔNG (GIỮ CHÂN KHÁCH & TUYỆT ĐỐI KHÔNG HẸN BỪA):
-   - TÌNH HUỐNG: Khách nhắn: "thế cháu có xuống luôn được không", "hôm nay có qua chỉnh được không", "bây giờ qua luôn được không", "chiều nay qua được không"...
-   - HOÀN CẢNH THỰC TẾ: Anh Tú và đội ngũ kỹ thuật thường xuyên có lịch đi công tác xa, đi lắp đặt công trình hoặc đã kín lịch hẹn trước theo tuyến với các bác khách khác từ trước.
-   - NGHỆ THUẬT GIỮ CHÂN KHÁCH ĐỈNH CAO (ĐỌC KỸ TIN NHẮN, KHÔNG HẸN BỪA, KHÔNG ĐỂ MẤT KHÁCH):
-     + ĐỌC KỸ TIN NHẮN TRƯỚC, TUYỆT ĐỐI KHÔNG ĐƯỢC HẸN BỪA (Cấm nhận lời qua luôn, cấm tự chốt ngày giờ cụ thể trên tin nhắn).
-     + TUYỆT ĐỐI KHÔNG TỪ CHỐI CỘC LỐC (Cấm nói "cháu không qua được", "hôm nay bận").
-     + BỘ KHUNG TRẢ LỜI MẪU MỰC (NGẮN GỌN 2-3 CÂU, ẤM ÁP & THUYẾT PHỤC):
-       1. Khéo léo giải thích lịch trình công tác: "Dạ hôm nay em Tú và anh em kỹ thuật đang có chuyến công tác / hỗ trợ theo tuyến cho các bác khách đã đặt lịch từ trước rồi ạ."
-       2. Giữ chân & Cam kết ưu tiên: "Nhưng bác/anh cứ yên tâm nhé, bên em luôn ưu tiên sắp xếp thời gian tiện nhất cho anh em."
-       3. Xin số điện thoại/Zalo để anh Tú gọi trực tiếp chốt lịch: "Bác/anh cho em xin số điện thoại hoặc Zalo để lát nữa em Tú trực tiếp gọi điện lại trao đổi về bộ dàn và hẹn khung giờ tiện nhất cho bác ở nhà đón anh em ghé qua hỗ trợ nhé ạ!"
-
-6. XỬ LÝ ICON & ẢNH GỬI (TÔN TRỌNG SỰ THẬT TUYỆT ĐỐI):
-   - Khách gửi 👍 hoặc icon: Chào hỏi thân thiện, hỏi thăm nhu cầu âm thanh của anh em một cách gần gũi.
-   - Khách gửi ảnh thật: Báo đã nhận ảnh, hỏi thăm về cấu hình dàn trong ảnh để trao đổi sâu hơn.
-
-HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ NHIÊN, THUYẾT PHỤC VÀ CUỐN HÚT:`
-
-      try {
-        const apiKey = await getGeminiApiKey()
-        const model = await getGeminiModel()
-        if (apiKey) {
-          const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
-          const geminiRes = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                role: 'user',
-                parts: [{
-                  text: systemInstruction +
-                    (historyFormatted ? '\n\nLỊCH SỬ CHAT TRƯỚC ĐÓ:\n' + historyFormatted : '') +
-                    '\n\nCÁC CÂU HỎI MỚI KHÁCH VỪA NHẮN (LƯU Ý ĐẶC BIỆT: NẾU KHÁCH HỎI NHIỀU Ý HOẶC NHẮN NHIỀU TIN, BẮT BUỘC TRẢ LỜI ĐẦY ĐỦ TẤT CẢ CÁC CÂU HỎI MỘT CÁCH GỌN GÀNG, KHÔNG ĐƯỢC BỎ SÓT Ý NÀO):\n"' + latestText + '"\n\nHãy đọc vị tâm lý khách hàng và trả lời trọn vẹn mọi thắc mắc của khách theo phong cách chuyên gia anh Tú:'
-                }]
-              }],
-              generationConfig: {
-                temperature: 0.35,
-                maxOutputTokens: 2048,
-                thinkingConfig: { thinkingBudget: 0 }
-              }
-            }),
-            signal: AbortSignal.timeout(15000)
-          })
-
-          const geminiData = await geminiRes.json().catch(() => ({}))
-          const cand = geminiData.candidates?.[0]
+          const cand = geminiData?.candidates?.[0]
           const rawReply = cand?.content?.parts?.[0]?.text?.trim()
           const verified = verifyAndCleanOutput({
             rawReply,
@@ -1244,21 +1227,21 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
             isComment: false,
             recentOuts: realMsgs.filter(m => m.direction === 'OUT').slice(-5).map(m => m.body || '')
           })
+
           if (verified.ok) {
             reply = verified.cleanedReply
           } else if (verified.fallback) {
             reply = verified.fallback
           }
+        } catch (aiErr) {
+          console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
         }
-      } catch (aiErr) {
-        console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
       }
     }
 
-    // 3. Dự phòng bằng kịch bản nếu gián đoạn mạng
+    // Dự phòng an toàn bằng M-23 nếu xảy ra sự cố mạng
     if (!reply) {
-      const fallbackDeterministic = checkDeterministicAiResponse(latestText)
-      reply = fallbackDeterministic?.reply || 'Dạ em Tú Audio đây ạ! Anh nhắn em xin số Zalo em gọi điện tư vấn chi tiết và gửi video test máy cho tiện nhé anh!'
+      reply = TEMPLATES.M23_DU_PHONG_LOI
     }
 
     if (!reply || !reply.trim()) return
@@ -1303,6 +1286,9 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
       WHERE id=$1
     `, [customerId]).catch(() => {})
   } finally {
+    if (hasDbLock) {
+      await query('SELECT pg_advisory_unlock(hashtext($1))', [customerId]).catch(() => {})
+    }
     fbAutoReplyInFlight.delete(customerId)
   }
 }
@@ -5305,14 +5291,31 @@ app.get('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_AD
 app.post('/api/v1/admin/ai-settings', authenticateAdmin, authorizeRoles('SUPER_ADMIN'), async (req, res) => {
   try {
     const { webAiEnabled, facebookAiEnabled, facebookCommentAiEnabled, apiKey, model } = req.body
+    const adminUser = req.admin?.username || req.admin?.email || 'admin'
+
     if (typeof webAiEnabled === 'boolean') {
+      const oldVal = await isWebAiEnabled()
       await setSystemSetting('web_ai_enabled', webAiEnabled)
+      await query(`
+        INSERT INTO ai_switch_logs (switch_name, old_value, new_value, changed_by, reason)
+        VALUES ('web_ai_enabled', $1, $2, $3, 'Cập nhật từ trang quản trị AI')
+      `, [oldVal, webAiEnabled, adminUser]).catch(() => {})
     }
     if (typeof facebookAiEnabled === 'boolean') {
+      const oldVal = await isFacebookAiEnabled()
       await setSystemSetting('facebook_ai_enabled', facebookAiEnabled)
+      await query(`
+        INSERT INTO ai_switch_logs (switch_name, old_value, new_value, changed_by, reason)
+        VALUES ('facebook_ai_enabled', $1, $2, $3, 'Cập nhật từ trang quản trị AI')
+      `, [oldVal, facebookAiEnabled, adminUser]).catch(() => {})
     }
     if (typeof facebookCommentAiEnabled === 'boolean') {
+      const oldVal = await isFacebookCommentAiEnabled()
       await setSystemSetting('facebook_comment_ai_enabled', facebookCommentAiEnabled)
+      await query(`
+        INSERT INTO ai_switch_logs (switch_name, old_value, new_value, changed_by, reason)
+        VALUES ('facebook_comment_ai_enabled', $1, $2, $3, 'Cập nhật từ trang quản trị AI')
+      `, [oldVal, facebookCommentAiEnabled, adminUser]).catch(() => {})
     }
     if (typeof apiKey === 'string' && apiKey.trim()) {
       await setSystemSetting('gemini_api_key', apiKey.trim())

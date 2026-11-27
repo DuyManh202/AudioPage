@@ -2,6 +2,7 @@
 import { query } from './db.js'
 import { findProvince } from './vietnamProvinces.js'
 import { getAiPsychologicalTrainingContext } from './aiPsychologicalTraining.js'
+import { verifyAndCleanOutput, TEMPLATES } from './aiConsultantV2.js'
 
 export const phoneFromMessage = (value) => {
   const match = String(value || '').match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/)
@@ -395,9 +396,19 @@ ${JSON.stringify(catalogContext)}`
       const geminiData = await geminiRes.json().catch(() => ({}))
       const cand = geminiData.candidates?.[0]
       const rawText = cand?.content?.parts?.[0]?.text?.trim()
-      if (rawText && (cand?.finishReason === 'STOP' || /[.!?…ạa]$/i.test(rawText))) {
-        reply = rawText
-        isAiGenerated = true
+      if (rawText) {
+        const verified = verifyAndCleanOutput({
+          rawReply: rawText,
+          finishReason: cand?.finishReason,
+          hasPhone: Boolean(inferredPhone),
+          isComment: false
+        })
+        if (verified.ok) {
+          reply = verified.cleanedReply
+          isAiGenerated = true
+        } else if (verified.fallback) {
+          reply = verified.fallback
+        }
       }
     } catch (aiErr) {
       console.warn('[Gemini AI Fetch Warning]:', aiErr.message)
@@ -406,7 +417,7 @@ ${JSON.stringify(catalogContext)}`
     // Nếu Gemini gặp lỗi mạng hoặc không trả về -> Dự phòng bằng Guardrail chuẩn xác
     if (!reply) {
       const fallbackDeterministic = checkDeterministicAiResponse(trimmedMsg)
-      reply = fallbackDeterministic?.reply || 'Dạ em Tú Audio đây ạ! Cảm ơn bác đã nhắn cho em. Bác cho em hỏi phòng khách nhà bác rộng bao nhiêu m2 hoặc bác đang quan tâm đến vang số hay cả bộ dàn để em tư vấn cấu hình chuẩn nhất cho bác ạ? Bác cũng có thể gọi hoặc kết bạn Zalo với em qua số 0984.259.898 nhé ạ!'
+      reply = fallbackDeterministic?.reply || TEMPLATES.M23_DU_PHONG_LOI
     }
 
     if (inferredPhone) {

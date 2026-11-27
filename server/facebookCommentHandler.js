@@ -94,14 +94,20 @@ export const handleFacebookComment = async ({
     let publicReplyText = null
 
     // Nhận diện nhanh các ý định phổ biến trên bình luận (Địa chỉ, Giá, Tận nhà, Khen)
+    // SỬ DỤNG RANH GIỚI TỪ \b ĐỂ TRÁNH BẮT NHẦM "gia đình", "tham gia", "đánh giá"...
     const lower = cleanMsg.toLowerCase()
-    if (lower.includes('ở đâu') || lower.includes('địa chỉ') || lower.includes('chỗ nào') || lower.includes('o dau') || lower.includes('dia chi')) {
+    const isAddressQuery = /(^|[\s,.\-?!])(ở đâu|địa chỉ|chỗ nào|o dau|dia chi)([\s,.\-?!]|$)/i.test(lower)
+    const isPriceQuery = /(^|[\s,.\-?!])(giá|bao nhiêu|nhiêu tiền|báo giá|bao nhieu|nhieu tien)([\s,.\-?!]|$)/i.test(lower) && !/(gia đình|gia dinh|tham gia|đánh giá|danh gia)/i.test(lower)
+    const isHomeServiceQuery = /(^|[\s,.\-?!])(tận nhà|tận nơi|về nhà|xuống nhà|đến nhà|có chỉnh không|có làm không|có đi không|co chinh khong|co lam khong|co di khong)([\s,.\-?!]|$)/i.test(lower)
+    const isCompliment = /^(hay quá|cảm ơn|tuyệt vời|đẹp quá|ok shop|cam on|tuyet voi)$/i.test(lower.trim())
+
+    if (isAddressQuery) {
       publicReplyText = TEMPLATES.C01_DIA_CHI
-    } else if (lower.includes('giá') || lower.includes('bao nhiêu') || lower.includes('nhiêu tiền') || lower.includes('báo giá') || lower.includes('gia') || lower.includes('bao nhieu')) {
+    } else if (isPriceQuery) {
       publicReplyText = TEMPLATES.C02_HOI_GIA
-    } else if (lower.includes('tận nhà') || lower.includes('tận nơi') || lower.includes('về nhà') || lower.includes('xuống nhà') || lower.includes('đến nhà') || lower.includes('có chỉnh không') || lower.includes('có làm không') || lower.includes('có đi không')) {
+    } else if (isHomeServiceQuery) {
       publicReplyText = TEMPLATES.C03_TAN_NHA
-    } else if (lower === 'hay quá' || lower === 'cảm ơn' || lower === 'tuyệt vời' || lower === 'đẹp quá' || lower === 'ok shop') {
+    } else if (isCompliment) {
       publicReplyText = TEMPLATES.C04_KHEN_CAM_ON
     }
 
@@ -145,6 +151,8 @@ NGUYÊN TẮC BẢN 2.0 (CHẾ ĐỘ A - BẮT BUỘC):
         const verified = verifyAndCleanOutput({ rawReply: cleaned, finishReason: cand?.finishReason, isComment: true })
         if (verified.ok) {
           publicReplyText = verified.cleanedReply
+        } else if (verified.fallback) {
+          publicReplyText = verified.fallback
         }
       } catch (aiErr) {
         console.warn('[AI Comment Gen Warning]:', aiErr.message)

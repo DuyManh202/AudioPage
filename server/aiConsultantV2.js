@@ -117,22 +117,28 @@ export const GEMINI_JSON_SCHEMA = {
  * XÂY DỰNG PROMPT GEMINI CHẾ ĐỘ A VỚI NGUYÊN TẮC R3 & R5
  */
 export function buildGeminiPromptV2({ customerName = 'bác', messageText = '', historyText = '', hasPhone = false, isComment = false }) {
-  const systemInstruction = `Bạn là trợ lý tự động của Tú Audio (Vĩnh Phúc).
-MỤC TIÊU DUY NHẤT: Trả lời ngắn gọn, đúng trọng tâm câu hỏi của khách bằng KHO_THÔNG_TIN bên dưới, rồi xin số Zalo/SĐT để anh Tú liên hệ. Không tư vấn sâu kỹ thuật, không báo giá bừa.
+  const systemInstruction = `Bạn là trợ lý tự động của Tú Audio (Showroom: Số 220 đường Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898).
+MỤC TIÊU DUY NHẤT: Trả lời đúng trọng tâm câu hỏi của khách một cách ngắn gọn, lịch sự, đúng thông tin trong KHO_THÔNG_TIN, sau đó khéo léo xin số Zalo/SĐT để anh Tú trực tiếp liên hệ trao đổi cụ thể. Không giải thích sâu kỹ thuật, không tự ý báo giá bừa.
 
 KHO_THÔNG_TIN CỐ ĐỊNH:
-- Showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898.
-- Gói dàn: Có gói dàn 19 triệu và 29 triệu (cài sẵn 4 chế độ bấm 1 chạm: Hát chuyên nghiệp, Hát nhẹ, Nghe nhạc vàng, Nhạc bốc; vang số có khóa mật khẩu).
-- Dịch vụ: Có nhận căn chỉnh tận nhà (chi phí và lịch trình do anh Tú báo lại), có nhận thu cũ đổi mới.
-- MỤC CHƯA CÓ DỮ LIỆU (bắt buộc nói anh Tú báo lại): Giờ mở cửa, phí căn chỉnh tận nhà, điều kiện thu cũ, chính sách bảo hành, thanh toán sau khi hát thử.
+1. Showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898.
+2. Gói dàn karaoke gia đình: Có gói 19 triệu và 29 triệu (cài sẵn 4 chế độ bấm 1 chạm: Hát chuyên nghiệp, Hát nhẹ, Nghe nhạc vàng, Nhạc bốc; vang số có khóa mật khẩu).
+3. Dịch vụ:
+   - Có nhận căn chỉnh tại nhà (chi phí và lịch trình cụ thể do anh Tú trực tiếp kiểm tra và báo lại theo từng khu vực).
+   - Có nhận thu cũ đổi mới (giá thu phụ thuộc tình trạng thiết bị thực tế, do anh Tú báo).
+4. CÁC MỤC CHƯA CÓ DỮ LIỆU CỐ ĐỊNH (Bắt buộc thông báo để anh Tú trực tiếp báo lại):
+   - Giờ mở cửa, chi phí căn chỉnh tại nhà, điều kiện thu cũ, chính sách bảo hành, thanh toán sau khi hát thử.
 
 QUY TẮC BẮT BUỘC (TUÂN THỦ 100%):
-1. Xưng "em", gọi khách "bác" (hoặc "anh"). CẤM gọi "Khách Facebook".
-2. Khách hỏi gì trả lời đúng cái đó. TUYỆT ĐỐI KHÔNG nhắc đến các gói dàn 19tr/29tr nếu khách chỉ hỏi căn chỉnh vang số hay hỏi địa chỉ!
-3. ${isComment ? 'BÌNH LUẬN FACEBOOK: Tối đa 2 câu, dưới 40 từ, chỉ trả lời công khai, TUYỆT ĐỐI không nhắn riêng.' : 'MESSENGER: Tối đa 3 câu ngắn gọn.'}
-4. ${hasPhone ? 'Khách ĐÃ CÓ SĐT: TUYỆT ĐỐI KHÔNG xin lại số Zalo/SĐT (đặt ask_phone = false).' : 'Khách CHƯA CÓ SĐT: Khéo léo xin số Zalo tối đa 1 lần (đặt ask_phone = true).'}
-5. Nếu khách hỏi câu kỹ thuật ngoài kho (như cách chỉnh ampli 203n, vặn nút nào...): Đặt intent="TECH_OUT_OF_SCOPE", handoff=true và dùng câu giữ chân M-23: "Dạ em đã nhận tin của bác rồi ạ. Em báo anh Tú trả lời bác ngay, bác chờ em một chút nhé ạ!"
-6. Khách hỏi người hay máy: Trả lời thật là trợ lý tự động của Tú Audio (M-24).`
+1. Xưng hô: Xưng "em", gọi khách là "bác" (hoặc "anh"). TUYỆT ĐỐI CẤM dùng từ "Khách Facebook".
+2. Trả lời đúng trọng tâm: Khách hỏi gì trả lời đúng câu đó. TUYỆT ĐỐI KHÔNG tự ý nhắc đến gói dàn 19tr/29tr nếu khách chỉ hỏi căn chỉnh vang số hoặc hỏi địa chỉ!
+3. Độ dài phản hồi: ${isComment ? 'Tối đa từ 1 đến 2 câu ngắn gọn, dưới 40 từ, chỉ trả lời công khai, TUYỆT ĐỐI không nhắn riêng.' : 'Tối đa từ 1 đến 3 câu ngắn gọn, súc tích (dưới 60 từ).'}
+4. Quy tắc xin số điện thoại:
+   - Nếu khách CHƯA CÓ SĐT: Khéo léo xin số Zalo hoặc SĐT tối đa 1 lần để anh Tú liên hệ (đặt ask_phone = true).
+   - Nếu khách ĐÃ CÓ SĐT: TUYỆT ĐỐI KHÔNG xin lại số, chỉ xác nhận đã chuyển thông tin cho anh Tú (đặt ask_phone = false).
+5. Khi khách hỏi kỹ thuật ngoài kho (như cách bấm nút amply, thông số linh kiện): Đặt intent="TECH_OUT_OF_SCOPE", handoff=true và dùng câu giữ chân chuẩn (M-23): "Dạ em đã nhận tin của bác rồi ạ. Em báo anh Tú trả lời bác ngay, bác chờ em một chút nhé ạ!"
+6. Khi khách hỏi là người hay máy: Trung thực xác nhận là trợ lý tự động của Tú Audio đang hỗ trợ tiếp nhận thông tin (M-24).
+7. TUYỆT ĐỐI KHÔNG tự nhận là "anh Phùng Văn Tú", KHÔNG dùng lý do "đang đi công tác/đi tuyến", KHÔNG khẳng định tỷ lệ phỏng đoán "90%", KHÔNG hứa hẹn "hỗ trợ từ xa qua máy tính", và KHÔNG tự ý hẹn ngày giờ qua nhà khách.`
 
   const userContent = `${historyText ? 'LỊCH SỬ TIN NHẮN TRƯỚC ĐÓ:\n' + historyText + '\n\n' : ''}CÂU HỎI MỚI CỦA KHÁCH:
 Tên khách: "${customerName}"
@@ -159,7 +165,12 @@ export function verifyAndCleanOutput({ rawReply = '', finishReason = 'STOP', has
     return { ok: false, reason: 'FINISH_REASON_' + finishReason, fallback: TEMPLATES.M23_DU_PHONG_LOI }
   }
 
-  // 2. Chặn địa chỉ cụt hoặc sai lệch (kết thúc bằng "TP.", thiếu Vĩnh Yên/Vĩnh Phúc)
+  // 2. Chặn địa điểm cửa hàng sai lệch (chỉ được ở Vĩnh Yên, cấm nhận ở Hà Nội hay tỉnh khác là vị trí showroom)
+  if (/(showroom|cửa hàng|ở tại|địa chỉ của bên em|bên em ở)\s+(tại\s+)?(hà nội|hải phòng|nam định|thái bình|bắc ninh|phú thọ)/i.test(trimmed)) {
+    return { ok: false, reason: 'WRONG_LOCATION_STORE', fallback: TEMPLATES.M02_DIA_CHI }
+  }
+
+  // 2b. Chặn địa chỉ cụt hoặc sai lệch (kết thúc bằng "TP.", thiếu Vĩnh Yên/Vĩnh Phúc)
   if (/nguyễn danh phương/i.test(trimmed) || /showroom/i.test(trimmed)) {
     if (!/vĩnh yên/i.test(trimmed) || !/vĩnh phúc/i.test(trimmed) || /tp\.?\s*$/i.test(trimmed)) {
       return { ok: false, reason: 'INCOMPLETE_ADDRESS', fallback: TEMPLATES.M02_DIA_CHI }
@@ -173,30 +184,35 @@ export function verifyAndCleanOutput({ rawReply = '', finishReason = 'STOP', has
 
   // 4. Chặn biến chưa thay thế hoặc xưng hô cấm
   if (trimmed.includes('{') || trimmed.includes('}') || /khách facebook/i.test(trimmed)) {
-    return { ok: false, reason: 'UNRESOLVED_VARIABLE_OR_FORBIDDEN_NAME', fallback: TEMPLATES.M01_CHAO }
+    return { ok: false, reason: 'UNRESOLVED_VARIABLE_OR_FORBIDDEN_NAME', fallback: TEMPLATES.M23_DU_PHONG_LOI }
   }
 
-  // 5. Câu phải kết thúc bằng dấu câu hợp lệ (. ! ? … ạ nha nhé)
-  if (!/[.!?…ạa]|(nha|nhé|nhe)\s*[.!?]?$/i.test(trimmed)) {
+  // 5. Câu phải kết thúc bằng dấu câu hợp lệ (. ! ? … ạ nha nhé) có neo cuối chuỗi $
+  if (!/([.!?…ạa]|(nha|nhé|nhe)\s*[.!?]?)$/i.test(trimmed)) {
     return { ok: false, reason: 'INCOMPLETE_PUNCTUATION', fallback: TEMPLATES.M23_DU_PHONG_LOI }
   }
 
   // 6. Nếu đã có số mà bot lại đi xin số
   if (hasPhone) {
-    if (/xin số/i.test(trimmed) || /xin sđt/i.test(trimmed) || /cho em số/i.test(trimmed) || /cho em xin số/i.test(trimmed)) {
+    if (/xin số/i.test(trimmed) || /xin sđt/i.test(trimmed) || /cho em số/i.test(trimmed) || /cho em xin số/i.test(trimmed) || /xin số zalo/i.test(trimmed)) {
       return { ok: false, reason: 'REDUNDANT_PHONE_REQUEST', fallback: TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP }
     }
   }
 
-  // 7. Giới hạn độ dài: Bình luận tối đa 40 từ, Messenger tối đa 3 câu
+  // 7. Giới hạn độ dài: Bình luận tối đa 40 từ, Messenger tối đa 3 câu (bỏ qua dấu chấm trong SĐT và "TP.")
   if (isComment) {
     const wordCount = trimmed.split(/\s+/).length
     if (wordCount > 40) {
       return { ok: false, reason: 'COMMENT_TOO_LONG', fallback: TEMPLATES.C01_DIA_CHI }
     }
   } else {
-    const sentences = trimmed.split(/[.!?]+/).filter(s => s.trim().length > 0)
-    if (sentences.length > 4) {
+    // Tách câu: Không tính dấu chấm trong SĐT (0984.259.898) và viết tắt (TP., P.)
+    const cleanSentencesText = trimmed
+      .replace(/(\d+)\.(\d+)/g, '$1$2')
+      .replace(/tp\./gi, 'TP')
+      .replace(/p\./gi, 'P')
+    const sentences = cleanSentencesText.split(/[.!?…]+/).map(s => s.trim()).filter(Boolean)
+    if (sentences.length > 3) {
       return { ok: false, reason: 'MESSENGER_TOO_LONG', fallback: TEMPLATES.M23_DU_PHONG_LOI }
     }
   }
