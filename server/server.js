@@ -1166,7 +1166,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
       const apiKey = await getGeminiApiKey()
       const primaryModel = await getGeminiModel() || 'gemini-3.8-flash'
-      const fallbackModel = 'gemini-2.5-flash'
+      const fallbackModel = 'gemini-flash-latest'
 
       // Gọi Gemini có cơ chế thử lại (exponential backoff) và model dự phòng khi 429/503
       const callGeminiWithRetry = async (targetModel, maxRetries = 2) => {
@@ -1219,7 +1219,19 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
           }
 
           const cand = geminiData?.candidates?.[0]
-          const rawReply = cand?.content?.parts?.[0]?.text?.trim()
+          let rawReply = cand?.content?.parts?.[0]?.text?.trim() || ''
+
+          // Bóc tách câu trả lời nếu Gemini trả về JSON markdown block
+          if (rawReply.includes('```json') || rawReply.includes('{')) {
+            try {
+              const jsonStr = rawReply.replace(/```json/gi, '').replace(/```/g, '').trim()
+              const parsed = JSON.parse(jsonStr)
+              if (parsed && typeof parsed === 'object') {
+                rawReply = parsed.reply || parsed.phan_hoi || parsed.message || rawReply
+              }
+            } catch {}
+          }
+
           const verified = verifyAndCleanOutput({
             rawReply,
             finishReason: cand?.finishReason,

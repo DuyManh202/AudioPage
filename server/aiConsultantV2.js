@@ -154,7 +154,8 @@ Tên khách: "${customerName}"
 Nội dung: "${messageText}"
 Trạng thái đã có SĐT: ${hasPhone ? 'CÓ' : 'CHƯA'}
 
-Hãy phân tích và trả về đối tượng JSON theo đúng schema.`
+YÊU CẦU ĐẶC BIỆT QUAN TRỌNG:
+Hãy trả lời trực tiếp nội dung tin nhắn sẽ gửi cho khách bằng văn bản thuần túy (Plain text). TUYỆT ĐỐI KHÔNG xuất cú pháp JSON, KHÔNG bọc mã trong \`\`\`json, KHÔNG thêm lời giải thích hay phân tích nào khác!`
 
   return { systemInstruction, userContent }
 }
