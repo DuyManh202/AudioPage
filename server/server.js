@@ -11,7 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
-import { verifyAndCleanOutput, TEMPLATES } from './aiConsultantV2.js'
+import { verifyAndCleanOutput, TEMPLATES, extractPhoneNumber } from './aiConsultantV2.js'
 import { getAiPsychologicalTrainingContext, clearAiPsychologicalTrainingCache } from './aiPsychologicalTraining.js'
 import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
@@ -1281,8 +1281,16 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
     const sentPayload = await sendFacebookText(psid, reply)
     await query('INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id) VALUES ($1,$2,$3,\'OUT\',\'AI Tú Audio\',$4) ON CONFLICT (platform_message_id) DO NOTHING', [randomUUID(), customerId, reply, sentPayload?.message_id || null])
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [reply, customerId])
+    await query(`
+      INSERT INTO ai_message_logs (id, customer_id, channel, input_text, output_text, status)
+      VALUES ($1, $2, 'facebook_messenger', $3, $4, 'SENT')
+    `, [randomUUID(), customerId, latestText, reply]).catch(() => {})
   } catch (err) {
     console.error('[Facebook AI] Auto reply failed:', err.message)
+    await query(`
+      INSERT INTO ai_message_logs (id, customer_id, channel, input_text, error_reason, is_fallback, status)
+      VALUES ($1, $2, 'facebook_messenger', $3, $4, true, 'FAILED')
+    `, [randomUUID(), customerId, latestText || '', err.message]).catch(() => {})
     await query(`
       UPDATE facebook_care_customers 
       SET status='CHO_PHAN_HOI', 
