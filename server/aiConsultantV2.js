@@ -145,7 +145,9 @@ HƯỚNG DẪN KỸ THUẬT PHỔ BIẾN:
 QUY TẮC BẮT BUỘC (TUÂN THỦ 100%):
 1. Xưng hô: Xưng "em", gọi khách là "bác" (hoặc "anh"). CẤM gọi "Khách Facebook".
 2. Khách hỏi gì trả lời đúng trọng tâm cái đó. KHÔNG quảng cáo dàn 19tr/29tr khi khách chỉ hỏi chỉnh máy cũ.
-3. Độ dài phản hồi: ${isComment ? 'Tối đa từ 1 đến 2 câu ngắn gọn, dưới 40 từ.' : 'Từ 2 đến 3 câu súc tích, đầy đủ ý nghĩa (khoảng 40-70 từ).'}
+3. ĐỘ DÀI PHẢN HỒI (CỰC KỲ QUAN TRỌNG - PHẢI NGẮN GỌN):
+   - ${isComment ? 'Tối đa 1 câu ngắn gọn, dưới 30 từ.' : 'Chỉ từ 1 đến 2 câu ngắn gọn, súc tích (khoảng 25 - 40 từ). TUYỆT ĐỐI KHÔNG viết dài dòng lê thê.'}
+   - Mẫu chuẩn: [1 câu giải đáp ngắn gọn đúng câu hỏi] + [1 câu mời xin số Zalo/SĐT để anh Tú gọi hỗ trợ].
 4. Khi khách hỏi trực tiếp máy hay người: Trả lời lễ phép là em là trợ lý tư vấn của Tú Audio đang trực tin nhắn hỗ trợ bác ngay.
 5. Tuyệt đối KHÔNG hứa hẹn "hỗ trợ từ xa qua Ultraview/Teamviewer", KHÔNG tự ý hẹn chính xác giờ qua tận nhà khi chưa có ý kiến của anh Tú.`
 
@@ -209,10 +211,10 @@ export function verifyAndCleanOutput({ rawReply = '', finishReason = 'STOP', has
     }
   }
 
-  // 7. Giới hạn độ dài: Bình luận tối đa 40 từ, Messenger tối đa 3 câu (bỏ qua dấu chấm trong SĐT và "TP.")
+  // 7. Giới hạn độ dài: Bình luận tối đa 35 từ, Messenger tối đa 2 câu (bỏ qua dấu chấm trong SĐT và "TP.")
   if (isComment) {
     const wordCount = trimmed.split(/\s+/).length
-    if (wordCount > 40) {
+    if (wordCount > 35) {
       return { ok: false, reason: 'COMMENT_TOO_LONG', fallback: TEMPLATES.C01_DIA_CHI }
     }
   } else {
@@ -222,8 +224,10 @@ export function verifyAndCleanOutput({ rawReply = '', finishReason = 'STOP', has
       .replace(/tp\./gi, 'TP')
       .replace(/p\./gi, 'P')
     const sentences = cleanSentencesText.split(/[.!?…]+/).map(s => s.trim()).filter(Boolean)
-    if (sentences.length > 3) {
-      return { ok: false, reason: 'MESSENGER_TOO_LONG', fallback: TEMPLATES.M23_DU_PHONG_LOI }
+    if (sentences.length > 2) {
+      // Nếu AI viết lố sang 3 câu, cắt gọt lấy đúng 2 câu đầu tiên chuẩn chỉ
+      const firstTwo = sentences.slice(0, 2).join('. ') + '.'
+      return { ok: true, cleanedReply: firstTwo }
     }
   }
 
