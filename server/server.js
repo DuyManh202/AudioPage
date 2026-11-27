@@ -1282,14 +1282,14 @@ HÃY ĐỌC VỊ TÂM LÝ KHÁCH HÀNG VÀ TÂM SỰ TRẢ LỜI CỰC KỲ TỰ
     await query('INSERT INTO facebook_care_messages (id, customer_id, body, direction, created_by, platform_message_id) VALUES ($1,$2,$3,\'OUT\',\'AI Tú Audio\',$4) ON CONFLICT (platform_message_id) DO NOTHING', [randomUUID(), customerId, reply, sentPayload?.message_id || null])
     await query('UPDATE facebook_care_customers SET last_message=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2', [reply, customerId])
     await query(`
-      INSERT INTO ai_message_logs (id, customer_id, channel, input_text, output_text, status)
+      INSERT INTO ai_message_logs (id, customer_id, channel, incoming_text, reply_text, sent_status)
       VALUES ($1, $2, 'facebook_messenger', $3, $4, 'SENT')
     `, [randomUUID(), customerId, latestText, reply]).catch(() => {})
   } catch (err) {
     console.error('[Facebook AI] Auto reply failed:', err.message)
     await query(`
-      INSERT INTO ai_message_logs (id, customer_id, channel, input_text, error_reason, is_fallback, status)
-      VALUES ($1, $2, 'facebook_messenger', $3, $4, true, 'FAILED')
+      INSERT INTO ai_message_logs (id, customer_id, channel, incoming_text, error_message, sent_status)
+      VALUES ($1, $2, 'facebook_messenger', $3, $4, 'FAILED')
     `, [randomUUID(), customerId, latestText || '', err.message]).catch(() => {})
     await query(`
       UPDATE facebook_care_customers 
