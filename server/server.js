@@ -6055,7 +6055,7 @@ ensureDatabaseSchema().finally(() => {
     }
     setInterval(() => {
       if (canReadFacebookPageInbox()) syncFacebookConversations().catch(() => {})
-    }, 30000).unref()
+    }, 8000).unref()
   })
 })
 
