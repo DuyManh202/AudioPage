@@ -11,7 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
-import { verifyAndCleanOutput, TEMPLATES, extractPhoneNumber } from './aiConsultantV2.js'
+import { verifyAndCleanOutput, TEMPLATES, extractPhoneNumber, buildGeminiPromptV2 } from './aiConsultantV2.js'
 import { getAiPsychologicalTrainingContext, clearAiPsychologicalTrainingCache } from './aiPsychologicalTraining.js'
 import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
@@ -1004,10 +1004,10 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     if (!latestText) return
 
-    const isCommentReferral = msgs.some(m => m.body?.includes('Facebook tạo đoạn chat này vì') || m.body?.includes('comment_id='))
-
-    // NGUYÊN TẮC ANH TÚ: Khách nào ĐÃ TỪNG INBOX rồi thì KHÔNG ĐƯỢC gửi thêm tin nhắn riêng tự động từ bình luận nữa
-    if (isCommentReferral) {
+    // NGUYÊN TẮC ANH TÚ: Chỉ chặn tự động gửi tin nhắn riêng từ bình luận khi đợt tin MỚI NÀY là từ bình luận/referral
+    // Nếu khách tự chủ động nhắn tin vào Messenger ("Alo shop", hỏi hàng...) thì PHẢI phản hồi bình thường!
+    const isCurrentInboundCommentReferral = pendingInboundMsgs.some(m => m.body?.includes('Facebook tạo đoạn chat này vì') || m.body?.includes('comment_id='))
+    if (isCurrentInboundCommentReferral) {
       const hadPreviousOutMsg = realMsgs.some(m => m.direction === 'OUT')
       if (hadPreviousOutMsg) {
         console.log(`[Facebook AI] Khách ${customerId} (${customer.customer_name}) đã từng inbox trước đây -> Không gửi thêm tin nhắn riêng từ bình luận.`)
@@ -1039,7 +1039,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     // KIỂM TRA NHÂN SỰ THẬT ĐANG TRỰC TIẾP CHAT (ĐẶT TRƯỚC M-19 ĐỂ TRÁNH CHEN TIN KHI NGƯỜI THẬT ĐANG NHẮN)
     let isHumanStaffActive = false
-    if (!isCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
+    if (!isCurrentInboundCommentReferral && humanCheckResult.rows.length > 0 && humanCheckResult.rows[0].created_at) {
       const lastHumanMsg = humanCheckResult.rows[0]
       const humanAgeMinutes = (Date.now() - new Date(lastHumanMsg.created_at).getTime()) / (1000 * 60)
       const inboundAfterHuman = latestInbound?.created_at && (
