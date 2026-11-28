@@ -11,7 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
-import { verifyAndCleanOutput, TEMPLATES, extractPhoneNumber, buildGeminiPromptV2 } from './aiConsultantV2.js'
+import { getAiReply, checkReply, buildGeminiPromptV2, extractPhoneNumber, FIXED_KNOWLEDGE, GEMINI_REPLY_SCHEMA } from './aiConsultantV2.js'
 import { getAiPsychologicalTrainingContext, clearAiPsychologicalTrainingCache } from './aiPsychologicalTraining.js'
 import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
@@ -1112,22 +1112,6 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
         return
       }
 
-      // 3. Nếu chưa có nhân viên nào nhắn -> Gửi câu M-19 chuẩn
-      const alreadyConfirmedPhone = realMsgs.some(m =>
-        m.direction === 'OUT' &&
-        (
-          m.body?.includes(newlyProvidedPhone) ||
-          (customer.phone && m.body?.includes(customer.phone)) ||
-          m.body?.includes('đã nhận số') ||
-          m.body?.includes('đã nhận được số')
-        )
-      )
-
-      if (!alreadyConfirmedPhone) {
-        reply = TEMPLATES.M19_DA_NHAN_SDT(newlyProvidedPhone)
-      } else {
-        reply = TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP
-      }
     } else if (isHumanStaffActive) {
       // Nhân viên thật đang chat -> Nhường quyền hoàn toàn
       return
@@ -1136,45 +1120,28 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       return
     }
 
-    const hasKnownPhone = Boolean(customer.phone && String(customer.phone).trim().length >= 9)
+    const hasKnownPhone = Boolean((customer.phone && String(customer.phone).trim().length >= 9) || newlyProvidedPhone)
 
-    // Nếu khách đã có số từ trước và nhắn tin tiếp (không phải đưa số mới)
-    if (!reply && hasKnownPhone) {
-      const alreadyAnsweredAfterPhone = realMsgs.some(m =>
-        m.direction === 'OUT' &&
-        m.body?.includes('đã chuyển tin của bác cho anh Tú')
-      )
-      if (alreadyAnsweredAfterPhone) {
-        // Đã gửi M-20 rồi, không spam lại
-        return
-      }
-      reply = TEMPLATES.M20_DA_CO_SDT_NHAN_TIEP
-    }
+    // Tính askedPhoneRecently bằng code: Quét 3 tin nhắn OUT gần nhất xem đã có câu xin số chưa
+    const recentOutMessages = realMsgs.filter(m => m.direction === 'OUT').slice(-3)
+    const askedPhoneRecently = recentOutMessages.some(m =>
+      /(xin số|cho em xin số|xin sđt|số zalo|số điện thoại|nhắn số)/i.test(m.body || '')
+    )
 
-    // 3. Gọi Gemini Flash AI xử lý thông minh 100% theo đúng Kịch bản 2.0 (Chế độ A)
+    // 3. Gọi Gemini AI xử lý 100% qua getAiReply (Tự sửa sai tối đa 3 lần, không dùng tin mặc định)
     if (!reply) {
       const priorMsgs = lastOutIndex >= 0 ? realMsgs.slice(0, lastOutIndex + 1) : []
       const historyFormatted = priorMsgs.map(m => `${m.direction === 'IN' ? 'Khách' : 'Tú Audio'}: ${m.body}`).join('\n')
-
-      const { systemInstruction, userContent } = buildGeminiPromptV2({
-        customerName: customer.customer_name || 'bác',
-        messageText: latestText,
-        historyText: historyFormatted,
-        hasPhone: hasKnownPhone,
-        isComment: false
-      })
 
       const apiKey = await getGeminiApiKey()
       const primaryModel = await getGeminiModel() || 'gemini-3.8-flash'
       const fallbackModel = 'gemini-flash-latest'
 
-      // Gọi Gemini có cơ chế thử lại (exponential backoff) và model dự phòng khi 429/503
-      const callGeminiWithRetry = async (targetModel, maxRetries = 2) => {
+      const callGeminiWithRetry = async (targetModel, maxRetries = 1, systemInstruction, userContent) => {
         let lastErr = null
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           if (attempt > 0) {
-            const delay = Math.pow(2, attempt) * 1000
-            await new Promise(r => setTimeout(r, delay))
+            await new Promise(r => setTimeout(r, 1000 * attempt))
           }
           try {
             const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`
@@ -1187,9 +1154,11 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
                   parts: [{ text: systemInstruction + '\n\n' + userContent }]
                 }],
                 generationConfig: {
-                  temperature: 0.25,
-                  maxOutputTokens: 2048,
-                  thinkingConfig: { thinkingBudget: 0 }
+                  temperature: 0.5,
+                  maxOutputTokens: 600,
+                  thinkingConfig: { thinkingBudget: 0 },
+                  responseMimeType: 'application/json',
+                  responseSchema: GEMINI_REPLY_SCHEMA
                 }
               }),
               signal: AbortSignal.timeout(12000)
@@ -1199,8 +1168,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
               lastErr = new Error(`Gemini HTTP ${res.status}`)
               continue
             }
-            const data = await res.json().catch(() => ({}))
-            return data
+            return await res.json().catch(() => ({}))
           } catch (fetchErr) {
             lastErr = fetchErr
           }
@@ -1208,52 +1176,41 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
         throw lastErr
       }
 
-      if (apiKey) {
+      const callGeminiFn = async ({ systemInstruction, userContent }) => {
         try {
-          let geminiData = null
-          try {
-            geminiData = await callGeminiWithRetry(primaryModel, 1)
-          } catch (priErr) {
-            console.warn(`[Facebook AI] Model chính ${primaryModel} lỗi (${priErr.message}), thử model dự phòng ${fallbackModel}...`)
-            geminiData = await callGeminiWithRetry(fallbackModel, 1)
-          }
-
-          const cand = geminiData?.candidates?.[0]
-          let rawReply = cand?.content?.parts?.[0]?.text?.trim() || ''
-
-          // Bóc tách câu trả lời nếu Gemini trả về JSON markdown block
-          if (rawReply.includes('```json') || rawReply.includes('{')) {
-            try {
-              const jsonStr = rawReply.replace(/```json/gi, '').replace(/```/g, '').trim()
-              const parsed = JSON.parse(jsonStr)
-              if (parsed && typeof parsed === 'object') {
-                rawReply = parsed.reply || parsed.phan_hoi || parsed.message || rawReply
-              }
-            } catch {}
-          }
-
-          const verified = verifyAndCleanOutput({
-            rawReply,
-            finishReason: cand?.finishReason,
-            hasPhone: hasKnownPhone,
-            isComment: false,
-            recentOuts: realMsgs.filter(m => m.direction === 'OUT').slice(-5).map(m => m.body || '')
-          })
-
-          if (verified.ok) {
-            reply = verified.cleanedReply
-          } else if (verified.fallback) {
-            reply = verified.fallback
-          }
-        } catch (aiErr) {
-          console.warn('[Facebook AI AutoReply Warning]:', aiErr.message)
+          return await callGeminiWithRetry(primaryModel, 1, systemInstruction, userContent)
+        } catch (priErr) {
+          console.warn(`[Facebook AI] Model ${primaryModel} lỗi (${priErr.message}), fallback sang ${fallbackModel}...`)
+          return await callGeminiWithRetry(fallbackModel, 1, systemInstruction, userContent)
         }
       }
-    }
 
-    // Dự phòng an toàn bằng M-23 nếu xảy ra sự cố mạng
-    if (!reply) {
-      reply = TEMPLATES.M23_DU_PHONG_LOI
+      if (apiKey) {
+        try {
+          const aiResult = await getAiReply({
+            callGeminiFn,
+            customerName: customer.customer_name || 'bác',
+            messageText: latestText,
+            historyText: historyFormatted,
+            hasPhone: hasKnownPhone,
+            askedPhoneRecently,
+            originalCustomerPhone: newlyProvidedPhone || customer.phone || null,
+            recentOuts: recentOutMessages.map(m => m.body || ''),
+            maxRetries: 3
+          })
+
+          if (aiResult.ok) {
+            reply = aiResult.reply
+            console.log(`[Facebook AI] Phản hồi thành công (${aiResult.attempts} lần thử): "${reply}"`)
+          } else {
+            console.warn(`[Facebook AI Handoff] Khách ${customerId} (${customer.customer_name}): ${aiResult.reason} -> Nhường anh Tú xử lý, không gửi tin mặc định.`)
+            return
+          }
+        } catch (aiErr) {
+          console.error('[Facebook AI Error]:', aiErr.message)
+          return
+        }
+      }
     }
 
     if (!reply || !reply.trim()) return
