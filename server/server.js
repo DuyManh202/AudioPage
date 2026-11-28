@@ -5538,7 +5538,7 @@ YÊU CẦU ĐẶC BIỆT THEO CHUẨN TÚ AUDIO:
 1. "persona_type" phải là một trong các giá trị: "HU_RIT_THAT_VONG", "NANG_CAP_DO_CU", "DICH_VU_TAN_NHA", "DO_GIA_SO_HO", "KHACH_MOI_TRON_BO", hoặc "CHUYEN_SAU".
 2. "psychological_trigger": Nêu rõ nỗi sợ, băn khoăn thầm kín của khách và đòn bẩy tâm lý để thuyết phục họ.
 3. "customer_keywords": 4-8 cụm từ khách hay nhắn nhất (viết chữ thường không dấu hoặc có dấu, ngăn cách bằng dấu phẩy).
-4. "suggested_response": Câu trả lời 1-2 câu cực kỳ thấu cảm, chuyên môn cao, đúng văn phong của anh Tú Audio. Tuyệt đối KHÔNG từ chối khách thô lỗ. Luôn gợi mở giải pháp và khéo léo xin số điện thoại hoặc Zalo để gửi video test / tư vấn chi tiết.
+4. "suggested_response": Câu trả lời 1-2 câu cực kỳ thấu cảm, chuyên môn cao, đúng văn phong của anh Tú Audio. Tuyệt đối KHÔNG từ chối khách thô lỗ. Luôn gợi mở giải pháp và khéo léo xin số điện thoại hoặc Zalo để anh Tú gọi điện tư vấn chi tiết kỹ thuật hoặc hỗ trợ phối ghép.
 
 TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON (không kèm markdown):
 {
