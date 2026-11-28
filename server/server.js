@@ -11,7 +11,7 @@ import { query, withTransaction } from './db.js'
 import { findProvince, VIETNAM_PROVINCES, normalizeVietnamText } from './vietnamProvinces.js'
 import { handleAiChatRequest, checkDeterministicAiResponse } from './aiChat.js'
 import { handleFacebookComment } from './facebookCommentHandler.js'
-import { getAiReply, checkReply, buildGeminiPromptV2, extractPhoneNumber, FIXED_KNOWLEDGE, GEMINI_REPLY_SCHEMA } from './aiConsultantV2.js'
+import { getAiReply, checkReply, buildGeminiPromptV2, extractPhoneNumber, validateVietnamesePhone, FIXED_KNOWLEDGE, GEMINI_REPLY_SCHEMA } from './aiConsultantV2.js'
 import { getAiPsychologicalTrainingContext, clearAiPsychologicalTrainingCache } from './aiPsychologicalTraining.js'
 import { extractCustomerInterest } from './interestExtractor.js'
 import { dispatchOtpEmail, maskEmail } from './emailService.js'
@@ -1076,63 +1076,73 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
 
     let reply = ''
 
-    // TRÍCH XUẤT SĐT NẾU KHÁCH CHO SỐ
-    const newlyProvidedPhone = extractPhoneNumber(latestText) || phoneFromMessage(latestText)
-    if (newlyProvidedPhone) {
-      // 1. Luôn lưu SĐT vào khách hàng và bảng Leads
-      await query(
-        "UPDATE facebook_care_customers SET phone=COALESCE(phone, $1), status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2",
-        [newlyProvidedPhone, customerId]
-      ).catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
+    // KIỂM ĐỊNH SỐ ĐIỆN THOẠI KHÁCH HÀNG (ĐÚNG HAY SAI CHUẨN XÁC)
+    const phoneAnalysis = validateVietnamesePhone(latestText)
+    let newlyProvidedPhone = null
 
-      try {
-        const leadId = `FB-${customerId.replace(/^FB-/, '')}`.slice(0, 50)
-        const leadName = customer.customer_name || ('Khách Facebook ' + newlyProvidedPhone.slice(-4))
-        const leadAddress = (customer.address || customer.province || '').trim()
-        const leadAdName = (customer.source_ad_name || '').trim()
-        const leadNote = [
-          leadAdName ? `QC: ${leadAdName}` : '',
-          `SĐT/Zalo: ${newlyProvidedPhone}`,
-          `Tin nhắn: "${latestText}"`
-        ].filter(Boolean).join(' · ')
+    if (phoneAnalysis.hasPhoneInput) {
+      if (!phoneAnalysis.isValid) {
+        // KHÁCH GỬI SỐ BỊ SAI / THIẾU / THỪA CHỮ SỐ -> PHẢN HỒI BÁO KHÁCH NGAY
+        reply = phoneAnalysis.message
+        console.log(`[Facebook AI Phone Check] Khách ${customerId} gửi SĐT không hợp lệ: "${phoneAnalysis.raw}" (${phoneAnalysis.length} số) -> Nhắc khách sửa.`)
+      } else {
+        // SỐ ĐIỆN THOẠI HỢP LỆ CHUẨN 10 SỐ!
+        newlyProvidedPhone = phoneAnalysis.phone
+        await query(
+          "UPDATE facebook_care_customers SET phone=$1, status='DANG_TU_VAN', updated_at=CURRENT_TIMESTAMP WHERE id=$2",
+          [newlyProvidedPhone, customerId]
+        ).catch(dbErr => console.error('[Facebook AI] Lưu SĐT khách thất bại:', dbErr.message))
 
-        const existingLead = await query('SELECT id, notes FROM leads WHERE phone = $1 LIMIT 1', [newlyProvidedPhone])
-        if (existingLead.rows.length > 0) {
-          const curId = existingLead.rows[0].id
-          const curNotes = existingLead.rows[0].notes || ''
-          const updatedNotes = curNotes.includes(latestText) ? curNotes : (curNotes ? curNotes + ' · ' + leadNote : leadNote).slice(0, 2000)
-          await query(`
-            UPDATE leads SET
-              name = CASE WHEN name IS NULL OR name = '' OR name LIKE 'Khách Facebook %' THEN $1 ELSE name END,
-              notes = $2,
-              status = 'MOI',
-              created_at = CURRENT_TIMESTAMP,
-              updated_at = CURRENT_TIMESTAMP
-            WHERE id = $3
-          `, [leadName, updatedNotes, curId])
-        } else {
-          await query(`
-            INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, 'Tư vấn âm thanh qua Facebook', '', 'MOI', 0, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ON CONFLICT (id) DO UPDATE SET
-              name = EXCLUDED.name,
-              phone = EXCLUDED.phone,
-              notes = EXCLUDED.notes,
-              status = 'MOI',
-              created_at = CURRENT_TIMESTAMP,
-              updated_at = CURRENT_TIMESTAMP
-          `, [leadId, leadName, newlyProvidedPhone, leadAddress, leadNote])
+        try {
+          const leadId = `FB-${customerId.replace(/^FB-/, '')}`.slice(0, 50)
+          const leadName = customer.customer_name || ('Khách Facebook ' + newlyProvidedPhone.slice(-4))
+          const leadAddress = (customer.address || customer.province || '').trim()
+          const leadAdName = (customer.source_ad_name || '').trim()
+          const leadNote = [
+            leadAdName ? `QC: ${leadAdName}` : '',
+            `SĐT/Zalo: ${newlyProvidedPhone}`,
+            `Tin nhắn: "${latestText}"`
+          ].filter(Boolean).join(' · ')
+
+          const existingLead = await query('SELECT id, notes FROM leads WHERE phone = $1 LIMIT 1', [newlyProvidedPhone])
+          if (existingLead.rows.length > 0) {
+            const curId = existingLead.rows[0].id
+            const curNotes = existingLead.rows[0].notes || ''
+            const updatedNotes = curNotes.includes(latestText) ? curNotes : (curNotes ? curNotes + ' · ' + leadNote : leadNote).slice(0, 2000)
+            await query(`
+              UPDATE leads SET
+                name = CASE WHEN name IS NULL OR name = '' OR name LIKE 'Khách Facebook %' THEN $1 ELSE name END,
+                notes = $2,
+                status = 'MOI',
+                created_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+              WHERE id = $3
+            `, [leadName, updatedNotes, curId])
+          } else {
+            await query(`
+              INSERT INTO leads (id, name, phone, address, interest, room_info, status, deal_value, notes, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, 'Tư vấn âm thanh qua Facebook', '', 'MOI', 0, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+              ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                phone = EXCLUDED.phone,
+                notes = EXCLUDED.notes,
+                status = 'MOI',
+                created_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            `, [leadId, leadName, newlyProvidedPhone, leadAddress, leadNote])
+          }
+        } catch (leadPushErr) {
+          console.error('[Facebook AI] Lỗi đẩy SĐT vào Leads:', leadPushErr.message)
         }
-      } catch (leadPushErr) {
-        console.error('[Facebook AI] Lỗi đẩy SĐT vào Leads:', leadPushErr.message)
-      }
 
-      // 2. Nếu nhân viên đang chat -> AI NHƯỜNG QUYỀN, KHÔNG CHEN TIN
-      if (isHumanStaffActive) {
-        console.log(`[Facebook AI] Khách ${customerId} cho SĐT nhưng nhân sự thật đang chat -> Đã lưu SĐT vào Leads và nhường quyền.`)
-        return
-      }
+        // Nếu nhân viên đang chat -> AI NHƯỜNG QUYỀN, KHÔNG CHEN TIN
+        if (isHumanStaffActive) {
+          console.log(`[Facebook AI] Khách ${customerId} cho SĐT nhưng nhân sự thật đang chat -> Đã lưu SĐT vào Leads và nhường quyền.`)
+          return
+        }
 
+        reply = `Dạ em cảm ơn ${customer.customer_name || 'bác'}, em đã lưu số ${newlyProvidedPhone} rồi ạ. Bác chờ chút chuyên gia Tú Audio sẽ liên hệ tư vấn trực tiếp cho bác ngay nhé!`
+      }
     } else if (isHumanStaffActive) {
       // Nhân viên thật đang chat -> Nhường quyền hoàn toàn
       return
@@ -1141,7 +1151,10 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
       return
     }
 
-    const hasKnownPhone = Boolean((customer.phone && String(customer.phone).trim().length >= 9) || newlyProvidedPhone)
+    // CHỈ COI LÀ ĐÃ CÓ SĐT KHI CÓ ĐÚNG SỐ DI ĐỘNG 10 CHỮ SỐ HOẶC SỐ CỐ ĐỊNH CHUẨN ĐẦU 02
+    const cleanCustomerPhone = String(customer.phone || '').replace(/\D/g, '')
+    const isCustomerPhoneValid = /^0[35789]\d{8}$/.test(cleanCustomerPhone) || /^02\d{8,9}$/.test(cleanCustomerPhone)
+    const hasKnownPhone = Boolean(isCustomerPhoneValid || (newlyProvidedPhone && /^0[235789]/.test(newlyProvidedPhone)))
 
     // Tính askedPhoneRecently bằng code: Quét 3 tin nhắn OUT gần nhất xem đã có câu xin số chưa
     const recentOutMessages = realMsgs.filter(m => m.direction === 'OUT').slice(-3)

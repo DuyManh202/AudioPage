@@ -35,6 +35,73 @@ export function extractPhoneNumber(text) {
 }
 
 /**
+ * PHÂN TÍCH VÀ KIỂM ĐỊNH SỐ ĐIỆN THOẠI KHÁCH HÀNG (ĐÚNG HAY SAI CHUẨN XÁC)
+ */
+export function validateVietnamesePhone(text) {
+  if (!text || typeof text !== 'string') return { hasPhoneInput: false }
+  if (text.includes('facebook.com') || text.includes('comment_id')) return { hasPhoneInput: false }
+
+  const phonePattern = /(?:\+?84|0)(?:[\s.\-_]*\d){6,14}\b/g
+  const matches = text.match(phonePattern)
+  if (!matches) return { hasPhoneInput: false }
+
+  for (const raw of matches) {
+    const digits = raw.replace(/\D/g, '')
+    const normalized = digits.startsWith('84') ? `0${digits.slice(2)}` : digits
+
+    // Bỏ qua nếu là số tiền (ví dụ: 500000, 1000000, 2000000 kèm k/đ/tr)
+    if (/(500000|1000000|2000000)/.test(normalized) && /(k|đ|vnd|triệu|tr)/i.test(text)) {
+      continue
+    }
+
+    const len = normalized.length
+
+    // 1. Số di động chuẩn Việt Nam: 10 chữ số, đầu 03, 05, 07, 08, 09
+    if (/^0[35789]\d{8}$/.test(normalized)) {
+      return {
+        hasPhoneInput: true,
+        isValid: true,
+        phone: normalized,
+        raw
+      }
+    }
+
+    // 2. Số cố định chuẩn: 10 hoặc 11 chữ số, đầu 02
+    if (/^02\d{8,9}$/.test(normalized)) {
+      return {
+        hasPhoneInput: true,
+        isValid: true,
+        phone: normalized,
+        raw
+      }
+    }
+
+    // 3. Khách gõ số nhưng sai/thiếu/thừa chữ số
+    if (/^0\d{6,13}$/.test(normalized)) {
+      let message = ''
+      if (len < 10) {
+        message = `Dạ hình như số điện thoại/Zalo bác vừa gửi bị thiếu số (mới có ${len} chữ số) ạ. Bác kiểm tra lại và gửi lại giúp em đủ 10 số để chuyên gia Tú Audio liên hệ hỗ trợ dàn nhà mình nhé!`
+      } else if (len > 10) {
+        message = `Dạ số điện thoại bác vừa gửi có ${len} chữ số, hình như bị thừa số hoặc là đầu số cũ ạ. Bác kiểm tra lại giúp em số điện thoại chuẩn 10 số để bên em liên hệ nhé!`
+      } else {
+        message = `Dạ đầu số ${normalized.slice(0, 3)}... bác vừa gửi hình như chưa đúng đầu số di động hiện hành ạ. Bác kiểm tra lại giúp em số Zalo/điện thoại chuẩn để chuyên gia Tú Audio liên hệ nhé!`
+      }
+
+      return {
+        hasPhoneInput: true,
+        isValid: false,
+        phone: normalized,
+        raw,
+        length: len,
+        message
+      }
+    }
+  }
+
+  return { hasPhoneInput: false }
+}
+
+/**
  * SCHEMA JSON CHO GEMINI RESPONSE SCHEMA
  */
 export const GEMINI_REPLY_SCHEMA = {
@@ -233,7 +300,7 @@ ${fewShotsText}`
   const userContent = `${historyText ? 'LỊCH SỬ TIN NHẮN TRƯỚC ĐÓ:\n' + historyText + '\n\n' : ''}CÂU HỎI MỚI CỦA KHÁCH:
 Tên khách: "${customerName}"
 Nội dung: "${messageText}"
-Trạng thái đã có SĐT: ${hasPhone}
+Trạng thái SĐT: ${hasPhone ? 'ĐÃ CÓ SĐT HỢP LỆ TRONG HỆ THỐNG' : 'CHƯA CÓ SĐT HỢP LỆ (Lưu ý: Bất kỳ dãy số nào trong lịch sử chưa đủ 10 chữ số như 098765432 đều là số sai/thiếu, TUYỆT ĐỐI KHÔNG được coi là đã có số). Bắt buộc phải xin số Zalo theo nguyên tắc!'}
 
 Hãy trả về JSON với cấu trúc {"reply": "..."}`
 
@@ -330,6 +397,14 @@ export function checkReply(reply, {
   const replyNorm = normalizeForCompare(trimmed)
   if (recentOuts.some(outMsg => normalizeForCompare(outMsg) === replyNorm)) {
     return { ok: false, reason: 'DUPLICATE_RECENT_MESSAGE' }
+  }
+
+  // 11. Chống tự nhận vơ là đã có SĐT khi hasPhone = false
+  if (!hasPhone) {
+    const falsePhoneConfirmation = /(đã lưu số|đã lưu thông tin|anh tú sẽ gọi|gọi điện trực tiếp|sẽ liên hệ qua zalo tư vấn căn chỉnh dàn cho anh ngay|em đã báo anh tú rồi)/i
+    if (falsePhoneConfirmation.test(trimmed)) {
+      return { ok: false, reason: 'UNAUTHORIZED_PHONE_CONFIRMATION' }
+    }
   }
 
   return { ok: true, cleanedReply: trimmed }
