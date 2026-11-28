@@ -130,9 +130,9 @@ NGUYÊN TẮC GIAO TIẾP VỚI KHÁCH HÀNG (TUYỆT ĐỐI CHUYÊN NGHIỆP - 
      + Tuyệt đối KHÔNG bịa giá! Hãy trả lời lễ phép: "Dạ vì âm thanh cần nắm rõ cấu hình dàn nhà mình đang dùng để tư vấn chuẩn không bị lãng phí, bác cho em xin số Zalo để anh Tú gọi điện tư vấn nhanh 1-2 phút cho bác nhé ạ!".
 
 2. PHẢN HỒI THỰC TẾ & KHÔNG LẶP LẠI XIN SỐ KHI KHÁCH TỪ CHỐI:
-   - Nếu khách bảo "Gửi ở đây cũng được / Báo giá ở đây đi": Vẫn giữ thái độ niềm nở, đưa ra khoảng giá tham khảo linh hoạt (ví dụ: "Dạ các dòng bên em dao động từ... tùy cấu hình") rồi phân tích vì sao anh Tú cần gọi trao đổi cụ thể. Không nài nỉ xin số liên tục gây phản cảm.
+   - Nếu khách bảo "Gửi ở đây cũng được / Báo giá ở đây đi": Tuyệt đối KHÔNG tự bịa giá hay đưa ra khoảng giá bừa bãi! Hãy trả lời lễ phép và tập trung giải thích kỹ thuật: âm thanh phải nắm được dàn máy khách đang dùng đẩy gì, vang gì, loa gì để tư vấn bản linh kiện chuẩn và mức giá chính xác nhất. Mời kết nối Zalo để gửi ảnh dàn máy hoặc để anh Tú gọi trao đổi 1 phút.
    - Nếu trong 1-2 tin nhắn gần nhất ĐÃ XIN SỐ RỒI: Tin này tuyệt đối không xin lại, hãy tập trung giải đáp thắc mắc của khách.
-   - Khi khách ĐÃ CHO SĐT: Tuyệt đối không hỏi lại SĐT, chỉ xác nhận anh Tú sẽ liên hệ ngay.
+   - Khi khách ĐÃ CHO SĐT: Tuyệt đối không hỏi lại SĐT, chỉ xác nhận em đã lưu số và báo anh Tú liên hệ ngay.
 
 3. CHÍNH SÁCH DỊCH VỤ & THIẾT BỊ CỦA TÚ AUDIO (CỰC KỲ QUAN TRỌNG):
    - BÊN EM KHÔNG NHẬN LÀM LOA, KHÔNG NHẬN SỬA CHỮA ĐÓNG MỚI THÙNG LOA HOẶC QUẤN CÔN/THAY GÂN LOA RỜI!
@@ -216,14 +216,18 @@ export function verifyAndCleanOutput({ rawReply = '', finishReason = 'STOP', has
       return { ok: false, reason: 'COMMENT_TOO_LONG', fallback: TEMPLATES.C01_DIA_CHI }
     }
   } else {
-    // Tách câu: Không tính dấu chấm trong SĐT (0984.259.898) và viết tắt (TP., P.)
+    // Chuẩn hóa dấu chấm trong SĐT (0984.259.898), tiền tệ và từ viết tắt (TP., P.)
     const cleanSentencesText = trimmed
-      .replace(/(\d+)\.(\d+)/g, '$1$2')
+      .replace(/(?<=\d)\.(?=\d)/g, '')
       .replace(/tp\./gi, 'TP')
       .replace(/p\./gi, 'P')
+      // Gộp dấu chấm than sau lời chào ngắn (ví dụ: "Dạ em chào bác Toàn Đô!") thành dấu phẩy để không bị ngắt thành câu riêng
+      .replace(/^(dạ\s+(?:em\s+)?(?:chào|cảm ơn)[^.!?…\n]{1,35})[!]/i, '$1,')
+
     const sentences = cleanSentencesText.split(/[.!?…]+/).map(s => s.trim()).filter(Boolean)
-    if (sentences.length > 2) {
-      // Nếu AI viết lố sang 3 câu, cắt gọt lấy đúng 2 câu đầu tiên chuẩn chỉ
+    // Nếu tin nhắn có trên 3 câu hoặc dài quá 55 từ, chỉ giữ lại 2 câu đầu tiên
+    const wordCount = trimmed.split(/\s+/).length
+    if (sentences.length > 3 || (sentences.length > 2 && wordCount > 55)) {
       const firstTwo = sentences.slice(0, 2).join('. ') + '.'
       return { ok: true, cleanedReply: firstTwo }
     }
