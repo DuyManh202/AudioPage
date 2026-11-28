@@ -186,7 +186,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProductStore } from '../stores/productStore'
 import { useCartStore } from '../stores/cartStore'
@@ -239,6 +239,83 @@ const handleConsult = () => {
 const handleAddToCart = () => {
   cartStore.addToCart(product.value, 1)
 }
+
+// Cập nhật thẻ SEO Title, Meta và JSON-LD Schema Product tự động cho Google Bot
+watchEffect(() => {
+  if (!product.value) return
+  const p = product.value
+  const siteUrl = 'https://www.amek.io.vn'
+  const fullTitle = `${p.name} — Tú Audio`
+  const desc = p.shortDesc || `Mua ${p.name} chính hãng tại Tú Audio. Bảo hành uy tín, hỗ trợ lắp đặt căn chỉnh âm học tận nhà.`
+  const absImage = p.image?.startsWith('http') ? p.image : `${siteUrl}${p.image?.startsWith('/') ? '' : '/'}${p.image || '/images/combos/combo-29tr.png'}`
+  const pageUrl = `${siteUrl}/san-pham/${route.params.id}`
+
+  // Cập nhật Document Title
+  document.title = fullTitle
+
+  // Cập nhật các thẻ Meta
+  const setMeta = (attr, val, content) => {
+    let el = document.querySelector(`meta[${attr}="${val}"]`)
+    if (!el) {
+      el = document.createElement('meta')
+      el.setAttribute(attr, val)
+      document.head.appendChild(el)
+    }
+    el.setAttribute('content', content)
+  }
+
+  setMeta('name', 'description', desc)
+  setMeta('property', 'og:title', fullTitle)
+  setMeta('property', 'og:description', desc)
+  setMeta('property', 'og:image', absImage)
+  setMeta('property', 'og:url', pageUrl)
+  setMeta('name', 'twitter:title', fullTitle)
+  setMeta('name', 'twitter:description', desc)
+  setMeta('name', 'twitter:image', absImage)
+
+  // Tiêm hoặc cập nhật dữ liệu cấu trúc Schema.org Product (JSON-LD) cho Google Search Rich Results
+  let scriptEl = document.getElementById('product-schema-jsonld')
+  if (!scriptEl) {
+    scriptEl = document.createElement('script')
+    scriptEl.id = 'product-schema-jsonld'
+    scriptEl.type = 'application/ld+json'
+    document.head.appendChild(scriptEl)
+  }
+
+  const schemaData = {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    'name': p.name,
+    'image': [absImage],
+    'description': desc,
+    'sku': p.slug || p.id || String(route.params.id),
+    'brand': {
+      '@type': 'Brand',
+      'name': 'AMEK'
+    },
+    'offers': {
+      '@type': 'Offer',
+      'url': pageUrl,
+      'priceCurrency': 'VND',
+      'price': p.price ? String(p.price) : '0',
+      'priceValidUntil': '2027-12-31',
+      'itemCondition': 'https://schema.org/NewCondition',
+      'availability': p.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      'seller': {
+        '@type': 'Organization',
+        'name': 'Tú Audio',
+        'url': siteUrl
+      }
+    }
+  }
+
+  scriptEl.textContent = JSON.stringify(schemaData)
+})
+
+onUnmounted(() => {
+  const scriptEl = document.getElementById('product-schema-jsonld')
+  if (scriptEl) scriptEl.remove()
+})
 </script>
 
 <style scoped>
