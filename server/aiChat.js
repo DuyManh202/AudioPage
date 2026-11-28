@@ -61,7 +61,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'VANG_SO',
-      reply: 'Dạ vâng a, vang số bên em có dòng CM x16+ (4tr2) và PF K9 (6tr8) chống hú rít tuyệt đối và tiếng mic rất nhẹ. Anh cho em xin số Zalo để em gọi điện tư vấn chi tiết cấu hình phù hợp với dàn nhà mình nhé anh!'
+      reply: 'Dạ vâng a, vang số bên em có các dòng chống hú rít tuyệt đối và tiếng mic rất nhẹ. Bác cho em xin số Zalo để anh Tú gọi điện tư vấn chi tiết cấu hình và báo giá tốt nhất cho dàn nhà mình nhé ạ!'
     }
   }
 
@@ -72,7 +72,7 @@ export const checkDeterministicAiResponse = (message) => {
   ) {
     return {
       type: 'COMBO',
-      reply: 'Dạ vâng a, bên em có các cấu hình dàn từ 19tr đến 29tr chuẩn phòng hát gia đình. Anh cho em xin số Zalo để em gọi điện trao đổi chi tiết phương án vừa vặn cho không gian nhà mình nhé anh!'
+      reply: 'Dạ vâng a, bên em có các cấu hình dàn chuyên nghiệp chuẩn phòng hát gia đình. Bác cho em xin số Zalo để anh Tú gọi điện tư vấn chi tiết cấu hình và báo giá tốt nhất cho mình nhé ạ!'
     }
   }
 

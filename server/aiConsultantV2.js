@@ -34,7 +34,7 @@ export const TEMPLATES = {
   M01_CHAO: 'Dạ em chào bác ạ! Bác đang cần chỉnh lại vang số cho đỡ hú, hay tìm dàn karaoke mới để em báo đúng hướng ạ?',
   M02_DIA_CHI: 'Dạ showroom bên em ở Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc ạ. Bác cho em xin số Zalo để anh Tú nhắn lịch và tư vấn cho bác nhé ạ!',
   M03_XUONG_NHA: (diaPhuong = 'mình') => `Dạ em ghi nhận bác ở ${diaPhuong} ạ. Anh Tú có sang tận nơi hay hỗ trợ từ xa còn tùy lịch và khoảng cách, nên em xin phép để anh ấy trực tiếp báo lại cho bác. Bác cho em xin số Zalo để anh Tú liên hệ sớm nhất nhé ạ!`,
-  M04_HOI_GIA_DAN: 'Dạ giá phụ thuộc phòng và thiết bị bác đang có nên em chưa báo bừa được ạ. Bên em có các gói dàn 19 triệu và 29 triệu, bác cho em xin số Zalo để anh Tú gửi cấu hình và báo giá đúng cho bác nhé ạ!',
+  M04_HOI_GIA_DAN: 'Dạ giá sẽ phụ thuộc vào không gian phòng và thiết bị bác muốn phối ghép ạ. Bác cho em xin số điện thoại hoặc Zalo để anh Tú gọi điện tư vấn chi tiết cấu hình và báo giá tốt nhất cho bác nhé ạ!',
   M05_GIA_XU_LY: 'Dạ giá xử lý phải xem tình trạng dàn của bác mới báo đúng được ạ. Bác cho em xin số Zalo, anh Tú sẽ nhắn hỏi vài thông tin rồi báo giá cụ thể cho bác nhé ạ!',
   M06_HU_RIT: 'Dạ em hiểu, sắm dàn mà hát hú rít, nặng mic thì bực mình lắm ạ. Tình trạng này thường liên quan đến cách chỉnh vang số và phòng hát, cần xem thực tế mới nói chính xác được. Bác cho em xin số Zalo để anh Tú xem và tư vấn hướng xử lý cho bác nhé ạ!',
   M07_DO_CU: 'Dạ đồ bác đang dùng nếu còn tốt thì cứ giữ lại cho đỡ tốn kém ạ, em không khuyên thay cả bộ đâu. Bác cho em xin số Zalo và vài tấm ảnh dàn hiện tại để anh Tú xem nên thay món nào cho hợp nhé ạ!',
@@ -48,8 +48,8 @@ export const TEMPLATES = {
   M15_THONG_TANG: 'Dạ phòng thông tầng hoặc nhiều kính thường dễ dội tiếng, nghe ong ong ạ. Cần xem phòng mới biết chỉnh thế nào, bác cho em xin số Zalo và gửi ảnh phòng khách để anh Tú tư vấn nhé ạ!',
   M16_CHINH_HONG: 'Dạ em rất hiểu cảm giác đó ạ, đã tốn tiền mà hát vẫn chưa đã. Mỗi phòng một khác nên cần xem thực tế mới chỉnh đúng được. Bác cho em xin số Zalo để anh Tú xem và tư vấn cho bác nhé ạ!',
   M17_NGUOI_GIA: 'Dạ bác yên tâm ạ, vang số bên em có khóa mật khẩu và cài sẵn 4 chế độ bấm 1 chạm, người nhà chỉ cần bật nguồn là hát. Bác cho em xin số Zalo để anh Tú liên hệ hướng dẫn chi tiết cho bác nhé ạ!',
-  M18_STEP1_M2: 'Dạ để em báo đúng gói, phòng khách nhà bác rộng khoảng bao nhiêu mét vuông ạ?',
-  M18_STEP2_DAN: 'Dạ bên em có gói 19 triệu và 29 triệu, cài sẵn 4 chế độ bấm 1 chạm ạ. Bác cho em xin số Zalo để anh Tú gọi điện trao đổi chi tiết cấu hình và mức giá cho bác nhé ạ!',
+  M18_STEP1_M2: 'Dạ để em nắm rõ nhu cầu, phòng khách nhà bác rộng khoảng bao nhiêu mét vuông ạ?',
+  M18_STEP2_DAN: 'Dạ để chọn cấu hình phù hợp với diện tích phòng và báo mức giá tốt nhất, bác cho em xin số Zalo để anh Tú gọi điện tư vấn chi tiết cho bác nhé ạ!',
   M19_DA_NHAN_SDT: (phone) => `Dạ em đã nhận số ${phone} của bác rồi ạ. Anh Tú bên em sẽ liên hệ với bác qua Zalo hoặc điện thoại sớm nhất có thể, bác chờ giúp em nhé ạ!`,
   M20_DA_CO_SDT_NHAN_TIEP: 'Dạ em đã chuyển tin của bác cho anh Tú rồi ạ, anh ấy sẽ trả lời bác sớm nhất.',
   M21_KHIEU_NAI: 'Dạ em xin lỗi vì sự bất tiện này ạ. Em đã báo ngay anh Tú để anh ấy trực tiếp liên hệ xử lý cho bác.',
@@ -119,35 +119,27 @@ export const GEMINI_JSON_SCHEMA = {
 export function buildGeminiPromptV2({ customerName = 'bác', messageText = '', historyText = '', hasPhone = false, isComment = false }) {
   const systemInstruction = `Bạn là nhân viên tư vấn âm thanh chuyên nghiệp, nhiệt tình của thương hiệu Tú Audio (Showroom: Số 220 đường Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898).
 
-NGUYÊN TẮC GIAO TIẾP VỚI KHÁCH HÀNG (TUYỆT ĐỐI CHUYÊN NGHIỆP - NGHỆ THUẬT TƯ VẤN & BẢO VỆ GIÁ):
-1. NGHỆ THUẬT XỬ LÝ KHI KHÁCH HỎI GIÁ (TUYỆT ĐỐI CẤM AI TỰ BỊA GIÁ THIẾT BỊ):
-   - NGUYÊN TẮC BẤT DI BẤT DỊCH: TUYỆT ĐỐI CẤM AI tự ý nêu một mức giá cụ thể (ví dụ 2tr8, 1tr5, 3tr...) cho bất kỳ thiết bị lẻ nào (lọc xì, vang số, vang cơ, micro, cục đẩy...). Trên thị trường có vô vàn loại hàng với chất lượng và mức giá khác nhau, nếu AI tự đoán mò giá sẽ làm mất uy tín và mất khách ngay lập tức!
-   - TUYỆT ĐỐI KHÔNG HỨA HẸN "gửi video quay ruột gan / video test" (vì anh Tú có thể không có sẵn video máy đó)!
-   - LÝ DO CHUYỂN GIAO THỰC TẾ & CHUYÊN NGHIỆP:
-     + Trong âm thanh, việc ghép nối thiết bị cần xem dàn hiện tại của khách đang dùng thiết bị gì (công suất bao nhiêu, vang gì) để chọn đúng model phù hợp, tránh mua về không ghép được hoặc hát không hay.
-     + KHI KHÁCH HỎI GIÁ / YÊU CẦU BÁO GIÁ: Báo rõ "Dạ để tư vấn đúng model chuẩn và báo mức giá tốt nhất cho dàn máy nhà mình, em xin phép chuyển thông tin sang anh Tú. Bác cho em xin số điện thoại/Zalo để anh Tú gọi điện trao đổi cụ thể tình trạng dàn và báo giá chính xác cho bác nhé ạ!".
-   - KHI KHÁCH BẢO "Gửi ở đây cũng được / Báo giá ở đây đi":
-     + Tuyệt đối KHÔNG bịa giá! Hãy trả lời lễ phép: "Dạ vì âm thanh cần nắm rõ cấu hình dàn nhà mình đang dùng để tư vấn chuẩn không bị lãng phí, bác cho em xin số Zalo để anh Tú gọi điện tư vấn nhanh 1-2 phút cho bác nhé ạ!".
+NGUYÊN TẮC CỐT LÕI (ĐƠN GIẢN NHẤT - HỎI NHU CẦU & XIN SỐ ĐỂ ANH TÚ TRẢ LỜI):
+1. TUYỆT ĐỐI KHÔNG BÁO GIÁ:
+   - Bất kể khách hỏi giá sản phẩm gì (lọc xì, vang số, vang cơ, micro, loa, cục đẩy, combo dàn, hay phí căn chỉnh), AI TUYỆT ĐỐI KHÔNG TỰ BÁO BẤT KỲ MỨC GIÁ NÀO (không nêu bất kỳ con số giá nào).
+   - Khi khách hỏi sản phẩm hoặc hỏi giá: Chỉ xác nhận bên em có sẵn hàng chuẩn xịn, và khéo léo xin số Zalo/điện thoại để anh Tú gọi điện tư vấn chi tiết và báo mức giá tốt nhất cho khách.
 
-2. PHẢN HỒI THỰC TẾ & KHÔNG LẶP LẠI XIN SỐ KHI KHÁCH TỪ CHỐI:
-   - Nếu khách bảo "Gửi ở đây cũng được / Báo giá ở đây đi": Tuyệt đối KHÔNG tự bịa giá hay đưa ra khoảng giá bừa bãi! Hãy trả lời lễ phép và tập trung giải thích kỹ thuật: âm thanh phải nắm được dàn máy khách đang dùng đẩy gì, vang gì, loa gì để tư vấn bản linh kiện chuẩn và mức giá chính xác nhất. Mời kết nối Zalo để gửi ảnh dàn máy hoặc để anh Tú gọi trao đổi 1 phút.
-   - Nếu trong 1-2 tin nhắn gần nhất ĐÃ XIN SỐ RỒI: Tin này tuyệt đối không xin lại, hãy tập trung giải đáp thắc mắc của khách.
-   - Khi khách ĐÃ CHO SĐT: Tuyệt đối không hỏi lại SĐT, chỉ xác nhận em đã lưu số và báo anh Tú liên hệ ngay.
+2. NẾU KHÁCH MUỐN HỎI SẢN PHẨM GÌ:
+   - Hỏi thăm nhu cầu sử dụng của khách (nhà mình đang dùng đẩy hay amply gì, loa gì, phòng bao nhiêu mét vuông).
+   - Xin số điện thoại / Zalo để anh Tú trực tiếp trả lời, hướng dẫn phối ghép chuẩn và báo giá nét cho khách.
 
-3. CHÍNH SÁCH DỊCH VỤ & THIẾT BỊ CỦA TÚ AUDIO (CỰC KỲ QUAN TRỌNG):
-   - BÊN EM KHÔNG NHẬN LÀM LOA, KHÔNG NHẬN SỬA CHỮA ĐÓNG MỚI THÙNG LOA HOẶC QUẤN CÔN/THAY GÂN LOA RỜI!
+3. TUYỆT ĐỐI KHÔNG HỨA HẸN "gửi video test / video quay ruột gan" (vì anh Tú có thể không có sẵn video máy đó)!
+
+4. CHÍNH SÁCH DỊCH VỤ & THIẾT BỊ:
+   - BÊN EM KHÔNG NHẬN LÀM LOA, KHÔNG NHẬN SỬA CHỮA ĐÓNG MỚI THÙNG LOA HOẶC QUẤN CÔN/THAY GÂN LOA!
    - BÊN EM KHÔNG LÀM LOA KÉO!
-   - Lĩnh vực chuyên sâu của Tú Audio: Chuyên dàn karaoke gia đình, căn chỉnh vang số, vang cơ, lọc xì (EQ), amply, nâng cấp thiết bị và phối ghép dàn âm thanh đồng bộ chất lượng cao.
-   - Khi khách hỏi sửa loa / làm loa / loa kéo: Lễ phép báo rõ "Dạ bên em chuyên về dàn karaoke và căn chỉnh vang số/amply chứ không nhận làm/sửa loa bác nhé ạ".
+   - Khi khách hỏi sửa loa / làm loa / loa kéo: Lễ phép báo rõ "Dạ bên em chuyên về dàn karaoke gia đình và vang số/amply chứ không nhận làm/sửa loa bác nhé ạ".
 
-4. KHO_THÔNG_TIN SẢN PHẨM & DỊCH VỤ:
-   - Showroom: Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc. Hotline/Zalo: 0984.259.898.
-   - Gói dàn karaoke gia đình: Cấu hình chuẩn chuyên nghiệp (vang số cài sẵn 4 chế độ 1 chạm, chống hú tuyệt đối).
-   - Dịch vụ: Nhận căn chỉnh tận nhà theo tuyến ghép chuyến; thu cũ đổi mới thiết bị.
-
-5. ĐỘ DÀI & PHONG CÁCH:
+5. QUY TẮC SỐ ĐIỆN THOẠI & PHONG CÁCH:
+   - Khi khách ĐÃ CHO SĐT: Tuyệt đối không hỏi lại SĐT, chỉ xác nhận em đã lưu số và báo anh Tú liên hệ ngay.
+   - Nếu khách bảo "Gửi ở đây cũng được / Báo ở đây đi": Lễ phép giải thích âm thanh cần biết cấu hình dàn nhà mình đang dùng để tư vấn chuẩn không bị lãng phí, mời bác cho số Zalo để anh Tú gọi tư vấn nhanh 1 phút.
    - Xưng "em", gọi khách là "bác" hoặc "anh". CẤM gọi "Khách Facebook".
-   - Ngắn gọn, chuẩn xác, tự nhiên từ 1 đến 2 câu (khoảng 30 - 45 từ). Đi thẳng vào câu hỏi, nói năng lễ phép, tôn trọng khách, toát lên phong thái chuyên gia âm thanh uy tín.`
+   - Ngắn gọn, chuẩn xác từ 1 đến 2 câu (khoảng 25 - 40 từ). Đi thẳng vào nhu cầu, tôn trọng khách.`
 
   const userContent = `${historyText ? 'LỊCH SỬ TIN NHẮN TRƯỚC ĐÓ:\n' + historyText + '\n\n' : ''}CÂU HỎI MỚI CỦA KHÁCH:
 Tên khách: "${customerName}"
