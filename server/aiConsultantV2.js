@@ -8,7 +8,8 @@ export const FIXED_KNOWLEDGE = {
   brand: 'Tú Audio',
   showroom: 'Số 220 đường Nguyễn Danh Phương, phường Hội Hợp, TP. Vĩnh Yên, tỉnh Vĩnh Phúc',
   hotline: '0984.259.898',
-  zalo: '0984.259.898'
+  zalo: '0984.259.898',
+  warranty: 'Bảo hành chính hãng 1 năm (12 tháng), hỗ trợ kỹ thuật trọn đời'
 }
 
 /**
@@ -153,11 +154,11 @@ export const FEW_SHOT_EXAMPLES = [
     hasPhone: false,
     reply: 'Dạ showroom bên em ở Số 220 Nguyễn Danh Phương, P. Hội Hợp, TP. Vĩnh Yên, Vĩnh Phúc ạ. Bác cho em xin số Zalo để gửi định vị vị trí nhà cho tiện, ở Facebook không gửi được ạ!'
   },
-  // 18. Khách hỏi thu cũ đổi mới
+  // 18. Khách hỏi chính sách bảo hành
   {
-    input: 'Em muốn đổi amply cũ lấy vang số mới thì bù trừ thế nào anh?',
+    input: 'Chế độ bảo hành thiết bị bên mình thế nào vậy shop?',
     hasPhone: false,
-    reply: 'Dạ bên em có chính sách hỗ trợ thu cũ đổi mới rất tiện cho bác ạ. Bác chụp ảnh mặt sau amply gửi qua Zalo 0984.259.898 để chuyên gia Tú Audio định giá thu lại cho bác nhé!'
+    reply: 'Dạ mọi thiết bị bên em đều bảo hành chính hãng 1 năm và hỗ trợ kỹ thuật trọn đời bác nhé. Bác cho em xin số Zalo để chuyên gia Tú Audio gửi thông tin chi tiết cho bác ạ!'
   },
   // 19. Khách báo tiếng bị hú rít nặng mic
   {
@@ -215,7 +216,10 @@ BỘ NGUYÊN TẮC TƯ VẤN VÀ CHUYỂN ĐỔI LEAD ZALO (BẮT BUỘC TUÂN T
      + Bước 2: Xin số Zalo để nói chuyện cụ thể về vị trí và thời gian làm việc.
      + Bước 3: Nếu khách cố tình hỏi giá trước (đã gặng hỏi sau 3 lần xin số Zalo vẫn chưa cho): Báo giá từ 500k đến 1tr, thậm chí nếu tiện tuyến đường ghép chuyến và phù hợp thì có thể căn chỉnh miễn phí. Nhưng chỉ ưu đãi khi có số điện thoại hoặc Zalo. Nhắc thêm cho khách biết: Bình luận thực tế khách thuê thợ ngoài căn chỉnh giá 2 triệu 1 lần để khách so sánh.
 
-4. QUY TẮC BẤT DI BẤT DỊCH:
+4. CHÍNH SÁCH BẢO HÀNH & KỸ THUẬT:
+   - Mọi thiết bị chính hãng bên em đều được bảo hành chính hãng 1 năm (12 tháng) và hỗ trợ kỹ thuật căn chỉnh trọn đời.
+
+5. QUY TẮC BẤT DI BẤT DỊCH:
    - Cấm tự bịa giá thiết bị khác ngoài giá căn chỉnh đã được quy định ở trên.
    - Cấm tự bịa hứa hẹn gửi video/clip test ruột gan thiết bị.
    - Từ chối lịch sự nếu khách hỏi sửa loa, đóng thùng loa hoặc loa kéo (Tú Audio chuyên dàn karaoke gia đình và vang số).
@@ -272,8 +276,8 @@ export function checkReply(reply, {
     }
   }
 
-  // 3. Chặn từ cam kết ảo / khan hiếm / khuyến mãi lừa đảo (Cho phép 'miễn phí' khi nói về căn chỉnh ghép chuyến)
-  const forbiddenPromoRegex = /\b(cam kết|đảm bảo|chỉ hôm nay|duy nhất|bảo hành \d+|trả góp|giảm giá sốc)\b/i
+  // 3. Chặn từ cam kết ảo / khan hiếm / khuyến mãi lừa đảo (Cho phép 'miễn phí' khi nói về căn chỉnh ghép chuyến, cho phép 'bảo hành 1 năm')
+  const forbiddenPromoRegex = /\b(cam kết|đảm bảo|chỉ hôm nay|duy nhất|trả góp|giảm giá sốc|bảo hành (?:2|3|5|10)\s*năm)\b/i
   if (forbiddenPromoRegex.test(trimmed)) {
     return { ok: false, reason: 'CONTAINS_FORBIDDEN_PROMISE_WORD' }
   }
