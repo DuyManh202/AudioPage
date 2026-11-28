@@ -738,13 +738,9 @@ const syncFacebookConversations = async ({ force = false } = {}) => {
           const msgAgeMs = Date.now() - Date.parse(latestRealForAi.createdAt)
           // Chỉ phản hồi các tin nhắn trong vòng 24 giờ (tuân thủ chính sách Meta Messenger)
           if (msgAgeMs >= 0 && msgAgeMs <= 24 * 60 * 60 * 1000) {
-            isFacebookAiEnabled().then(enabled => {
-              if (enabled) {
-                autoReplyToFacebookCustomer(customerId, psid).catch(err => {
-                  console.warn('[Sync AutoReply] Lỗi phản hồi khách', customerId, err.message)
-                })
-              }
-            }).catch(() => {})
+            autoReplyToFacebookCustomer(customerId, psid).catch(err => {
+              console.warn('[Sync AutoReply] Lỗi phản hồi khách', customerId, err.message)
+            })
           }
         }
       }
@@ -899,11 +895,23 @@ const sendFacebookText = async (psid, text, tag = null) => {
   return payload
 }
 
+export const isWhitelistedTestCustomer = (customer, customerId, psid) => {
+  const fbId = String(customer?.facebook_id || psid || '')
+  const name = (customer?.customer_name || '').toLowerCase()
+  const cId = String(customerId || '')
+  return (
+    fbId.includes('28443856808620561') ||
+    name.includes('nguyễn duy mạnh') ||
+    name.includes('nguyen duy manh') ||
+    cId.includes('7eb07aa4-7fdf-4564-b698-fad2dee5c984')
+  )
+}
+
 const fbAutoReplyInFlight = new Set()
 
 const autoReplyToFacebookCustomer = async (customerId, psid) => {
   if (fbAutoReplyInFlight.has(customerId)) return
-  if (!(await isFacebookAiEnabled()) || !isFacebookMessengerConfigured()) return
+  if (!isFacebookMessengerConfigured()) return
 
   // Khóa Advisory Lock ở mức CSDL theo customerId để ngăn ngừa 2 tiến trình Node hoặc đồng bộ chạy song song
   let hasDbLock = false
@@ -921,7 +929,7 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
   fbAutoReplyInFlight.add(customerId)
   try {
     const [customerResult, humanCheckResult, historyResult, productsResult, combosResult] = await Promise.all([
-      query('SELECT customer_name, phone, interest, notes, status, assigned_to, ai_enabled FROM facebook_care_customers WHERE id=$1', [customerId]),
+      query('SELECT customer_name, facebook_id, phone, interest, notes, status, assigned_to, ai_enabled FROM facebook_care_customers WHERE id=$1', [customerId]),
       query(`
         SELECT id, created_by, created_at, body 
         FROM facebook_care_messages 
@@ -942,6 +950,21 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
     ])
     const customer = customerResult.rows[0]
     if (!customer) return
+
+    // CHẾ ĐỘ TEST RIÊNG CHO NICK NGUYỄN DUY MẠNH THEO YÊU CẦU ANH TÚ
+    const isTester = isWhitelistedTestCustomer(customer, customerId, psid)
+    const testOnlyMode = await getSystemSetting('facebook_ai_test_only', true)
+    const globalAiEnabled = await isFacebookAiEnabled()
+
+    if (testOnlyMode) {
+      if (!isTester) {
+        console.log(`[Facebook AI Test Mode] Đang bật chế độ test riêng nick Nguyễn Duy Mạnh -> Bỏ qua khách ${customerId} (${customer.customer_name})`)
+        return
+      }
+      console.log(`[Facebook AI Test Mode] Kích hoạt AI phản hồi cho nick test: ${customer.customer_name} (${customerId})`)
+    } else if (!globalAiEnabled && !isTester) {
+      return
+    }
 
     // Kiểm tra cờ ai_enabled theo từng khách hàng
     if (customer.ai_enabled === false) {
@@ -1412,9 +1435,9 @@ app.post('/api/v1/facebook/webhook', async (req, res) => {
             attachments = CASE WHEN EXCLUDED.attachments IS NOT NULL AND jsonb_array_length(EXCLUDED.attachments) > 0 THEN EXCLUDED.attachments ELSE facebook_care_messages.attachments END
           RETURNING id`, [randomUUID(), customer.rows[0].id, text, resolvedName, platformMessageId, JSON.stringify(webhookAttachments)])
         if (inserted.rows[0]) {
-          isFacebookAiEnabled().then(enabled => {
-            if (enabled) autoReplyToFacebookCustomer(customer.rows[0].id, psid)
-          }).catch(() => {})
+          autoReplyToFacebookCustomer(customer.rows[0].id, psid).catch(err => {
+            console.warn('[Webhook AutoReply] Lỗi phản hồi khách', customer.rows[0]?.id, err.message)
+          })
         }
       }
     }
