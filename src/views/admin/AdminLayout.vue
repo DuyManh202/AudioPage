@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-shell">
+  <div :class="['admin-shell', { 'sidebar-collapsed': sidebarCollapsed }]">
     <!-- Backdrop trên Mobile khi mở Drawer -->
     <Transition name="modal-fade">
       <div
@@ -200,6 +200,16 @@
       <!-- Topbar Cố Định Một Hàng Gọn Gàng -->
       <header class="admin-topbar">
         <div class="topbar-left">
+          <button
+            type="button"
+            class="desktop-sidebar-toggle"
+            @click="sidebarCollapsed = !sidebarCollapsed"
+            :aria-label="sidebarCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'"
+            :aria-pressed="sidebarCollapsed"
+            :title="sidebarCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'"
+          >
+            <AdminIcon name="menu" :size="19" />
+          </button>
           <button
             type="button"
             class="mobile-menu-trigger"
@@ -443,6 +453,7 @@ const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const festiveStore = useFestiveStore()
 const mobileNavOpen = ref(false)
+const sidebarCollapsed = ref(false)
 
 const festiveIcon = computed(() => {
   switch (festiveStore.effectiveTheme) {
@@ -1391,6 +1402,46 @@ const handleLogout = async () => {
   display: none;
 }
 
+/* Shared luxury admin shell */
+.admin-shell { background: #f5f4f0; color: #172033; }
+.admin-sidebar { background: #111a2b; border-right-color: #202b3d; box-shadow: 8px 0 30px rgba(14, 22, 36, .10); }
+.sidebar-brand { height: 76px; border-bottom-color: #263145; }
+.nav-section-label { color: #8491a6; letter-spacing: .12em; font-size: .62rem; padding-top: 21px; }
+.nav-item { color: #bdc6d4; border-radius: 10px; padding: 10px 12px; }
+.nav-item:hover { background: #1b2639; color: #fff; }
+.nav-item.router-link-active { color: #f3cd82; background: linear-gradient(100deg, rgba(205,157,66,.19), rgba(205,157,66,.07)); border-color: rgba(205,157,66,.24); }
+.nav-item.router-link-active :deep(svg) { color: #e2b85f; }
+.nav-pill { background: #263247; color: #d7deea; }
+.profile-box { background: #182337; border-color: #2a364a; border-radius: 12px; }
+.profile-name { color: #f4f6fa; }
+.profile-role { color: #98a5b8; }
+.sidebar-footer { border-top-color: #263145; }
+.profile-avatar { background: linear-gradient(145deg, #d6a43e, #a87319); }
+.admin-topbar { height: 70px; background: rgba(255,255,255,.95); border-bottom-color: #e3e8f0; padding-inline: 28px; }
+.bc-root { color: #8390a3; }
+.bc-current { color: #172033; }
+.admin-viewport { padding: 28px; }
+.topbar-store-btn { border-color: #dce2eb; }
+.topbar-sync-btn.auto-live { background: #f1f8f3; border-color: #d1ead7; color: #28824a; }
+.topbar-logout { background: #fff7f6; border-color: #f4d5d2; }
+.admin-mobile-tabbar { border-top-color: #e5e9ef; }
+.mobile-tab-item.router-link-active { color: #a4741e; }
+.mobile-tab-item.router-link-active::after { background: #c3943a; box-shadow: 0 0 6px rgba(195,148,58,.45); }
+.desktop-sidebar-toggle { display: inline-flex; width: 36px; height: 36px; align-items: center; justify-content: center; border: 1px solid #e2e7ef; border-radius: 10px; color: #536176; background: #fff; cursor: pointer; transition: .18s ease; }
+.desktop-sidebar-toggle:hover { border-color: #d8bd83; color: #9b6b16; background: #fdfaf3; }
+.admin-shell.sidebar-collapsed .admin-sidebar { width: 78px; }
+.admin-shell.sidebar-collapsed .admin-main { margin-left: 78px; width: calc(100% - 78px); }
+.admin-shell.sidebar-collapsed .sidebar-brand { padding-inline: 20px; }
+.admin-shell.sidebar-collapsed .sidebar-brand .brand-meta,
+.admin-shell.sidebar-collapsed .sidebar-nav .nav-section-label,
+.admin-shell.sidebar-collapsed .sidebar-nav .nav-text,
+.admin-shell.sidebar-collapsed .sidebar-nav .nav-pill,
+.admin-shell.sidebar-collapsed .profile-info,
+.admin-shell.sidebar-collapsed .profile-logout { display: none; }
+.admin-shell.sidebar-collapsed .sidebar-nav { padding-inline: 12px; }
+.admin-shell.sidebar-collapsed .nav-item { justify-content: center; padding-inline: 8px; }
+.admin-shell.sidebar-collapsed .profile-box { justify-content: center; padding: 8px; }
+
 @media (max-width: 768px) {
   .admin-mobile-tabbar {
     display: flex;
@@ -1475,6 +1526,20 @@ const handleLogout = async () => {
     text-align: center;
     box-shadow: 0 1px 4px rgba(255, 59, 48, 0.4);
   }
+}
+
+@media (max-width: 960px) {
+  .desktop-sidebar-toggle { display: none; }
+  .admin-shell.sidebar-collapsed .admin-sidebar { width: 264px; }
+  .admin-shell.sidebar-collapsed .sidebar-brand { padding-inline: 18px; }
+  .admin-shell.sidebar-collapsed .sidebar-brand .brand-meta,
+  .admin-shell.sidebar-collapsed .sidebar-nav .nav-section-label,
+  .admin-shell.sidebar-collapsed .sidebar-nav .nav-text,
+  .admin-shell.sidebar-collapsed .sidebar-nav .nav-pill,
+  .admin-shell.sidebar-collapsed .profile-info,
+  .admin-shell.sidebar-collapsed .profile-logout { display: initial; }
+  .admin-shell.sidebar-collapsed .nav-item { justify-content: flex-start; padding-inline: 12px; }
+  .admin-shell.sidebar-collapsed .profile-box { justify-content: flex-start; padding: 9px 10px; }
 }
 
 @media (max-width: 1120px) {

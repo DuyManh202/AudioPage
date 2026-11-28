@@ -1162,4 +1162,99 @@ textarea:focus-visible {
   background: rgba(0, 0, 0, 0.28);
 }
 
+/* Tú Audio Admin — refined ivory, ink and champagne palette */
+.admin-shell {
+  --adm-ink: #172033;
+  --adm-muted: #718096;
+  --adm-line: #e3e8f0;
+  --adm-canvas: #f5f4f0;
+  --adm-gold: #bc8424;
+  --adm-gold-soft: #fbf5e9;
+  background: var(--adm-canvas);
+  color: var(--adm-ink);
+}
+
+.adm-page { gap: 22px; }
+.adm-page-title { color: var(--adm-ink); font-size: 1.55rem; letter-spacing: -.035em; }
+.adm-page-sub { color: var(--adm-muted); line-height: 1.6; }
+.adm-kpi-card, .adm-card {
+  border-color: var(--adm-line);
+  border-radius: 15px;
+  box-shadow: 0 3px 14px rgba(25, 37, 58, .035);
+}
+.adm-kpi-card { padding: 20px; }
+.adm-kpi-card.active-kpi { border-color: #d8b66e; background: linear-gradient(145deg, #fffdf8, #fff); }
+.adm-kpi-card.clickable:hover, .adm-kpi-card:hover { border-color: #d8b66e; box-shadow: 0 12px 28px rgba(91, 68, 27, .09); }
+.adm-kpi-value { color: var(--adm-ink); letter-spacing: -.035em; }
+.adm-card-head { border-color: #edf0f4; }
+.adm-card-title { color: var(--adm-ink); letter-spacing: -.015em; }
+.adm-toolbar { background: #fafbfc; border-color: #e9edf2; }
+.adm-table th { background: #f8f9fb; color: #718096; font-size: .7rem; letter-spacing: .035em; }
+.adm-table td { border-color: #edf0f4; }
+.adm-table tbody tr:hover { background: #fcfaf5; }
+.adm-btn-primary, .adm-btn-gold { background: linear-gradient(135deg, #d6a43e, #bd8422); border-color: #bd8422; color: #20180a; box-shadow: 0 4px 10px rgba(176, 123, 27, .16); }
+.adm-btn-primary:hover, .adm-btn-gold:hover { background: #b77e1e; border-color: #b77e1e; color: white; }
+input, select, textarea { border-color: #d8e0ea; border-radius: 9px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: #c89a42 !important; box-shadow: 0 0 0 3px rgba(200, 154, 66, .16) !important; }
+
+/* Responsive workspace rhythm and touch ergonomics */
+.admin-viewport { padding: clamp(16px, 2.4vw, 34px); }
+.adm-page { max-width: 1680px; margin-inline: auto; gap: clamp(16px, 1.8vw, 24px); }
+.adm-page-head { align-items: center; }
+.adm-head-actions { justify-content: flex-end; }
+.adm-btn { min-height: 40px; border-radius: 10px; font-weight: 700; }
+.adm-toolbar { border-radius: 14px 14px 0 0; }
+.adm-table-wrap { scrollbar-color: #c8ced8 #f5f6f8; scrollbar-width: thin; }
+.adm-table { border-collapse: separate; border-spacing: 0; }
+.adm-table th { position: sticky; top: 0; z-index: 2; }
+.adm-table td { vertical-align: middle; }
+.adm-modal { border-color: #e3e8f0; border-radius: 18px; }
+.adm-modal-head, .adm-modal-foot { background: #fff; }
+
+@media (min-width: 961px) {
+  .admin-sidebar { transition: width .22s cubic-bezier(.2,.8,.2,1); }
+  .admin-main { transition: margin-left .22s cubic-bezier(.2,.8,.2,1), width .22s cubic-bezier(.2,.8,.2,1); }
+  .admin-shell.sidebar-collapsed .nav-item { min-height: 42px; }
+}
+
+@media (min-width: 681px) and (max-width: 1100px) {
+  .admin-topbar { padding-inline: 18px; }
+  .topbar-right { gap: 6px; }
+  .topbar-geo-pill, .topbar-festive-btn { display: none; }
+  .admin-viewport { padding: 20px; }
+}
+
+@media (max-width: 680px) {
+  .admin-viewport { padding: 14px 12px calc(84px + env(safe-area-inset-bottom, 0px)) !important; }
+  .adm-page { gap: 14px; }
+  .adm-page-head { align-items: stretch; }
+  .adm-page-title { font-size: clamp(1.15rem, 5vw, 1.35rem); line-height: 1.3; }
+  .adm-page-sub { margin-top: 6px; line-height: 1.5; }
+  .adm-head-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .adm-head-actions .adm-btn { min-width: 0; min-height: 44px; height: auto; padding: 8px 10px; white-space: normal; line-height: 1.25; }
+  .adm-kpi-grid, .adm-kpi-grid.cols-3 { gap: 9px; }
+  .adm-kpi-card { min-height: 105px; padding: 12px; border-radius: 13px; }
+  .adm-kpi-info { gap: 5px; }
+  .adm-kpi-label { line-height: 1.25; }
+  .adm-kpi-meta { overflow-wrap: anywhere; }
+  .adm-card { border-radius: 14px; }
+  .adm-card-head { padding: 14px; align-items: flex-start; }
+  .adm-card-p { padding: 15px; }
+  .adm-toolbar { border-radius: 13px 13px 0 0; }
+  .adm-toolbar .adm-btn, .adm-toolbar button, .adm-toolbar select { min-height: 42px; }
+  .adm-table-wrap { position: relative; }
+  .adm-table { min-width: 720px; }
+  .adm-table th:first-child, .adm-table td:first-child { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 5px 0 8px -7px rgba(20,32,50,.35); }
+  .adm-table th:first-child { z-index: 3; background: #f8f9fb; }
+  .adm-modal-backdrop { padding-top: max(16px, env(safe-area-inset-top, 0px)); }
+  .adm-modal { max-height: calc(92dvh - env(safe-area-inset-top, 0px)); }
+  .admin-mobile-tabbar { height: calc(64px + env(safe-area-inset-bottom, 0px)); padding-inline: 4px; }
+  .mobile-tab-item { min-width: 56px; min-height: 54px; padding-inline: 8px; color: #697487; }
+  .mobile-tab-item span:last-child { font-size: .65rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar, .admin-main, .adm-page, .adm-card, .adm-kpi-card { transition: none !important; animation: none !important; }
+}
+
 
