@@ -29,6 +29,18 @@ export const handleFacebookComment = async ({
       return { skipped: true, reason: 'is_page_comment' }
     }
 
+    // KHÓA CỨNG AN TOÀN THEO YÊU CẦU ANH TÚ: Chỉ trả lời comment của nick test Nguyễn Duy Mạnh
+    const uid = String(userId || '')
+    const uName = String(userName || '').toLowerCase()
+    const isTestUser = uid.includes('28443856808620561') ||
+                       uid.includes('29108235355484174') ||
+                       uName.includes('nguyễn duy mạnh') ||
+                       uName.includes('nguyen duy manh')
+    if (!isTestUser) {
+      console.log(`[Facebook Comment AI] Bỏ qua comment từ ${userName} (${userId}) - chỉ cho phép nick test Nguyễn Duy Mạnh`)
+      return { skipped: true, reason: 'not_whitelisted_test_user' }
+    }
+
     const cleanMsg = String(message || '').trim()
     if (!cleanMsg) return { skipped: true, reason: 'empty_message' }
 

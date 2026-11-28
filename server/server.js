@@ -901,6 +901,7 @@ export const isWhitelistedTestCustomer = (customer, customerId, psid) => {
   const cId = String(customerId || '')
   return (
     fbId.includes('28443856808620561') ||
+    fbId.includes('29108235355484174') ||
     name.includes('nguyễn duy mạnh') ||
     name.includes('nguyen duy manh') ||
     cId.includes('7eb07aa4-7fdf-4564-b698-fad2dee5c984')
@@ -951,20 +952,17 @@ const autoReplyToFacebookCustomer = async (customerId, psid) => {
     const customer = customerResult.rows[0]
     if (!customer) return
 
-    // CHẾ ĐỘ TEST RIÊNG CHO NICK NGUYỄN DUY MẠNH THEO YÊU CẦU ANH TÚ
+    // =========================================================================
+    // KHÓA CỨNG AN TOÀN TUYỆT ĐỐI THEO YÊU CẦU ANH TÚ:
+    // TUYỆT ĐỐI CHỈ DUY NHẤT NICK TEST NGUYỄN DUY MẠNH ĐƯỢC PHÉP NHẬN PHẢN HỒI TỰ ĐỘNG!
+    // TẤT CẢ KHÁCH HÀNG KHÁC ĐỀU BỊ CHẶN 100%, KHÔNG AI ĐƯỢC GỬI TIN NHẮN TỰ ĐỘNG.
+    // =========================================================================
     const isTester = isWhitelistedTestCustomer(customer, customerId, psid)
-    const testOnlyMode = await getSystemSetting('facebook_ai_test_only', true)
-    const globalAiEnabled = await isFacebookAiEnabled()
-
-    if (testOnlyMode) {
-      if (!isTester) {
-        console.log(`[Facebook AI Test Mode] Đang bật chế độ test riêng nick Nguyễn Duy Mạnh -> Bỏ qua khách ${customerId} (${customer.customer_name})`)
-        return
-      }
-      console.log(`[Facebook AI Test Mode] Kích hoạt AI phản hồi cho nick test: ${customer.customer_name} (${customerId})`)
-    } else if (!globalAiEnabled && !isTester) {
+    if (!isTester) {
+      console.log(`[Facebook AI Iron Gate] Bỏ qua khách ${customerId} (${customer.customer_name}) - CHỈ CHO PHÉP nick Nguyễn Duy Mạnh`)
       return
     }
+    console.log(`[Facebook AI Test Mode] Kích hoạt AI phản hồi cho nick test: ${customer.customer_name} (${customerId})`)
 
     // Kiểm tra cờ ai_enabled theo từng khách hàng
     if (customer.ai_enabled === false) {
